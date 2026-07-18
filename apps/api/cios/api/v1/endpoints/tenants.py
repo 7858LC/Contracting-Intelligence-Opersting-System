@@ -4,7 +4,8 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 
 from cios.core.dependencies import Auth, AdminAuth, DB
-from cios.models.tenant import Tenant, TenantMember
+from cios.core.security import generate_api_key
+from cios.models.tenant import Tenant, TenantMember, ApiKey
 
 router = APIRouter()
 
@@ -82,3 +83,54 @@ async def invite_member(body: InviteMemberRequest, db: DB, user: AdminAuth) -> d
     await db.flush()
     send_invite_email.delay(str(user.tenant_id), body.email, token)
     return {"status": "invited", "email": body.email}
+
+
+class ApiKeyCreate(BaseModel):
+    name: str
+
+
+@router.post("/api-keys")
+async def create_api_key(body: ApiKeyCreate, db: DB, user: AdminAuth) -> dict:
+    plaintext, key_hash = generate_api_key("cios")
+    api_key = ApiKey(
+        tenant_id=user.tenant_id,
+        user_id=user.user_id,
+        name=body.name,
+        key_hash=key_hash,
+        key_prefix=plaintext[:12],
+    )
+    db.add(api_key)
+    await db.flush()
+    return {
+        "id": str(api_key.id),
+        "name": api_key.name,
+        "key_prefix": api_key.key_prefix,
+        "plaintext_key": plaintext,
+        "created_at": api_key.created_at.isoformat(),
+    }
+
+
+@router.get("/api-keys")
+async def list_api_keys(db: DB, user: Auth) -> dict:
+    result = await db.execute(
+        select(ApiKey).where(ApiKey.tenant_id == user.tenant_id, ApiKey.is_active == True)  # noqa: E712
+        .order_by(ApiKey.created_at.desc())
+    )
+    return {
+        "api_keys": [
+            {"id": str(k.id), "name": k.name, "key_prefix": k.key_prefix, "created_at": k.created_at.isoformat()}
+            for k in result.scalars().all()
+        ]
+    }
+
+
+@router.delete("/api-keys/{key_id}")
+async def revoke_api_key(key_id: str, db: DB, user: AdminAuth) -> dict:
+    result = await db.execute(
+        select(ApiKey).where(ApiKey.id == key_id, ApiKey.tenant_id == user.tenant_id)
+    )
+    key = result.scalar_one_or_none()
+    if not key:
+        raise HTTPException(status_code=404, detail="API key not found")
+    key.is_active = False
+    return {"revoked": True}

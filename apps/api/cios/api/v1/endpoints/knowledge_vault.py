@@ -27,12 +27,14 @@ class DocumentResponse(BaseModel):
     id: uuid.UUID
     title: str
     document_type: str
-    file_name: str | None
-    file_size_bytes: int | None
-    is_vectorized: bool
-    chunk_count: int
-    created_at: str
-    tags: list
+    description: str | None = None
+    file_name: str | None = None
+    file_size_bytes: int | None = None
+    vectorization_status: str = "pending"
+    is_vectorized: bool = False
+    chunk_count: int = 0
+    created_at: Any = None
+    tags: list = []
 
     model_config = {"from_attributes": True}
 
@@ -70,6 +72,7 @@ async def upload_document(
     file: UploadFile = File(...),
     document_type: str = "general",
     title: str | None = None,
+    description: str | None = None,
     tags: str = "",
 ) -> dict[str, Any]:
     """Upload a document to the Knowledge Vault. Ingestion and vectorization are async."""
@@ -87,15 +90,23 @@ async def upload_document(
             detail=f"File too large: {size_mb:.1f}MB (max {MAX_FILE_SIZE_MB}MB)",
         )
 
+    import json
+    try:
+        tag_list = json.loads(tags) if tags.startswith("[") else [t.strip() for t in tags.split(",") if t.strip()]
+    except (json.JSONDecodeError, ValueError):
+        tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+
     doc = KnowledgeDocument(
         tenant_id=user.tenant_id,
         title=title or file.filename or "Untitled",
         document_type=document_type,
+        description=description,
         file_name=file.filename,
         file_size_bytes=len(content),
         mime_type=file.content_type,
         uploaded_by=user.user_id,
-        tags=[t.strip() for t in tags.split(",") if t.strip()],
+        vectorization_status="pending",
+        tags=tag_list,
     )
     db.add(doc)
     await db.flush()

@@ -3,7 +3,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import DateTime, String, text
+from sqlalchemy import DateTime, String, text, inspect
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -17,6 +17,19 @@ class UUIDMixin:
         default=uuid.uuid4,
         server_default=text("gen_random_uuid()"),
     )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize model columns to a JSON-safe dict."""
+        result = {}
+        for col in inspect(self.__class__).columns:
+            val = getattr(self, col.name, None)
+            if isinstance(val, uuid.UUID):
+                result[col.name] = str(val)
+            elif isinstance(val, datetime):
+                result[col.name] = val.isoformat()
+            else:
+                result[col.name] = val
+        return result
 
 
 class TimestampMixin:

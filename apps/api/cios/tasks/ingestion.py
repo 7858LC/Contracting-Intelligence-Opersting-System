@@ -20,10 +20,6 @@ async def _ingest_async(tenant_id: str, document_id: str, content: bytes, mime_t
     from sqlalchemy import select
     from datetime import UTC, datetime
 
-    text = _extract_text(content, mime_type)
-    chunks = _chunk_text(text)
-    content_hash = hashlib.sha256(content).hexdigest()
-
     async with async_session_factory() as db:
         result = await db.execute(
             select(KnowledgeDocument).where(KnowledgeDocument.id == uuid.UUID(document_id))
@@ -32,22 +28,36 @@ async def _ingest_async(tenant_id: str, document_id: str, content: bytes, mime_t
         if not doc:
             return {"error": "document not found"}
 
-        doc.extracted_text = text[:50000]
-        doc.content_hash = content_hash
-        doc.chunk_count = len(chunks)
+        doc.vectorization_status = "processing"
+        await db.commit()
 
-        for i, chunk_text in enumerate(chunks):
-            chunk = KnowledgeChunk(
-                tenant_id=uuid.UUID(tenant_id),
-                document_id=uuid.UUID(document_id),
-                chunk_index=i,
-                content=chunk_text,
-                token_count=len(chunk_text.split()) * 4 // 3,
-            )
-            db.add(chunk)
+        try:
+            text = _extract_text(content, mime_type)
+            chunks = _chunk_text(text)
+            content_hash = hashlib.sha256(content).hexdigest()
 
-        doc.is_vectorized = True
-        doc.vectorized_at = datetime.now(UTC)
+            doc.extracted_text = text[:50000]
+            doc.content_hash = content_hash
+            doc.chunk_count = len(chunks)
+
+            for i, chunk_text in enumerate(chunks):
+                chunk = KnowledgeChunk(
+                    tenant_id=uuid.UUID(tenant_id),
+                    document_id=uuid.UUID(document_id),
+                    chunk_index=i,
+                    content=chunk_text,
+                    token_count=len(chunk_text.split()) * 4 // 3,
+                )
+                db.add(chunk)
+
+            doc.is_vectorized = True
+            doc.vectorization_status = "completed"
+            doc.vectorized_at = datetime.now(UTC)
+        except Exception as e:
+            doc.vectorization_status = "failed"
+            await db.commit()
+            raise
+
         await db.commit()
 
     return {"document_id": document_id, "chunks": len(chunks)}

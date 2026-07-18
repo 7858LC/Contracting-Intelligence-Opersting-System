@@ -1,6 +1,6 @@
 """Competitive Intelligence models — Module 8."""
 import uuid
-from sqlalchemy import Float, Index, String, Text
+from sqlalchemy import Boolean, Float, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -22,10 +22,15 @@ class Competitor(Base, UUIDMixin, TimestampMixin, TenantMixin):
     known_strengths: Mapped[list] = mapped_column(JSONB, default=list)
     known_weaknesses: Mapped[list] = mapped_column(JSONB, default=list)
     win_rate_estimate: Mapped[float | None] = mapped_column(Float)
+    annual_contract_volume: Mapped[float | None] = mapped_column(Float)
     past_awards: Mapped[list] = mapped_column(JSONB, default=list)
     agency_relationships: Mapped[list] = mapped_column(JSONB, default=list)
     pricing_tendency: Mapped[str | None] = mapped_column(String(32))
     threat_level: Mapped[str] = mapped_column(String(16), default="medium")
+    socioeconomic_statuses: Mapped[list] = mapped_column(JSONB, default=list)
+    active_clearances: Mapped[list] = mapped_column(JSONB, default=list)
+    certifications: Mapped[list] = mapped_column(JSONB, default=list)
+    notes: Mapped[str | None] = mapped_column(Text)
     tags: Mapped[list] = mapped_column(JSONB, default=list)
 
 
@@ -39,4 +44,4 @@ class CompetitorIntelligence(Base, UUIDMixin, TimestampMixin, TenantMixin, Evide
     source: Mapped[str | None] = mapped_column(String(256))
     source_url: Mapped[str | None] = mapped_column(String(2048))
     relevance_score: Mapped[float | None] = mapped_column(Float)
-    is_verified: Mapped[bool | None] = mapped_column()
+    is_verified: Mapped[bool | None] = mapped_column(Boolean)

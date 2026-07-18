@@ -1,5 +1,5 @@
 /**
- * CIOS API client — typed, tenant-aware, with retry logic.
+ * CIOS API client — typed, tenant-aware, with auto-refresh on 401.
  */
 import axios, { AxiosInstance, AxiosError } from "axios";
 
@@ -15,18 +15,14 @@ class CIOSApiClient {
       timeout: 30_000,
     });
 
-    // Inject auth token
     this.client.interceptors.request.use((config) => {
       if (typeof window !== "undefined") {
         const token = localStorage.getItem("cios_access_token");
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
+        if (token) config.headers.Authorization = `Bearer ${token}`;
       }
       return config;
     });
 
-    // Auto-refresh on 401
     this.client.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
@@ -55,13 +51,19 @@ class CIOSApiClient {
     );
   }
 
-  // Auth
+  // ── Auth ────────────────────────────────────────────────────────────────────
+
   async login(email: string, password: string) {
     const { data } = await this.client.post("/auth/login", { email, password });
     return data;
   }
 
-  async register(payload: { email: string; password: string; full_name: string; company_name: string }) {
+  async register(payload: {
+    email: string;
+    password: string;
+    company_name: string;
+    naics_codes?: string[];
+  }) {
     const { data } = await this.client.post("/auth/register", payload);
     return data;
   }
@@ -71,10 +73,11 @@ class CIOSApiClient {
     return data;
   }
 
-  // Opportunities (Module 1)
-  async listOpportunities(params?: Record<string, unknown>) {
+  // ── Opportunities (Module 1) ─────────────────────────────────────────────
+
+  async getOpportunities(params?: Record<string, unknown>) {
     const { data } = await this.client.get("/opportunities", { params });
-    return data;
+    return data.opportunities ?? data;
   }
 
   async createOpportunity(payload: Record<string, unknown>) {
@@ -87,18 +90,29 @@ class CIOSApiClient {
     return data;
   }
 
+  async updateOpportunity(id: string, payload: Record<string, unknown>) {
+    const { data } = await this.client.patch(`/opportunities/${id}`, payload);
+    return data;
+  }
+
   async analyzeOpportunity(id: string) {
     const { data } = await this.client.post(`/opportunities/${id}/analyze`);
     return data;
   }
 
-  // Bid Decisions (Module 2)
-  async listBidDecisions() {
-    const { data } = await this.client.get("/bid-decisions");
+  async watchOpportunity(id: string) {
+    const { data } = await this.client.post(`/opportunities/${id}/watch`);
     return data;
   }
 
-  async createBidDecision(payload: { opportunity_id: string; scoring_weights?: Record<string, number> }) {
+  // ── Bid Decisions (Module 2) ─────────────────────────────────────────────
+
+  async getBidDecisions(params?: Record<string, unknown>) {
+    const { data } = await this.client.get("/bid-decisions", { params });
+    return data.bid_decisions ?? data.decisions ?? data;
+  }
+
+  async createBidDecision(payload: { opportunity_id: string; go_no_go_threshold?: number; scoring_weights?: Record<string, number> }) {
     const { data } = await this.client.post("/bid-decisions", payload);
     return data;
   }
@@ -111,10 +125,11 @@ class CIOSApiClient {
     return data;
   }
 
-  // Award Simulations (Module 13 — flagship)
-  async listSimulations() {
-    const { data } = await this.client.get("/award-simulations");
-    return data;
+  // ── Award Simulations (Module 13 — flagship) ────────────────────────────
+
+  async getSimulations(params?: Record<string, unknown>) {
+    const { data } = await this.client.get("/award-simulations", { params });
+    return data.simulations ?? data;
   }
 
   async createSimulation(payload: {
@@ -138,63 +153,105 @@ class CIOSApiClient {
     return data;
   }
 
-  // Knowledge Vault
-  async listDocuments(params?: Record<string, unknown>) {
+  // ── Knowledge Vault ──────────────────────────────────────────────────────
+
+  async getKnowledgeDocuments(params?: Record<string, unknown>) {
     const { data } = await this.client.get("/knowledge-vault", { params });
-    return data;
+    return data.items ?? data.documents ?? data;
   }
 
-  async uploadDocument(file: File, documentType: string, tags?: string) {
-    const form = new FormData();
-    form.append("file", file);
-    form.append("document_type", documentType);
-    if (tags) form.append("tags", tags);
-    const { data } = await this.client.post("/knowledge-vault/upload", form, {
+  async uploadKnowledgeDocument(formData: FormData) {
+    const { data } = await this.client.post("/knowledge-vault/upload", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
     return data;
   }
 
-  async searchKnowledgeVault(query: string, topK = 10) {
+  async searchKnowledge(query: string, topK = 10) {
     const { data } = await this.client.post("/knowledge-vault/search", { query, top_k: topK });
+    return data.results ?? data;
+  }
+
+  async deleteKnowledgeDocument(id: string) {
+    await this.client.delete(`/knowledge-vault/${id}`);
+    return { deleted: true };
+  }
+
+  // ── Capabilities (Module 5 & 15) ─────────────────────────────────────────
+
+  async getCapabilities(params?: Record<string, unknown>) {
+    const { data } = await this.client.get("/capabilities", { params });
+    return data.capabilities ?? data;
+  }
+
+  async createCapability(payload: Record<string, unknown>) {
+    const { data } = await this.client.post("/capabilities", payload);
     return data;
   }
 
-  // Capabilities (Module 5 & 15)
-  async listCapabilities() {
-    const { data } = await this.client.get("/capabilities");
+  async deleteCapability(id: string) {
+    const { data } = await this.client.delete(`/capabilities/${id}`);
     return data;
   }
 
-  async listCapabilityGaps() {
+  async getCapabilityGaps() {
     const { data } = await this.client.get("/capabilities/gaps");
+    return data.gaps ?? data;
+  }
+
+  // ── Past Performance (Module 6) ──────────────────────────────────────────
+
+  async getPastPerformances(params?: Record<string, unknown>) {
+    const { data } = await this.client.get("/past-performance", { params });
+    return data.past_performances ?? data;
+  }
+
+  async createPastPerformance(payload: Record<string, unknown>) {
+    const { data } = await this.client.post("/past-performance", payload);
     return data;
   }
 
-  // Past Performance (Module 6)
-  async listPastPerformance() {
-    const { data } = await this.client.get("/past-performance");
+  // ── Teaming (Module 7) ───────────────────────────────────────────────────
+
+  async getTeamingRecommendations(params?: Record<string, unknown>) {
+    const { data } = await this.client.get("/teaming/recommendations", { params });
+    return data.recommendations ?? data;
+  }
+
+  async getTeamingPartners(params?: Record<string, unknown>) {
+    const { data } = await this.client.get("/teaming/partners", { params });
+    return data.partners ?? data;
+  }
+
+  async createTeamingPartner(payload: Record<string, unknown>) {
+    const { data } = await this.client.post("/teaming/partners", payload);
     return data;
   }
 
-  // Teaming (Module 7)
-  async listTeamingPartners() {
-    const { data } = await this.client.get("/teaming/partners");
-    return data;
-  }
-
-  async getTeamingRecommendations(opportunityId: string) {
+  async generateTeamingRecommendation(opportunityId: string) {
     const { data } = await this.client.post("/teaming/recommend", { opportunity_id: opportunityId });
     return data;
   }
 
-  // Competitors (Module 8)
-  async listCompetitors() {
-    const { data } = await this.client.get("/competitors");
+  // ── Competitors (Module 8) ───────────────────────────────────────────────
+
+  async getCompetitors(params?: Record<string, unknown>) {
+    const { data } = await this.client.get("/competitors", { params });
+    return data.competitors ?? data;
+  }
+
+  async createCompetitor(payload: Record<string, unknown>) {
+    const { data } = await this.client.post("/competitors", payload);
     return data;
   }
 
-  // Tenant
+  async addCompetitorIntel(competitorId: string, payload: Record<string, unknown>) {
+    const { data } = await this.client.post(`/competitors/${competitorId}/intel`, payload);
+    return data;
+  }
+
+  // ── Tenant ───────────────────────────────────────────────────────────────
+
   async getTenantProfile() {
     const { data } = await this.client.get("/tenants/profile");
     return data;
@@ -205,9 +262,44 @@ class CIOSApiClient {
     return data;
   }
 
-  // Subscriptions
+  // ── API Keys ─────────────────────────────────────────────────────────────
+
+  async createApiKey(name: string) {
+    const { data } = await this.client.post("/tenants/api-keys", { name });
+    return data;
+  }
+
+  async deleteApiKey(id: string) {
+    const { data } = await this.client.delete(`/tenants/api-keys/${id}`);
+    return data;
+  }
+
+  // ── Subscriptions ────────────────────────────────────────────────────────
+
   async getSubscription() {
     const { data } = await this.client.get("/subscriptions/current");
+    return data;
+  }
+
+  async createCheckout(plan: string) {
+    const { data } = await this.client.post("/subscriptions/checkout", { plan });
+    return data;
+  }
+
+  async getCustomerPortal() {
+    const { data } = await this.client.post("/subscriptions/portal");
+    return data;
+  }
+
+  async getInvoices() {
+    const { data } = await this.client.get("/subscriptions/invoices");
+    return data;
+  }
+
+  // ── Dashboard ────────────────────────────────────────────────────────────
+
+  async getDashboardStats() {
+    const { data } = await this.client.get("/dashboard/stats");
     return data;
   }
 }

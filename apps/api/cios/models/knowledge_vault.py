@@ -31,7 +31,10 @@ class KnowledgeDocument(Base, UUIDMixin, TimestampMixin, TenantMixin):
     extracted_text: Mapped[str | None] = mapped_column(Text)
     metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
 
+    description: Mapped[str | None] = mapped_column(Text)
+
     # Vector status
+    vectorization_status: Mapped[str] = mapped_column(String(32), default="pending")
     is_vectorized: Mapped[bool] = mapped_column(Boolean, default=False)
     chunk_count: Mapped[int] = mapped_column(Integer, default=0)
     vectorized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -1,6 +1,6 @@
 """Teaming Recommendation Engine models — Module 7."""
 import uuid
-from sqlalchemy import Float, Index, String, Text
+from sqlalchemy import Boolean, Float, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -12,11 +12,12 @@ class TeamingRecommendation(Base, UUIDMixin, TimestampMixin, TenantMixin, Eviden
     __tablename__ = "teaming_recommendations"
 
     opportunity_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
-    strategy: Mapped[str] = mapped_column(String(32), default="prime")
+    prime_or_sub: Mapped[str] = mapped_column(String(16), default="prime")
     rationale: Mapped[str | None] = mapped_column(Text)
     team_structure: Mapped[dict] = mapped_column(JSONB, default=dict)
-    gaps_addressed: Mapped[list] = mapped_column(JSONB, default=list)
+    capability_gaps_addressed: Mapped[list] = mapped_column(JSONB, default=list)
     recommended_partners: Mapped[list] = mapped_column(JSONB, default=list)
+    risk_assessment: Mapped[dict | None] = mapped_column(JSONB)
     win_probability_impact: Mapped[float | None] = mapped_column(Float)
     risks: Mapped[list] = mapped_column(JSONB, default=list)
     status: Mapped[str] = mapped_column(String(32), default="draft")
@@ -36,9 +37,10 @@ class TeamingPartner(Base, UUIDMixin, TimestampMixin, TenantMixin):
     naics_codes: Mapped[list] = mapped_column(JSONB, default=list)
     psc_codes: Mapped[list] = mapped_column(JSONB, default=list)
     capabilities: Mapped[list] = mapped_column(JSONB, default=list)
-    small_business_designations: Mapped[list] = mapped_column(JSONB, default=list)
-    past_teaming_history: Mapped[list] = mapped_column(JSONB, default=list)
-    relationship_strength: Mapped[str | None] = mapped_column(String(16))
+    socioeconomic_status: Mapped[list] = mapped_column(JSONB, default=list)
+    past_performance_rating: Mapped[int | None] = mapped_column(Integer)
+    active_agreements: Mapped[bool] = mapped_column(Boolean, default=False)
+    relationship_strength: Mapped[int] = mapped_column(Integer, default=3)
     poc_name: Mapped[str | None] = mapped_column(String(256))
     poc_email: Mapped[str | None] = mapped_column(String(256))
     notes: Mapped[str | None] = mapped_column(Text)

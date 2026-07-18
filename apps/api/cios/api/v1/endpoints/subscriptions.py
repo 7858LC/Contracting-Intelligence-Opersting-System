@@ -13,12 +13,12 @@ router = APIRouter()
 class CreateCheckoutRequest(BaseModel):
     plan: str
     seats: int = 1
-    success_url: str
-    cancel_url: str
+    success_url: str = "/dashboard/settings?checkout=success"
+    cancel_url: str = "/dashboard/settings"
 
 
 class PortalRequest(BaseModel):
-    return_url: str
+    return_url: str = "/dashboard/settings"
 
 
 PLAN_FEATURES = {
@@ -92,12 +92,13 @@ async def create_checkout_session(body: CreateCheckoutRequest, user: AdminAuth) 
         cancel_url=body.cancel_url,
         metadata={"tenant_id": str(user.tenant_id), "plan": body.plan},
     )
-    return {"checkout_url": session.url, "session_id": session.id}
+    return {"url": session.url, "checkout_url": session.url, "session_id": session.id}
 
 
 @router.post("/portal")
-async def customer_portal(body: PortalRequest, db: DB, user: AdminAuth) -> dict:
+async def customer_portal(db: DB, user: Auth, body: PortalRequest = None) -> dict:
     """Stripe customer portal for billing management."""
+    return_url = body.return_url if body else "/dashboard/settings"
     result = await db.execute(
         select(Subscription).where(Subscription.tenant_id == user.tenant_id)
     )
@@ -109,9 +110,9 @@ async def customer_portal(body: PortalRequest, db: DB, user: AdminAuth) -> dict:
     stripe.api_key = settings.stripe_secret_key
     session = stripe.billing_portal.Session.create(
         customer=sub.stripe_customer_id,
-        return_url=body.return_url,
+        return_url=return_url,
     )
-    return {"portal_url": session.url}
+    return {"url": session.url, "portal_url": session.url}
 
 
 @router.get("/invoices")

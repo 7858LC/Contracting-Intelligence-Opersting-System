@@ -1,5 +1,5 @@
 """Capability and Gap Analysis models — Modules 5 & 15."""
-from sqlalchemy import Float, Index, String, Text
+from sqlalchemy import Boolean, Float, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -16,14 +16,19 @@ class Capability(Base, UUIDMixin, TimestampMixin, TenantMixin):
     name: Mapped[str] = mapped_column(String(256), nullable=False)
     category: Mapped[str] = mapped_column(String(64), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
-    maturity_level: Mapped[str | None] = mapped_column(String(32))
+    proficiency_level: Mapped[int | None] = mapped_column(Integer)
     proficiency_score: Mapped[float | None] = mapped_column(Float)
+    maturity_level: Mapped[str | None] = mapped_column(String(32))
+    is_certified: Mapped[bool] = mapped_column(Boolean, default=False)
+    certifications: Mapped[list] = mapped_column(JSONB, default=list)
+    gap_score: Mapped[float | None] = mapped_column(Float)
+    gap_analysis: Mapped[dict | None] = mapped_column(JSONB)
+    improvement_plan: Mapped[str | None] = mapped_column(Text)
     supporting_evidence: Mapped[list] = mapped_column(JSONB, default=list)
     naics_codes: Mapped[list] = mapped_column(JSONB, default=list)
     psc_codes: Mapped[list] = mapped_column(JSONB, default=list)
-    certifications: Mapped[list] = mapped_column(JSONB, default=list)
     tools_and_technologies: Mapped[list] = mapped_column(JSONB, default=list)
-    team_members_count: Mapped[int | None] = mapped_column()
+    team_members_count: Mapped[int | None] = mapped_column(Integer)
     last_demonstrated: Mapped[str | None] = mapped_column(String(64))
 
 
@@ -37,6 +42,6 @@ class CapabilityGap(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin)
     description: Mapped[str | None] = mapped_column(Text)
     remediation_options: Mapped[list] = mapped_column(JSONB, default=list)
     estimated_cost_to_close: Mapped[float | None] = mapped_column(Float)
-    estimated_time_to_close_days: Mapped[int | None] = mapped_column()
+    estimated_time_to_close_days: Mapped[int | None] = mapped_column(Integer)
     teaming_recommendation: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(32), default="open")

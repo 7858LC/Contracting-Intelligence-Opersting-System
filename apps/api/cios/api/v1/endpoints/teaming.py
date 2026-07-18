@@ -1,5 +1,4 @@
 """Teaming Recommendation Engine API — Module 7."""
-import uuid
 from fastapi import APIRouter
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -13,9 +12,13 @@ router = APIRouter()
 class TeamingPartnerCreate(BaseModel):
     company_name: str
     cage_code: str | None = None
-    capabilities: list[str] = []
-    small_business_designations: list[str] = []
     naics_codes: list[str] = []
+    socioeconomic_status: list[str] = []
+    past_performance_rating: int | None = None
+    active_agreements: bool = False
+    relationship_strength: int = 3
+    capabilities: list[str] = []
+    poc_name: str | None = None
     poc_email: str | None = None
     notes: str | None = None
 
@@ -24,6 +27,7 @@ class TeamingPartnerCreate(BaseModel):
 async def list_partners(db: DB, user: Auth) -> dict:
     result = await db.execute(
         select(TeamingPartner).where(TeamingPartner.tenant_id == user.tenant_id)
+        .order_by(TeamingPartner.relationship_strength.desc(), TeamingPartner.company_name)
     )
     return {"partners": [p.to_dict() for p in result.scalars().all()]}
 
