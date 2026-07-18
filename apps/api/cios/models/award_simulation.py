@@ -1,8 +1,9 @@
 """Award Simulator model — flagship feature, Module 13."""
 import uuid
+from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Float, ForeignKey, Index, String, Text
+from sqlalchemy import DateTime, Float, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -43,7 +44,8 @@ class AwardSimulation(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixi
     overall_score: Mapped[float | None] = mapped_column(Float)
     award_probability: Mapped[float | None] = mapped_column(Float)
 
-    # Weaknesses and deficiencies
+    # Findings
+    weaknesses: Mapped[list[dict]] = mapped_column(JSONB, default=list)
     significant_weaknesses: Mapped[list[dict]] = mapped_column(JSONB, default=list)
     deficiencies: Mapped[list[dict]] = mapped_column(JSONB, default=list)
     strengths: Mapped[list[dict]] = mapped_column(JSONB, default=list)
@@ -64,6 +66,11 @@ class AwardSimulation(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixi
     # Procurement rule applied
     rule_pack: Mapped[str] = mapped_column(String(64), default="us_federal_far")
     rule_citations: Mapped[list[dict]] = mapped_column(JSONB, default=list)
+
+    # Execution lifecycle
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    error_message: Mapped[str | None] = mapped_column(Text)
 
     sections: Mapped[list["AwardSimulationSection"]] = relationship(
         back_populates="simulation", cascade="all, delete-orphan"

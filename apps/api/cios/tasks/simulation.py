@@ -1,6 +1,7 @@
 """Award simulation Celery task."""
 import asyncio
 import json
+import re
 import uuid
 from datetime import UTC, datetime
 
@@ -19,9 +20,29 @@ def run_award_simulation(
     simulation_id: str,
     proposal_content: dict,
 ) -> dict:
-    return asyncio.get_event_loop().run_until_complete(
+    return asyncio.run(
         _run_simulation_async(tenant_id, user_id, simulation_id, proposal_content)
     )
+
+
+def _parse_claude_json(raw: str) -> dict:
+    """Extract JSON from Claude's response, stripping markdown fences if present."""
+    text = raw.strip()
+    # Strip ```json ... ``` or ``` ... ``` fences
+    fence = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
+    if fence:
+        text = fence.group(1).strip()
+    try:
+        return json.loads(text)
+    except (json.JSONDecodeError, ValueError):
+        # Last resort: find first { ... } block
+        match = re.search(r"\{[\s\S]*\}", text)
+        if match:
+            try:
+                return json.loads(match.group(0))
+            except (json.JSONDecodeError, ValueError):
+                pass
+    return {"raw": text[:5000]}
 
 
 async def _run_simulation_async(
@@ -50,47 +71,43 @@ async def _run_simulation_async(
         sim.started_at = datetime.now(UTC)
         await db.commit()
 
-        from cios.models.opportunity import Opportunity
-        opp_result = await db.execute(
-            select(Opportunity).where(Opportunity.id == sim.opportunity_id)
-        )
-        opp = opp_result.scalar_one_or_none()
-        opportunity_data = opp.to_dict() if opp else {}
-
-        store = TenantVectorStore(tenant_id)
         try:
-            knowledge_context = await store.search(
-                query=opportunity_data.get("title", ""),
-                top_k=10,
+            from cios.models.opportunity import Opportunity
+            opp_result = await db.execute(
+                select(Opportunity).where(Opportunity.id == sim.opportunity_id)
             )
-        except Exception:
-            knowledge_context = []
+            opp = opp_result.scalar_one_or_none()
+            opportunity_data = opp.to_dict() if opp else {}
 
-        context = AgentContext(
-            tenant_id=uuid.UUID(tenant_id),
-            user_id=uuid.UUID(user_id),
-            simulation_id=uuid.UUID(simulation_id),
-            rule_pack=opportunity_data.get("procurement_rule_pack", "us_federal_far"),
-        )
+            store = TenantVectorStore(tenant_id)
+            try:
+                knowledge_context = await store.search(
+                    query=opportunity_data.get("title", "procurement opportunity"),
+                    top_k=10,
+                )
+            except Exception:
+                knowledge_context = []
 
-        agent = AwardSimulatorAgent()
-        try:
+            context = AgentContext(
+                tenant_id=uuid.UUID(tenant_id),
+                user_id=uuid.UUID(user_id),
+                simulation_id=uuid.UUID(simulation_id),
+                rule_pack=opportunity_data.get("procurement_rule_pack", "us_federal_far"),
+            )
+
+            agent = AwardSimulatorAgent()
             output = await agent.run(
                 context,
                 opportunity_data=opportunity_data,
                 proposal_content=proposal_content,
                 knowledge_context=knowledge_context,
-                evaluation_factors=sim.evaluation_factors,
+                evaluation_factors=sim.evaluation_factors or [],
                 evaluation_methodology=sim.evaluation_methodology,
             )
 
             raw_result = output.get("result", {})
             sim_data = raw_result.get("simulation", "{}")
-
-            try:
-                parsed = json.loads(sim_data) if isinstance(sim_data, str) else sim_data
-            except (json.JSONDecodeError, TypeError):
-                parsed = {"raw": str(sim_data)[:5000]}
+            parsed = _parse_claude_json(sim_data) if isinstance(sim_data, str) else sim_data
 
             sim.status = "completed"
             sim.completed_at = datetime.now(UTC)
@@ -102,17 +119,22 @@ async def _run_simulation_async(
             sim.risk_score = parsed.get("risk_score")
             sim.overall_score = parsed.get("overall_score")
             sim.award_probability = parsed.get("award_probability")
+            sim.confidence_score = parsed.get("confidence_score")
+            sim.strengths = parsed.get("strengths", [])
+            sim.weaknesses = parsed.get("weaknesses", [])
             sim.significant_weaknesses = parsed.get("significant_weaknesses", [])
             sim.deficiencies = parsed.get("deficiencies", [])
-            sim.strengths = parsed.get("strengths", [])
             sim.risks = parsed.get("risks", [])
             sim.red_team_comments = parsed.get("red_team_comments", [])
             sim.suggested_improvements = parsed.get("suggested_improvements", [])
             sim.executive_summary = parsed.get("executive_summary")
             sim.gate_review_recommendation = parsed.get("gate_review_recommendation")
             sim.rule_citations = parsed.get("rule_citations", [])
-            sim.evidence = {"raw_output": str(raw_result)[:2000]}
-            sim.confidence_score = parsed.get("confidence_score")
+            sim.evidence = {
+                "factor_ratings": parsed.get("factor_ratings", {}),
+                "agent_run_id": output.get("run_id"),
+                "duration_ms": output.get("duration_ms"),
+            }
             sim.ai_model_version = agent.model
 
             await db.commit()

@@ -26,22 +26,40 @@ class SimulationResponse(BaseModel):
     name: str
     status: str
     evaluation_methodology: str
-    technical_score: float | None
-    management_score: float | None
-    past_performance_score: float | None
-    price_competitiveness_score: float | None
-    compliance_score: float | None
-    risk_score: float | None
-    overall_score: float | None
-    award_probability: float | None
-    significant_weaknesses: list
-    deficiencies: list
-    strengths: list
-    suggested_improvements: list
-    red_team_comments: list
-    executive_summary: str | None
-    gate_review_recommendation: str | None
-    created_at: str
+
+    # Scores
+    technical_score: float | None = None
+    management_score: float | None = None
+    past_performance_score: float | None = None
+    price_competitiveness_score: float | None = None
+    compliance_score: float | None = None
+    risk_score: float | None = None
+    overall_score: float | None = None
+    award_probability: float | None = None
+    confidence_score: float | None = None
+
+    # Findings
+    strengths: list = []
+    weaknesses: list = []
+    significant_weaknesses: list = []
+    deficiencies: list = []
+    risks: list = []
+    red_team_comments: list = []
+    suggested_improvements: list = []
+
+    # Narrative
+    executive_summary: str | None = None
+    gate_review_recommendation: str | None = None
+    rule_citations: list = []
+
+    # Evidence (includes factor_ratings)
+    evidence: dict | None = None
+
+    # Lifecycle
+    created_at: Any = None
+    started_at: Any = None
+    completed_at: Any = None
+    error_message: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -114,9 +132,10 @@ async def get_simulation_report(sim_id: uuid.UUID, db: DB, user: Auth) -> dict[s
     sim = result.scalar_one_or_none()
     if not sim:
         raise HTTPException(status_code=404, detail="Simulation not found")
-
     if sim.status != "completed":
         raise HTTPException(status_code=409, detail=f"Simulation is {sim.status}")
+
+    factor_ratings = (sim.evidence or {}).get("factor_ratings", {})
 
     return {
         "simulation_id": str(sim.id),
@@ -131,10 +150,13 @@ async def get_simulation_report(sim_id: uuid.UUID, db: DB, user: Auth) -> dict[s
             "risk": sim.risk_score,
             "overall": sim.overall_score,
         },
+        "factor_ratings": factor_ratings,
         "award_probability": sim.award_probability,
+        "confidence_score": sim.confidence_score,
         "gate_review": sim.gate_review_recommendation,
         "executive_summary": sim.executive_summary,
         "strengths": sim.strengths,
+        "weaknesses": sim.weaknesses,
         "significant_weaknesses": sim.significant_weaknesses,
         "deficiencies": sim.deficiencies,
         "risks": sim.risks,
@@ -142,6 +164,6 @@ async def get_simulation_report(sim_id: uuid.UUID, db: DB, user: Auth) -> dict[s
         "suggested_improvements": sim.suggested_improvements,
         "rule_citations": sim.rule_citations,
         "evidence": sim.evidence,
-        "confidence_score": sim.confidence_score,
         "ai_model_version": sim.ai_model_version,
+        "completed_at": sim.completed_at.isoformat() if sim.completed_at else None,
     }

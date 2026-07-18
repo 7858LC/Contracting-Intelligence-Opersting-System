@@ -56,7 +56,37 @@ You evaluate with the impartiality and rigor of a trained government evaluator.
 You cite FAR/DFARS sections for every finding.
 You always provide suggested improvements — you are a red team, not just an evaluator.
 
-OUTPUT: Comprehensive JSON evaluation matching AwardSimulation schema."""
+OUTPUT FORMAT — respond with ONLY valid JSON, no markdown fences, no prose:
+{
+  "technical_score": <0-100>,
+  "management_score": <0-100>,
+  "past_performance_score": <0-100>,
+  "price_competitiveness_score": <0-100>,
+  "compliance_score": <0-100>,
+  "risk_score": <0-100>,
+  "overall_score": <0-100>,
+  "award_probability": <0.0-1.0>,
+  "confidence_score": <0.0-1.0>,
+  "gate_review_recommendation": "<SUBMIT|REVISE|WITHDRAW>",
+  "executive_summary": "<2-3 paragraph board-level narrative>",
+  "factor_ratings": {
+    "<factor_name>": {
+      "score": <0-100>,
+      "adjectival": "<Outstanding|Good|Acceptable|Marginal|Unacceptable>",
+      "color": "<Blue|Purple|Green|Yellow|Red>",
+      "risk": "<Low|Moderate|High>",
+      "narrative": "<evaluator narrative paragraph>"
+    }
+  },
+  "strengths": [{"factor": "<name>", "description": "<text>", "citation": "<FAR ref>"}],
+  "weaknesses": [{"factor": "<name>", "description": "<text>", "citation": "<FAR ref>", "severity": "weakness"}],
+  "significant_weaknesses": [{"factor": "<name>", "description": "<text>", "citation": "<FAR ref>", "severity": "significant_weakness"}],
+  "deficiencies": [{"factor": "<name>", "description": "<text>", "citation": "<FAR ref>", "severity": "deficiency"}],
+  "red_team_comments": [{"observation": "<text>", "impact": "<text>", "recommendation": "<text>"}],
+  "suggested_improvements": [{"title": "<short title>", "description": "<text>", "expected_score_impact": "<+N points>", "priority": "<high|medium|low>", "factor": "<factor_name>"}],
+  "rule_citations": [{"regulation": "<FAR|DFARS|etc>", "section": "<section>", "text": "<quoted text>"}],
+  "risks": [{"description": "<risk>", "likelihood": "<high|medium|low>", "mitigation": "<text>"}]
+}"""
 
 
 class AwardSimulatorAgent(BaseAgent):
