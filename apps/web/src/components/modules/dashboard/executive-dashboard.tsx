@@ -8,12 +8,12 @@ import api from "@/lib/api";
 export function ExecutiveDashboard() {
   const { data: opps } = useQuery({
     queryKey: ["opportunities"],
-    queryFn: () => api.listOpportunities({ page_size: 5, sort_by: "award_probability_score", sort_dir: "desc" }),
+    queryFn: () => api.getOpportunities({ page_size: 5, sort_by: "award_probability_score", sort_dir: "desc" }),
   });
 
   const { data: sims } = useQuery({
     queryKey: ["simulations"],
-    queryFn: () => api.listSimulations(),
+    queryFn: () => api.getSimulations(),
   });
 
   const { data: subscription } = useQuery({

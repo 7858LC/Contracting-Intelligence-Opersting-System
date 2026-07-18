@@ -14,13 +14,13 @@ export function AwardSimulatorView() {
 
   const { data: simsData, isLoading } = useQuery({
     queryKey: ["simulations"],
-    queryFn: () => api.listSimulations(),
+    queryFn: () => api.getSimulations(),
     refetchInterval: 10_000,
   });
 
   const { data: oppsData } = useQuery({
     queryKey: ["opportunities", "list"],
-    queryFn: () => api.listOpportunities({ page_size: 50 }),
+    queryFn: () => api.getOpportunities({ page_size: 50 }),
   });
 
   const createMutation = useMutation({

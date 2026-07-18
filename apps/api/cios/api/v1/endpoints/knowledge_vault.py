@@ -129,12 +129,23 @@ async def search_knowledge_vault(body: SearchRequest, user: Auth) -> dict[str, A
     """Semantic search across the tenant's Knowledge Vault using vector similarity."""
     from cios.vector.tenant_store import TenantVectorStore
     store = TenantVectorStore(str(user.tenant_id))
-    results = await store.search(
+    raw = await store.search(
         query=body.query,
         top_k=body.top_k,
         min_score=body.min_score,
         filters={"document_type": body.document_types} if body.document_types else None,
     )
+    results = [
+        {
+            "chunk_id": f"{r['doc_id']}:{r['chunk_index']}",
+            "document_id": r["doc_id"],
+            "document_title": (r.get("metadata") or {}).get("title", "Unknown Document"),
+            "text": r["text"],
+            "score": r["score"],
+            "metadata": r.get("metadata") or {},
+        }
+        for r in raw
+    ]
     return {"results": results, "query": body.query, "count": len(results)}
 
 
