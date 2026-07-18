@@ -4,67 +4,72 @@
 
 @layer base {
   :root {
-    /* CIOS Light Theme — Intelligence Blue */
-    --background: 0 0% 98%;
-    --foreground: 222 47% 11%;
-    --primary: 213 94% 34%;
+    /* UzimaAmka — Light */
+    --background: 0 0% 99%;
+    --foreground: 220 39% 10%;
+    --primary: 162 72% 36%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 215 28% 92%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 215 28% 92%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 213 94% 34%;
-    --accent-foreground: 0 0% 100%;
+    --secondary: 160 18% 93%;
+    --secondary-foreground: 220 39% 10%;
+    --muted: 160 18% 93%;
+    --muted-foreground: 160 8% 46%;
+    --accent: 38 95% 50%;
+    --accent-foreground: 220 39% 10%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    --border: 215 28% 88%;
-    --input: 215 28% 88%;
-    --ring: 213 94% 34%;
-    --radius: 0.5rem;
+    --card-foreground: 220 39% 10%;
+    --border: 160 12% 87%;
+    --input: 160 12% 87%;
+    --ring: 162 72% 36%;
+    --radius: 0.625rem;
   }
 
   .dark {
-    /* CIOS Dark Theme — Navy Terminal */
-    --background: 222 47% 5%;
-    --foreground: 213 31% 91%;
-    --primary: 213 94% 56%;
-    --primary-foreground: 222 47% 5%;
-    --secondary: 222 30% 12%;
-    --secondary-foreground: 213 31% 91%;
-    --muted: 222 30% 12%;
-    --muted-foreground: 215 16% 57%;
-    --accent: 213 94% 56%;
-    --accent-foreground: 222 47% 5%;
+    /* UzimaAmka — Dark */
+    --background: 222 42% 5%;
+    --foreground: 160 18% 91%;
+    --primary: 162 72% 46%;
+    --primary-foreground: 222 42% 5%;
+    --secondary: 222 32% 12%;
+    --secondary-foreground: 160 18% 91%;
+    --muted: 222 32% 11%;
+    --muted-foreground: 220 18% 55%;
+    --accent: 38 95% 52%;
+    --accent-foreground: 222 42% 5%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --card: 222 30% 9%;
-    --card-foreground: 213 31% 91%;
-    --border: 222 30% 16%;
-    --input: 222 30% 16%;
-    --ring: 213 94% 56%;
+    --card: 222 38% 8%;
+    --card-foreground: 160 18% 91%;
+    --border: 222 28% 16%;
+    --input: 222 28% 16%;
+    --ring: 162 72% 46%;
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; }
+  html { @apply antialiased; }
 }
 
-/* Score color utilities */
 @layer utilities {
-  .score-excellent { @apply text-emerald-500 dark:text-emerald-400; }
-  .score-good { @apply text-lime-500 dark:text-lime-400; }
-  .score-acceptable { @apply text-amber-500 dark:text-amber-400; }
-  .score-marginal { @apply text-orange-500 dark:text-orange-400; }
-  .score-unacceptable { @apply text-red-500 dark:text-red-400; }
+  .score-excellent   { @apply text-emerald-500 dark:text-emerald-400; }
+  .score-good        { @apply text-lime-500 dark:text-lime-400; }
+  .score-acceptable  { @apply text-amber-500 dark:text-amber-400; }
+  .score-marginal    { @apply text-orange-500 dark:text-orange-400; }
+  .score-unacceptable{ @apply text-red-500 dark:text-red-400; }
+  .bid-go            { @apply text-emerald-500 dark:text-emerald-400; }
+  .bid-nogo          { @apply text-red-500 dark:text-red-400; }
+  .bid-conditional   { @apply text-amber-500 dark:text-amber-400; }
+}
 
-  .bid-go { @apply text-emerald-500 dark:text-emerald-400; }
-  .bid-nogo { @apply text-red-500 dark:text-red-400; }
-  .bid-conditional { @apply text-amber-500 dark:text-amber-400; }
+/* Gradient utilities */
+@layer utilities {
+  .brand-gradient {
+    background: linear-gradient(135deg, hsl(162 72% 36%), hsl(180 70% 32%));
+  }
+  .dark .brand-gradient {
+    background: linear-gradient(135deg, hsl(162 72% 46%), hsl(180 70% 40%));
+  }
 }

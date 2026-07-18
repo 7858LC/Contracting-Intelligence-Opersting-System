@@ -28,9 +28,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="bg-card border border-border rounded-xl p-8 shadow-lg">
-      <h2 className="text-xl font-semibold mb-1">Welcome back</h2>
-      <p className="text-sm text-muted-foreground mb-6">Sign in to your CIOS workspace</p>
+    <div className="bg-card border border-border rounded-2xl p-8 shadow-xl">
+      <h2 className="text-2xl font-bold mb-1">Welcome back</h2>
+      <p className="text-sm text-muted-foreground mb-6">Sign in to your UzimaAmka workspace</p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>

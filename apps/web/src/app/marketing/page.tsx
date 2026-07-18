@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Award, BarChart3, Brain, Lock, Shield, Zap } from "lucide-react";
 
-export const metadata = { title: "CIOS — Contract Intelligence Operating System" };
+export const metadata = { title: "UzimaAmka — Procurement Intelligence Platform" };
 
 export default function MarketingPage() {
   return (
@@ -13,7 +13,7 @@ export default function MarketingPage() {
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <Brain className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="font-bold text-xl tracking-tight">CIOS</span>
+            <span className="font-bold text-xl tracking-tight">UzimaAmka</span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
             <a href="#platform" className="hover:text-foreground transition-colors">Platform</a>
@@ -36,32 +36,43 @@ export default function MarketingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="max-w-7xl mx-auto px-6 pt-24 pb-20 text-center">
-        <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium mb-8">
-          <Zap className="w-3.5 h-3.5" />
-          The Bloomberg Terminal of Procurement
-        </div>
-        <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 max-w-4xl mx-auto">
-          Win more government contracts with
-          <span className="text-primary"> procurement intelligence</span>
-        </h1>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
-          CIOS is an executive decision platform that increases the probability of winning
-          public-sector contracts — before proposal development begins.
-        </p>
-        <div className="flex items-center justify-center gap-4">
-          <Link
-            href="/auth/register"
-            className="bg-primary text-primary-foreground px-8 py-3 rounded-md font-medium text-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
-          >
-            Start Free Trial <ArrowRight className="w-5 h-5" />
-          </Link>
-          <a
-            href="#simulator"
-            className="border border-border px-8 py-3 rounded-md font-medium text-lg hover:bg-secondary transition-colors"
-          >
-            See the Award Simulator
-          </a>
+      <section className="relative overflow-hidden bg-[#060d1a] text-white">
+        <div
+          className="absolute inset-0 opacity-[0.05]"
+          style={{
+            backgroundImage: "linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)",
+            backgroundSize: "56px 56px",
+          }}
+        />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative max-w-7xl mx-auto px-6 pt-28 pb-24 text-center">
+          <div className="inline-flex items-center gap-2 border border-primary/30 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-medium mb-8">
+            <Zap className="w-3.5 h-3.5" />
+            The Bloomberg Terminal of Procurement
+          </div>
+          <h1 className="text-5xl md:text-[4.5rem] font-bold tracking-tight mb-6 max-w-4xl mx-auto leading-[1.08]">
+            Win more contracts<br />
+            <span className="text-primary">before the proposal.</span>
+          </h1>
+          <p className="text-lg text-white/60 max-w-2xl mx-auto mb-10 leading-relaxed">
+            UzimaAmka gives government contractors an intelligence advantage — automated opportunity analysis,
+            award simulation, and AI-powered capture strategy in one platform.
+          </p>
+          <div className="flex items-center justify-center gap-4 flex-wrap">
+            <Link
+              href="/auth/register"
+              className="bg-primary text-white px-8 py-3.5 rounded-xl font-semibold hover:bg-primary/90 transition-all shadow-lg shadow-primary/30 flex items-center gap-2"
+            >
+              Start Free Trial <ArrowRight className="w-4 h-4" />
+            </Link>
+            <a
+              href="#simulator"
+              className="border border-white/20 bg-white/5 text-white px-8 py-3.5 rounded-xl font-semibold hover:bg-white/10 transition-colors backdrop-blur-sm"
+            >
+              See Award Simulator
+            </a>
+          </div>
+          <p className="text-white/30 text-sm mt-5">No credit card required · 14-day free trial</p>
         </div>
       </section>
 
@@ -236,8 +247,8 @@ export default function MarketingPage() {
       {/* Footer */}
       <footer className="max-w-7xl mx-auto px-6 py-12 flex items-center justify-between text-sm text-muted-foreground">
         <div className="flex items-center gap-2">
-          <Brain className="w-4 h-4" />
-          <span>© 2026 CIOS — Contract Intelligence Operating System</span>
+          <Brain className="w-4 h-4 text-primary" />
+          <span>© 2026 UzimaAmka · <a href="https://uzimaAmka.com" className="hover:text-foreground transition-colors">uzimaAmka.com</a></span>
         </div>
         <div className="flex items-center gap-6">
           <a href="#" className="hover:text-foreground transition-colors">Privacy</a>

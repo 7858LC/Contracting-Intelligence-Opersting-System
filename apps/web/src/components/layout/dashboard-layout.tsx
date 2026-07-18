@@ -48,14 +48,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       {/* Sidebar */}
       <aside className="w-64 border-r border-border bg-card flex flex-col shrink-0">
         {/* Logo */}
-        <div className="h-16 flex items-center px-6 border-b border-border">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 bg-primary rounded-md flex items-center justify-center">
-              <Brain className="w-4 h-4 text-primary-foreground" />
+        <div className="h-16 flex items-center px-5 border-b border-border">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
+              <Brain className="w-4.5 h-4.5 text-primary-foreground" />
             </div>
             <div>
-              <div className="font-bold text-sm tracking-tight">CIOS</div>
-              <div className="text-xs text-muted-foreground leading-none">Procurement Intelligence</div>
+              <div className="font-bold text-[15px] tracking-tight leading-tight">UzimaAmka</div>
+              <div className="text-[10px] text-muted-foreground leading-none tracking-wide uppercase">Intelligence Platform</div>
             </div>
           </div>
         </div>
