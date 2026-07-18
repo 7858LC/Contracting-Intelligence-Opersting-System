@@ -3,6 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "description": "Contract Intelligence Operating System — The Bloomberg Terminal of Procurement",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/7858lc/contracting-intelligence-opersting-system"
+  },
+  "homepage": "https://github.com/7858lc/contracting-intelligence-opersting-system#readme",
+  "bugs": {
+    "url": "https://github.com/7858lc/contracting-intelligence-opersting-system/issues"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"

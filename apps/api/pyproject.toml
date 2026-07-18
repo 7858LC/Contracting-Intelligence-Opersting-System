@@ -6,7 +6,12 @@ build-backend = "hatchling.build"
 name = "cios-api"
 version = "1.0.0"
 description = "CIOS Backend API - Contract Intelligence Operating System"
+readme = "README.md"
 requires-python = ">=3.12"
+
+[project.urls]
+Repository = "https://github.com/7858lc/contracting-intelligence-opersting-system"
+"Bug Tracker" = "https://github.com/7858lc/contracting-intelligence-opersting-system/issues"
 
 dependencies = [
     # Web framework
