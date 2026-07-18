@@ -1,0 +1,45 @@
+name: CIOS Deploy
+
+on:
+  workflow_run:
+    workflows: ["CIOS CI"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --region us-east-1 --name cios-eks
+
+      - name: Run database migrations
+        run: |
+          kubectl -n cios exec deployment/cios-api -- \
+            alembic upgrade head
+
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl -n cios set image deployment/cios-api \
+            api=ghcr.io/${{ github.repository }}/cios-api:${{ github.sha }}
+          kubectl -n cios set image deployment/cios-worker \
+            worker=ghcr.io/${{ github.repository }}/cios-api:${{ github.sha }}
+          kubectl -n cios set image deployment/cios-web \
+            web=ghcr.io/${{ github.repository }}/cios-web:${{ github.sha }}
+
+      - name: Wait for rollout
+        run: |
+          kubectl -n cios rollout status deployment/cios-api --timeout=5m
+          kubectl -n cios rollout status deployment/cios-web --timeout=5m

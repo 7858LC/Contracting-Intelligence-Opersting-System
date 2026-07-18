@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* CIOS Light Theme — Intelligence Blue */
+    --background: 0 0% 98%;
+    --foreground: 222 47% 11%;
+    --primary: 213 94% 34%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 215 28% 92%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 215 28% 92%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 213 94% 34%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --border: 215 28% 88%;
+    --input: 215 28% 88%;
+    --ring: 213 94% 34%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* CIOS Dark Theme — Navy Terminal */
+    --background: 222 47% 5%;
+    --foreground: 213 31% 91%;
+    --primary: 213 94% 56%;
+    --primary-foreground: 222 47% 5%;
+    --secondary: 222 30% 12%;
+    --secondary-foreground: 213 31% 91%;
+    --muted: 222 30% 12%;
+    --muted-foreground: 215 16% 57%;
+    --accent: 213 94% 56%;
+    --accent-foreground: 222 47% 5%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --card: 222 30% 9%;
+    --card-foreground: 213 31% 91%;
+    --border: 222 30% 16%;
+    --input: 222 30% 16%;
+    --ring: 213 94% 56%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Score color utilities */
+@layer utilities {
+  .score-excellent { @apply text-emerald-500 dark:text-emerald-400; }
+  .score-good { @apply text-lime-500 dark:text-lime-400; }
+  .score-acceptable { @apply text-amber-500 dark:text-amber-400; }
+  .score-marginal { @apply text-orange-500 dark:text-orange-400; }
+  .score-unacceptable { @apply text-red-500 dark:text-red-400; }
+
+  .bid-go { @apply text-emerald-500 dark:text-emerald-400; }
+  .bid-nogo { @apply text-red-500 dark:text-red-400; }
+  .bid-conditional { @apply text-amber-500 dark:text-amber-400; }
+}
