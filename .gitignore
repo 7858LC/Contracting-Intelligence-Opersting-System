@@ -8,6 +8,7 @@ node_modules/
 dist/
 build/
 out/
+tsconfig.tsbuildinfo
 *.egg-info/
 __pycache__/
 *.pyc
