@@ -9,9 +9,7 @@ from cios.tasks import celery_app
 def ingest_document(
     self, tenant_id: str, document_id: str, content: bytes, mime_type: str
 ) -> dict:
-    return asyncio.get_event_loop().run_until_complete(
-        _ingest_async(tenant_id, document_id, content, mime_type)
-    )
+    return asyncio.run(_ingest_async(tenant_id, document_id, content, mime_type))
 
 
 async def _ingest_async(tenant_id: str, document_id: str, content: bytes, mime_type: str) -> dict:
@@ -32,6 +30,7 @@ async def _ingest_async(tenant_id: str, document_id: str, content: bytes, mime_t
         await db.commit()
 
         try:
+            from cios.vector.tenant_store import TenantVectorStore
             text = _extract_text(content, mime_type)
             chunks = _chunk_text(text)
             content_hash = hashlib.sha256(content).hexdigest()
@@ -40,20 +39,33 @@ async def _ingest_async(tenant_id: str, document_id: str, content: bytes, mime_t
             doc.content_hash = content_hash
             doc.chunk_count = len(chunks)
 
+            store = TenantVectorStore(tenant_id)
+            await store.ensure_collection()
+
             for i, chunk_text in enumerate(chunks):
+                embedding = await store._embed(chunk_text)
+                point_id = await store.upsert(
+                    doc_id=document_id,
+                    chunk_index=i,
+                    text=chunk_text,
+                    embedding=embedding,
+                    metadata={"document_type": doc.document_type, "title": doc.title},
+                )
                 chunk = KnowledgeChunk(
                     tenant_id=uuid.UUID(tenant_id),
                     document_id=uuid.UUID(document_id),
                     chunk_index=i,
                     content=chunk_text,
                     token_count=len(chunk_text.split()) * 4 // 3,
+                    qdrant_point_id=point_id,
                 )
                 db.add(chunk)
 
             doc.is_vectorized = True
             doc.vectorization_status = "completed"
             doc.vectorized_at = datetime.now(UTC)
-        except Exception as e:
+            doc.qdrant_collection = store.collection_name
+        except Exception:
             doc.vectorization_status = "failed"
             await db.commit()
             raise
@@ -98,9 +110,7 @@ def _chunk_text(text: str, chunk_size: int = 512, overlap: int = 64) -> list[str
 
 @celery_app.task(bind=True, max_retries=3)
 def vectorize_past_performance(self, tenant_id: str, pp_id: str) -> dict:
-    return asyncio.get_event_loop().run_until_complete(
-        _vectorize_pp_async(tenant_id, pp_id)
-    )
+    return asyncio.run(_vectorize_pp_async(tenant_id, pp_id))
 
 
 async def _vectorize_pp_async(tenant_id: str, pp_id: str) -> dict:

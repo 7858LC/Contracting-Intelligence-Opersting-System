@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     s3_bucket_exports: str = "cios-exports"
     s3_region: str = "us-east-1"
 
+    # Embeddings
+    voyage_api_key: str = ""
+    embedding_model: str = "voyage-3"
+
     # External APIs
     sam_gov_api_key: str = ""
     usaspending_api_key: str = ""

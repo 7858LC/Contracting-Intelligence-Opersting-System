@@ -21,7 +21,7 @@ from qdrant_client.models import (
 
 from cios.config import settings
 
-EMBEDDING_DIM = 1536
+EMBEDDING_DIM = 1024  # voyage-3 native dimension
 COLLECTION_PREFIX = "cios_tenant"
 
 
@@ -121,16 +121,11 @@ class TenantVectorStore:
         await self._client.delete_collection(self.collection_name)
 
     async def _embed(self, text: str) -> list[float]:
-        """Generate embedding using Anthropic-compatible model."""
-        import anthropic
-        client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
-        # Use voyage-3 via Anthropic Bedrock or fallback to text-embedding-3-small
-        # For now use a mock that would be replaced with actual embedding call
-        # This would integrate with Voyage AI via Anthropic or directly
-        raise NotImplementedError(
-            "Connect to Voyage AI or Amazon Titan Embeddings — "
-            "see docs/architecture/vector-embeddings.md"
-        )
+        """Generate embedding via Voyage AI (voyage-3, 1024-dim → padded to EMBEDDING_DIM)."""
+        import voyageai
+        client = voyageai.AsyncClient(api_key=settings.voyage_api_key)
+        result = await client.embed([text[:8000]], model=settings.embedding_model, input_type="document")
+        return result.embeddings[0]
 
     def _build_filter(self, filters: dict[str, Any]) -> Filter:
         conditions = []

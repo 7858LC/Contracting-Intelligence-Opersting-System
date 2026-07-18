@@ -16,8 +16,10 @@ import {
   Target,
   Users,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { clearTokens } from "@/lib/auth";
+import { clearTokens, getAccessToken } from "@/lib/auth";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Executive Dashboard", icon: Home },
@@ -33,6 +35,13 @@ const NAV_ITEMS = [
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!getAccessToken()) {
+      router.replace("/auth/login");
+    }
+  }, [router]);
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
