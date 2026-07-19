@@ -54,25 +54,21 @@ html{font-size:14px}
 body{background:var(--bg);color:var(--t0);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}
 .app{max-width:1040px;margin:0 auto;padding:26px 18px 64px}
 
-/* header */
 header{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:10px;border-bottom:1px solid var(--br);padding-bottom:18px;margin-bottom:18px}
 .logo{font-family:Georgia,serif;font-size:21px;color:var(--t0);display:flex;align-items:baseline;gap:10px}
 .logo span{font-size:12px;color:var(--t2);font-family:sans-serif;font-style:normal}
 .tagline{font-size:12px;color:var(--flagship);font-style:italic}
 
-/* tabs */
-.tabs{display:flex;gap:2px;margin-bottom:20px;background:var(--s1);border:1px solid var(--br);border-radius:8px;padding:3px;width:fit-content}
-.tab{padding:5px 18px;border:none;border-radius:5px;background:transparent;color:var(--t1);font-size:12.5px;font-weight:500;cursor:pointer;transition:all .12s}
+.tabs{display:flex;gap:2px;margin-bottom:20px;background:var(--s1);border:1px solid var(--br);border-radius:8px;padding:3px;width:fit-content;flex-wrap:wrap}
+.tab{padding:5px 16px;border:none;border-radius:5px;background:transparent;color:var(--t1);font-size:12px;font-weight:500;cursor:pointer;transition:all .12s}
 .tab:hover{color:var(--t0)}
 .tab.on{background:var(--s0);color:var(--t0);box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .view{display:none}.view.on{display:block}
 
-/* band label */
 .bl{font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--t2);margin:20px 0 10px;display:flex;align-items:center;gap:8px}
 .bl::after{content:'';flex:1;height:1px;background:var(--br)}
 .bl:first-child{margin-top:0}
 
-/* module grid */
 .mg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px}
 @media(max-width:640px){.mg{grid-template-columns:repeat(2,1fr)}}
 .mc{background:var(--s0);border:1px solid var(--br);border-radius:8px;padding:12px 12px 10px;cursor:pointer;transition:transform .12s,box-shadow .12s,border-color .12s;position:relative;overflow:hidden}
@@ -84,7 +80,6 @@ header{display:flex;align-items:baseline;justify-content:space-between;flex-wrap
 .mdesc{font-size:11px;color:var(--t1);line-height:1.4}
 .mbadge{display:inline-block;margin-top:8px;padding:2px 8px;border-radius:100px;font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
 
-/* flagship */
 .flagship{grid-column:1/-1;background:var(--flagship-bg);border:1.5px solid var(--flagship-br);border-radius:10px;padding:18px 20px;cursor:pointer;transition:box-shadow .15s,transform .12s;display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:20px;align-items:start}
 .flagship:hover{box-shadow:0 0 0 2px var(--flagship-br),0 8px 24px rgba(0,0,0,.1);transform:translateY(-1px)}
 @media(max-width:560px){.flagship{grid-template-columns:1fr}}
@@ -100,14 +95,23 @@ header{display:flex;align-items:baseline;justify-content:space-between;flex-wrap
 .fs-o{font-size:11.5px;color:var(--t1);display:flex;gap:6px;align-items:flex-start}
 .fs-o::before{content:'→';color:var(--flagship);flex-shrink:0}
 
-/* foundation */
-.fstrip{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;margin-top:8px}
-@media(max-width:580px){.fstrip{grid-template-columns:1fr 1fr}}
-.fc{background:var(--s0);border:1px solid var(--br);border-radius:8px;padding:12px 14px}
+/* data foundation — tiered by jurisdiction */
+.ftier{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.ftier-row{display:grid;gap:6px;align-items:stretch}
+.ftier-row.federal{grid-template-columns:1fr 1fr 1fr 1fr}
+.ftier-row.state{grid-template-columns:1fr 1fr 1fr 1fr}
+.ftier-row.intl{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:640px){.ftier-row.federal,.ftier-row.state,.ftier-row.intl{grid-template-columns:1fr 1fr}}
+.ftier-label{display:flex;align-items:center;gap:8px;font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.ftier-line{flex:1;height:1px;background:var(--br)}
+.fc{background:var(--s0);border:1px solid var(--br);border-radius:8px;padding:10px 12px}
 .fc.vault{background:var(--learn-bg);border-color:var(--learn-br);cursor:pointer}
 .ft{font-size:12px;font-weight:700;color:var(--t0);margin-bottom:3px}
 .fd{font-size:11px;color:var(--t1);line-height:1.4}
 .ftag{display:inline-block;margin-top:6px;font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--t2);border:1px solid var(--br);border-radius:4px;padding:2px 6px}
+.ftag.live{color:var(--decide);border-color:var(--decide-br);background:var(--decide-bg)}
+.ftag.p2{color:var(--comply);border-color:var(--comply-br);background:var(--comply-bg)}
+.ftag.p3{color:var(--compete);border-color:var(--compete-br);background:var(--compete-bg)}
 
 /* agents */
 .awt{background:var(--s0);border:1px solid var(--br);border-radius:10px;padding:22px;overflow-x:auto}
@@ -132,7 +136,6 @@ header{display:flex;align-items:baseline;justify-content:space-between;flex-wrap
 .pct{font-size:12px;font-weight:700;color:var(--t0);margin-bottom:4px}
 .pcd{font-size:11.5px;color:var(--t1);line-height:1.5}
 
-/* simulator standalone */
 .sim-strip{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:8px;margin-top:12px}
 @media(max-width:560px){.sim-strip{grid-template-columns:1fr}}
 
@@ -154,7 +157,37 @@ header{display:flex;align-items:baseline;justify-content:space-between;flex-wrap
 .jout b{color:var(--flagship);font-weight:600}
 @media(max-width:540px){.jstep{grid-template-columns:1fr}.jleft::after{display:none}}
 
-/* detail panel */
+/* jurisdiction tab */
+.jur-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:20px}
+@media(max-width:640px){.jur-bar{grid-template-columns:repeat(2,1fr)}}
+.jur-card{border-radius:10px;padding:16px 14px;border:1.5px solid;display:flex;flex-direction:column;gap:6px}
+.jur-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.12em}
+.jur-name{font-family:Georgia,serif;font-size:15px;line-height:1.25}
+.jur-desc{font-size:11px;line-height:1.45;opacity:.8}
+.jur-pack{font-size:9.5px;font-family:'Courier New',monospace;margin-top:2px;opacity:.7}
+.jur-status{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border-radius:4px;padding:2px 7px;border:1px solid;width:fit-content}
+
+.rule-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+@media(max-width:600px){.rule-grid{grid-template-columns:1fr 1fr}}
+.rp{background:var(--s0);border:1px solid var(--br);border-radius:8px;padding:12px 14px}
+.rp-id{font-size:9.5px;font-family:'Courier New',monospace;color:var(--t2);margin-bottom:4px}
+.rp-name{font-size:12.5px;font-weight:600;color:var(--t0);margin-bottom:4px}
+.rp-desc{font-size:11px;color:var(--t1);line-height:1.4}
+
+.compliance-matrix{background:var(--s0);border:1px solid var(--br);border-radius:10px;overflow:hidden;overflow-x:auto}
+.cm-header{display:grid;grid-template-columns:160px repeat(5,1fr);background:var(--s1);border-bottom:1px solid var(--br);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+.cm-row{display:grid;grid-template-columns:160px repeat(5,1fr);border-bottom:1px solid var(--br)}
+.cm-row:last-child{border-bottom:none}
+.cm-cell{padding:9px 10px;font-size:11.5px;color:var(--t1);border-right:1px solid var(--br);display:flex;align-items:center}
+.cm-cell:last-child{border-right:none}
+.cm-cell.label{font-weight:600;color:var(--t0);font-size:12px}
+.cm-cell.hdr{color:var(--t2);padding:8px 10px}
+.chk{width:16px;height:16px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.chk.yes{background:var(--decide-bg);color:var(--decide);border:1px solid var(--decide-br)}
+.chk.roadmap{background:var(--comply-bg);color:var(--comply);border:1px solid var(--comply-br)}
+.chk.no{background:var(--s1);color:var(--t2);border:1px solid var(--br)}
+
+/* panel */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:40}
 .overlay.on{display:block}
 .panel{position:fixed;right:0;top:0;bottom:0;width:min(360px,90vw);background:var(--s0);border-left:1px solid var(--br);z-index:50;padding:20px;transform:translateX(100%);transition:transform .22s cubic-bezier(.4,0,.2,1);overflow-y:auto}
@@ -179,18 +212,20 @@ header{display:flex;align-items:baseline;justify-content:space-between;flex-wrap
 <div class="app">
 <header>
   <div class="logo">CIOS <span>Contract Intelligence Operating System</span></div>
-  <div class="tagline">The Bloomberg Terminal of Procurement</div>
+  <div class="tagline">Jurisdiction-agnostic · Federal · State · Local · Tribal · International</div>
 </header>
 
 <div class="tabs">
   <button class="tab on" data-t="platform">Platform Map</button>
   <button class="tab" data-t="agents">AI Engine</button>
   <button class="tab" data-t="journey">The Journey</button>
+  <button class="tab" data-t="jurisdiction">Jurisdiction Scope</button>
 </div>
 
 <div class="view on" id="v-platform"></div>
 <div class="view" id="v-agents"></div>
 <div class="view" id="v-journey"></div>
+<div class="view" id="v-jurisdiction"></div>
 </div>
 
 <div class="overlay" id="overlay" onclick="closePanel()"></div>
@@ -206,86 +241,86 @@ const CAT={
   comply:    {label:'Comply',    fg:'var(--comply)',    bg:'var(--comply-bg)',    br:'var(--comply-br)'},
   strengthen:{label:'Strengthen',fg:'var(--strengthen)',bg:'var(--strengthen-bg)',br:'var(--strengthen-br)'},
   compete:   {label:'Compete',   fg:'var(--compete)',   bg:'var(--compete-bg)',   br:'var(--compete-br)'},
-  flagship:  {label:'⭐ Flagship',fg:'var(--flagship)', bg:'var(--flagship-bg)', br:'var(--flagship-br)'},
+  flagship:  {label:'Flagship',  fg:'var(--flagship)', bg:'var(--flagship-bg)', br:'var(--flagship-br)'},
   manage:    {label:'Manage',    fg:'var(--manage)',    bg:'var(--manage-bg)',    br:'var(--manage-br)'},
   learn:     {label:'Learn',     fg:'var(--learn)',     bg:'var(--learn-bg)',     br:'var(--learn-br)'},
 };
 
 const M={
   '01':{name:'Opportunity Intelligence',cat:'discover',
-    short:'AI-enriched discovery from SAM.gov, state portals, and RSS feeds.',
-    desc:'Automated discovery and intelligence extraction from SAM.gov feeds, state portals, custom RSS, and manual entry. AI extracts requirements, evaluation criteria, incumbent signals, and competitive intelligence from raw solicitation documents.',
-    outputs:['Enriched opportunity records with extracted requirements','Evaluation criteria and factor weights identified','Incumbent contractor signals surfaced','Competitive intensity score per opportunity'],
+    short:'Multi-jurisdiction discovery — federal, state, local, and international portals.',
+    desc:'Automated discovery and intelligence extraction across all jurisdiction types. Sources include SAM.gov (federal), state procurement portals, DemandStar and BidNet (state/local), EU TED (European), and World Bank STEP. Manual entry and custom RSS feeds support any portal not natively integrated. AI extracts requirements, evaluation criteria, incumbent signals, and competitive intelligence from raw solicitation documents regardless of jurisdiction.',
+    outputs:['Enriched opportunity records with extracted requirements','Evaluation criteria and factor weights identified','Incumbent contractor signals surfaced','Competitive intensity score per opportunity','jurisdiction_type field set on every record'],
     connects:['02','05','08','12']},
   '02':{name:'Bid / No-Bid Engine',cat:'decide',
     short:'Evidence-based go/no-go across 8 weighted dimensions.',
-    desc:'Go/no-go decision support scored across eight dimensions: Strategic Fit (20%), Win Probability (20%), Past Performance Alignment (15%), Capability Match (15%), Competitive Position (10%), Cost of Bid ROI (10%), Risk Profile (5%), Relationship Strength (5%). Always includes full rationale and an alternative recommendation.',
+    desc:'Go/no-go decision support scored across eight dimensions: Strategic Fit (20%), Win Probability (20%), Past Performance Alignment (15%), Capability Match (15%), Competitive Position (10%), Cost of Bid ROI (10%), Risk Profile (5%), Relationship Strength (5%). Scoring logic is jurisdiction-aware — set-aside eligibility criteria vary by jurisdiction_type. Always includes full rationale and an alternative recommendation.',
     outputs:['Weighted composite score with rationale','Go / No-Go recommendation','Per-dimension breakdown with evidence','Alternative recommendation always included'],
     connects:['01','04','05','06','12']},
   '03':{name:'Procurement Rule Engine',cat:'comply',
-    short:'Jurisdiction-agnostic rule packs: FAR, DFARS, EU, World Bank.',
-    desc:'Pluggable rule enforcement layer ensuring every analysis cites the applicable regulation. Supports US Federal FAR, DFARS, state/local Uniform Procurement Act, EU Directive 2014/24/EU, and World Bank IPF Borrower Procurement Regulations. Enterprise customers can define custom rule packs.',
-    outputs:['Rule pack auto-identified per solicitation','Regulation-grounded analysis for all modules','Rule packs: FAR · DFARS · State/Local · EU 2014/24 · World Bank','Custom rule packs available for Enterprise'],
+    short:'Pluggable rule packs: FAR · DFARS · State/Local · EU · World Bank · Custom.',
+    desc:'Jurisdiction-agnostic rule enforcement layer. Every analysis cites the specific regulation that applies. The active rule pack is resolved from the opportunity\'s jurisdiction_type at runtime — no hardcoded federal assumptions. Enterprise customers can define custom rule packs for agency-specific supplements or non-standard jurisdictions.',
+    outputs:['Rule pack auto-resolved from jurisdiction_type','us_federal_far — FAR Parts 1–53','us_federal_dfars — DFARS + agency supplements','state_generic — Uniform Procurement Act','eu_public_procurement — EU Directive 2014/24/EU','world_bank — IPF Borrower Procurement Regulations','Custom rule packs available for Enterprise'],
     connects:['04','13']},
   '04':{name:'Compliance Engine',cat:'comply',
-    short:'Automated mandatory compliance verification before bid commitment.',
-    desc:'Verifies all mandatory compliance gates before bid resource commitment: SAM.gov registration, NAICS eligibility, set-aside qualifications, CMMC level requirements, security clearance needs, certifications, insurance, and financial thresholds.',
-    outputs:['SAM.gov registration status','NAICS code eligibility','Set-aside qualification: 8(a), SDVOSB, HUBZone, WOSB','CMMC / NIST 800-171 level assessment','Insurance and certification gaps flagged'],
+    short:'Mandatory compliance verification — jurisdiction-specific gates before bid commitment.',
+    desc:'Verifies all mandatory compliance gates before bid resource commitment. What those gates are depends on the jurisdiction_type. Federal: SAM.gov registration, NAICS eligibility, set-aside qualifications, CMMC level, security clearances. State/local: business license, prevailing wage (state Davis-Bacon equivalents), local preference ordinances, DBE/MBE/WBE certifications. International: country-specific registration, local content requirements, multi-lateral development bank eligibility.',
+    outputs:['Compliance gate checklist resolved per jurisdiction','Federal: SAM.gov, NAICS, 8(a)/SDVOSB/HUBZone/WOSB, CMMC','State/Local: business license, prevailing wage, local preference, DBE/MBE','International: registration, local content, MDB eligibility','Insurance, bonding, and financial thresholds per jurisdiction','Gap findings with remediation timeline'],
     connects:['03','02']},
   '05':{name:'Capability Gap Analysis',cat:'strengthen',
     short:'NLP requirement extraction matched to org capabilities via vector similarity.',
-    desc:'Extracts solicitation requirements using NLP, then vector-similarity-matches them against organizational capabilities in the Knowledge Vault. Produces a gap map with severity ratings and specific remediation options — teaming, hiring, or subcontracting — for each gap.',
+    desc:'Extracts solicitation requirements using NLP, then vector-similarity-matches them against organizational capabilities in the Knowledge Vault. Produces a gap map with severity ratings and specific remediation options — teaming, hiring, or subcontracting — for each gap. Works across all jurisdiction types since capability gaps are a universal procurement concept.',
     outputs:['Requirement-to-capability match scores','Gap map with severity ratings','Remediation options per gap: team / hire / sub','Capability coverage percentage'],
     connects:['01','07','14','11']},
   '06':{name:'Past Performance Intelligence',cat:'strengthen',
     short:'Smart relevance scoring of PP records vs. active opportunities.',
-    desc:'Scores past performance records for relevance against active opportunities using vector similarity — not keyword matching. Applies recency and dollar-value weighting. Tracks CPARS ratings and assists with narrative generation.',
-    outputs:['Relevance scores per PP record per opportunity','CPARS rating tracking','Top-ranked PP records per solicitation','Recency and dollar-value weighted rankings','Narrative generation assistance'],
+    desc:'Scores past performance records for relevance against active opportunities using vector similarity — not keyword matching. Applies recency and dollar-value weighting. Tracks performance ratings (CPARS for federal, equivalent systems for state/international). Assists with narrative generation calibrated to the evaluating jurisdiction\'s criteria.',
+    outputs:['Relevance scores per PP record per opportunity','Performance rating tracking (CPARS + jurisdiction equivalents)','Top-ranked PP records per solicitation','Recency and dollar-value weighted rankings','Narrative generation assistance'],
     connects:['02','11','13','14']},
   '07':{name:'Teaming Recommendation Engine',cat:'strengthen',
     short:'Identifies optimal teaming configuration to maximize award probability.',
-    desc:'Analyzes capability gaps, small business strategy requirements, historical teaming success, partner risk, and relationship strength to recommend the optimal teaming structure for each opportunity. Goes beyond "who we know" to identify partners that improve the proposal.',
-    outputs:['Gap-filling partner recommendations','Small business strategy: 8(a)/SDVOSB/HUBZone/WOSB','Partner risk assessment','Historical teaming success analysis','Relationship strength mapping'],
+    desc:'Analyzes capability gaps, small business / diverse supplier strategy requirements, historical teaming success, partner risk, and relationship strength to recommend the optimal teaming structure. Small business strategy varies by jurisdiction: federal set-asides (8(a)/SDVOSB/HUBZone/WOSB), state DBE/MBE/WBE programs, EU SME preferences, and World Bank procurement requirements.',
+    outputs:['Gap-filling partner recommendations','Set-aside / diverse supplier strategy per jurisdiction','Partner risk assessment','Historical teaming success analysis','Relationship strength mapping'],
     connects:['05','08','14']},
   '08':{name:'Competitive Intelligence',cat:'compete',
     short:'Competitor win rates, pricing, and incumbent vulnerability from public data.',
-    desc:'Aggregates USASpending.gov, FPDS-NG, SAM.gov, and SEC filings to build competitor profiles with win rate estimates, pricing tendencies, and incumbent vulnerability assessments.',
-    outputs:['Competitor profiles with win rate estimates','Pricing tendency analysis','Incumbent vulnerability assessment','Agency relationship mapping','Competitive intensity score per opportunity'],
+    desc:'Aggregates public award data by jurisdiction to build competitor profiles. Federal: USASpending.gov, FPDS-NG, SAM.gov. State/local: state procurement transparency portals, checkbooks. International: EU TED contract notices, World Bank contract awards. Produces win rate estimates, pricing tendencies, and incumbent vulnerability assessments.',
+    outputs:['Competitor profiles with win rate estimates','Pricing tendency analysis by jurisdiction','Incumbent vulnerability assessment','Agency relationship mapping','Competitive intensity score per opportunity'],
     connects:['01','02','12']},
   '09':{name:'Value Proposition Builder',cat:'manage',
     short:'Tailored discriminators per opportunity, grounded in Knowledge Vault evidence.',
-    desc:'Builds differentiated positioning statements and discriminator sets for each specific opportunity, drawing from the Knowledge Vault to ground every claim in verifiable evidence. Ranks discriminators by relevance to each evaluation factor.',
+    desc:'Builds differentiated positioning statements and discriminator sets for each specific opportunity, drawing from the Knowledge Vault to ground every claim in verifiable evidence. Ranks discriminators by relevance to each evaluation factor in the active rule pack.',
     outputs:['Tailored discriminator set per opportunity','Evidence-backed positioning statement','Discriminators ranked by evaluation factor relevance'],
     connects:['06','14','11']},
   '10':{name:'Executive Capture Dashboard',cat:'manage',
-    short:'Board-level pipeline: weighted value, win probability, BD ROI.',
-    desc:'Aggregates all CIOS intelligence into an executive view — weighted pipeline value, win probability distribution, bid/no-bid ratio trends, cost per win, and ROI by market segment.',
-    outputs:['Weighted pipeline value (probability-adjusted)','Win probability distribution across pipeline','Bid/no-bid ratio and trends','Cost per win and BD ROI by segment'],
+    short:'Board-level pipeline: weighted value, win probability, BD ROI — by jurisdiction.',
+    desc:'Aggregates all CIOS intelligence into an executive view segmented by jurisdiction_type — see pipeline concentration by federal vs. state/local vs. international at a glance. Shows weighted pipeline value, win probability distribution, bid/no-bid ratio trends, cost per win, and ROI by market segment.',
+    outputs:['Weighted pipeline value (probability-adjusted)','Win probability distribution across pipeline','Bid/no-bid ratio and trends','Cost per win and BD ROI by segment and jurisdiction'],
     connects:['02','12','15']},
   '11':{name:'Proposal Readiness Score',cat:'manage',
     short:'Six-dimension readiness assessment before writing begins.',
-    desc:'Scores submission readiness across six dimensions before committing to proposal development — past performance quality, team bios, technical approach, management plan, price competitiveness, and compliance documentation.',
-    outputs:['Readiness score across 6 dimensions','Past performance quality score','Team bios completeness','Technical approach readiness','Price competitiveness estimate','Compliance documentation status'],
+    desc:'Scores submission readiness across six dimensions before committing to proposal development — past performance quality, team bios, technical approach, management plan, price competitiveness, and compliance documentation. Compliance dimension is resolved against the opportunity\'s jurisdiction_type.',
+    outputs:['Readiness score across 6 dimensions','Past performance quality score','Team bios completeness','Technical approach readiness','Price competitiveness estimate','Compliance documentation status (jurisdiction-specific)'],
     connects:['06','05','09','13']},
   '12':{name:'Award Probability Engine',cat:'decide',
     short:'ML win probability with confidence interval and evidence chain.',
-    desc:'ML-powered win probability drawing on bid history, competitive landscape, agency relationship signals, solution strength, and pricing position. Always includes a confidence interval and full evidence chain — never just a number.',
+    desc:'ML-powered win probability drawing on bid history, competitive landscape, agency relationship signals, solution strength, and pricing position. Trained on historical award data across all jurisdiction types. Always includes a confidence interval and full evidence chain — never just a number.',
     outputs:['Award probability score (0.0–1.0)','Confidence interval','Evidence chain supporting the score','Key factors driving probability up or down'],
     connects:['01','02','08','06']},
   '13':{name:'Award Simulator',cat:'flagship',
-    short:'FAR 15.305 source selection simulation — color ratings, red team, gate review.',
-    desc:'The only platform that emulates government source selection evaluation (FAR Part 15 / DFARS PGI 215.3) before proposal submission. AI acts as the Source Selection Evaluation Board, producing color/adjectival ratings, risk ratings, weaknesses, significant weaknesses, deficiencies, red team commentary, and a ranked improvement roadmap.',
-    outputs:['DoD color ratings per factor: Blue (Outstanding) → Red (Unacceptable)','Risk ratings: Low / Moderate / High per factor','Strengths, Weaknesses, Significant Weaknesses, Deficiencies with FAR citations','Red team commentary — 3 to 5 government evaluator observations','Gate Review Recommendation: SUBMIT / REVISE / WITHDRAW','Award probability with confidence score','Ranked improvement roadmap with expected score impact per action'],
+    short:'Jurisdiction-adaptive source selection simulation — evaluation methodology matched to rule pack.',
+    desc:'The only platform that emulates government source selection evaluation before proposal submission. Evaluation methodology is resolved from the opportunity\'s jurisdiction_type and active rule pack — not hardcoded to any single framework. Federal: FAR Part 15 / DFARS PGI 215.3 with DoD color/adjectival ratings. State/local: point-matrix evaluation per applicable state procurement code. International: technical scoring per EU or World Bank methodology. AI acts as the evaluation panel, producing factor ratings, risk ratings, findings, red team commentary, and a ranked improvement roadmap.',
+    outputs:['Evaluation methodology resolved from jurisdiction_type','Federal: DoD color ratings (Blue → Red) per factor','State/local: point-matrix scores per procurement code','International: Technical + Financial score per MDB methodology','Findings: Strengths, Weaknesses, Significant Weaknesses, Deficiencies','Red team commentary — evaluator perspective per jurisdiction','Gate Review: SUBMIT / REVISE / WITHDRAW','Ranked improvement roadmap with expected score impact'],
     connects:['01','06','07','11','14']},
   '14':{name:'Knowledge Vault',cat:'learn',
     short:'Per-tenant private vector DB. The memory layer for every AI agent.',
-    desc:'A per-tenant private vector database (Qdrant) containing past performance records, proposals, capability statements, resumes, debrief letters, and lessons learned. Every AI agent draws context from this vault. It compounds in value with every document added, creating switching costs and a deepening intelligence advantage.',
+    desc:'A per-tenant private vector database (Qdrant) containing past performance records, proposals, capability statements, resumes, debrief letters, and lessons learned — across all jurisdictions. Every AI agent draws context from this vault at query time. It compounds in value with every document added, creating switching costs and a deepening intelligence advantage that grows regardless of which jurisdictions you pursue.',
     outputs:['Semantic search across all organizational documents','Debrief capture: post-award, post-loss, teaming debriefs','Context injection into all AI agent analyses','Per-tenant isolation — zero cross-contamination','AES-256 encryption with tenant-derived keys','Voyage AI voyage-3 embeddings, 1024 dimensions'],
     connects:['05','06','07','09','13','15']},
   '15':{name:'Organizational Intelligence',cat:'learn',
     short:'Continuous win/loss trends, capability growth, and BD ROI analytics.',
-    desc:'Continuously tracks organizational capture performance over time — win/loss trends by segment, capability growth trajectory, market penetration rates, and BD ROI by investment category.',
-    outputs:['Win/loss trend analysis by segment and agency','Capability growth tracking over time','Market penetration analysis','BD ROI by investment category','Organizational intelligence score'],
+    desc:'Continuously tracks organizational capture performance over time — win/loss trends by segment and jurisdiction, capability growth trajectory, market penetration rates by jurisdiction_type, and BD ROI by investment category. Shows you which jurisdictions are most profitable and where your organization has structural competitive advantage.',
+    outputs:['Win/loss trend analysis by segment, agency, and jurisdiction','Capability growth tracking over time','Market penetration by jurisdiction_type','BD ROI by investment category','Organizational intelligence score'],
     connects:['10','14']},
 };
 
@@ -312,12 +347,12 @@ document.getElementById('v-platform').innerHTML=`
   <div class="mg">
     <div class="flagship" onclick="openPanel('13')">
       <div>
-        <div class="fs-eye">⭐ Module 13 · Flagship Feature</div>
+        <div class="fs-eye">Module 13 · Flagship Feature</div>
         <div class="fs-name">Award Simulator</div>
-        <div class="fs-desc">Emulate government source selection evaluation (FAR 15.305 / DFARS PGI 215.3) before writing a single page of proposal. The only platform that shows you what a Source Selection Evaluation Board sees — with the exact language evaluators use.</div>
+        <div class="fs-desc">Emulate government evaluation before writing a single page. Methodology resolves from jurisdiction_type — FAR 15.305 for federal, state procurement code point matrices for state/local, EU / World Bank scoring for international. Shows you exactly what the evaluation panel sees.</div>
       </div>
       <div>
-        <div class="fs-sl">DoD Color / Adjectival Ratings</div>
+        <div class="fs-sl">Federal: DoD Color / Adjectival Ratings</div>
         <div class="dod"><div class="dod-dot" style="background:#3B82F6"></div><span class="dod-n">Blue · Outstanding</span><span class="dod-s">95–100</span></div>
         <div class="dod"><div class="dod-dot" style="background:#8B5CF6"></div><span class="dod-n">Purple · Good</span><span class="dod-s">80–94</span></div>
         <div class="dod"><div class="dod-dot" style="background:#10B981"></div><span class="dod-n">Green · Acceptable</span><span class="dod-s">65–79</span></div>
@@ -326,9 +361,9 @@ document.getElementById('v-platform').innerHTML=`
       </div>
       <div class="fs-outs">
         <div class="fs-sl">Key Outputs</div>
-        <div class="fs-o">Per-factor color &amp; adjectival ratings</div>
-        <div class="fs-o">Weaknesses, Sig. Weaknesses, Deficiencies + FAR citations</div>
-        <div class="fs-o">Red team commentary (3–5 evaluator observations)</div>
+        <div class="fs-o">Factor ratings per jurisdiction methodology</div>
+        <div class="fs-o">Weaknesses, Sig. Weaknesses, Deficiencies + rule citations</div>
+        <div class="fs-o">Red team commentary — evaluator perspective</div>
         <div class="fs-o">Gate Review: SUBMIT / REVISE / WITHDRAW</div>
         <div class="fs-o">Ranked improvement roadmap with score impact</div>
       </div>
@@ -344,23 +379,45 @@ document.getElementById('v-platform').innerHTML=`
   <div class="bl">Learn</div>
   <div class="mg" style="grid-template-columns:repeat(2,1fr)">${card('14')}${card('15')}</div>
 
-  <div class="bl">Data Foundation</div>
-  <div class="fstrip">
-    <div class="fc vault" onclick="openPanel('14')">
-      <div class="ft">Knowledge Vault</div>
-      <div class="fd">Per-tenant private vector DB (Qdrant). Voyage AI voyage-3 embeddings, 1024-dim. Zero cross-tenant contamination. The memory layer that compounds over time with every document added.</div>
-      <span class="ftag">voyage-3 · 1024-dim · AES-256</span>
+  <div class="bl">Data Sources by Jurisdiction</div>
+  <div class="ftier">
+    <div class="ftier-label" style="color:var(--discover)">
+      Federal <div class="ftier-line"></div>
     </div>
-    <div class="fc"><div class="ft">SAM.gov</div><div class="fd">Federal opportunity feeds, contractor registration, set-aside eligibility data.</div><span class="ftag">Phase 2</span></div>
-    <div class="fc"><div class="ft">USASpending.gov</div><div class="fd">Historical award data, competitor win history, incumbent analysis.</div><span class="ftag">Phase 2</span></div>
-    <div class="fc"><div class="ft">FPDS-NG</div><div class="fd">Federal Procurement Data System — contract awards, modifications, pricing history.</div><span class="ftag">Phase 2</span></div>
+    <div class="ftier-row federal">
+      <div class="fc vault" onclick="openPanel('14')">
+        <div class="ft">Knowledge Vault</div>
+        <div class="fd">Per-tenant private vector DB across all jurisdictions. Voyage AI voyage-3, 1024-dim. Zero cross-tenant contamination.</div>
+        <span class="ftag live">Live</span>
+      </div>
+      <div class="fc"><div class="ft">SAM.gov</div><div class="fd">Federal opportunity feeds, contractor registration, set-aside eligibility.</div><span class="ftag p2">Phase 2</span></div>
+      <div class="fc"><div class="ft">USASpending.gov</div><div class="fd">Historical award data, competitor win history, pricing benchmarks.</div><span class="ftag p2">Phase 2</span></div>
+      <div class="fc"><div class="ft">FPDS-NG</div><div class="fd">Federal Procurement Data System — awards, mods, contract vehicles.</div><span class="ftag p2">Phase 2</span></div>
+    </div>
+    <div class="ftier-label" style="color:var(--comply)">
+      State &amp; Local <div class="ftier-line"></div>
+    </div>
+    <div class="ftier-row state">
+      <div class="fc"><div class="ft">DemandStar</div><div class="fd">Multi-state bid aggregator covering thousands of government agencies.</div><span class="ftag p3">Phase 3</span></div>
+      <div class="fc"><div class="ft">BidNet Direct</div><div class="fd">State and local bid notifications — 40,000+ public agencies.</div><span class="ftag p3">Phase 3</span></div>
+      <div class="fc"><div class="ft">OpenGov / BidSync</div><div class="fd">Municipal and county procurement portals with public award data.</div><span class="ftag p3">Phase 3</span></div>
+      <div class="fc"><div class="ft">State Transparency Portals</div><div class="fd">Award data feeds from state comptroller and procurement offices.</div><span class="ftag p3">Phase 3</span></div>
+    </div>
+    <div class="ftier-label" style="color:var(--compete)">
+      International <div class="ftier-line"></div>
+    </div>
+    <div class="ftier-row intl">
+      <div class="fc"><div class="ft">EU TED</div><div class="fd">Tenders Electronic Daily — EU-wide contract notices and award data under Directive 2014/24/EU.</div><span class="ftag p3">Phase 3</span></div>
+      <div class="fc"><div class="ft">World Bank STEP</div><div class="fd">Systematic Tracking of Exchanges in Procurement — World Bank–financed contracts.</div><span class="ftag p3">Phase 3</span></div>
+      <div class="fc"><div class="ft">UNGM / National Portals</div><div class="fd">UN Global Marketplace and country-specific national procurement portals.</div><span class="ftag p3">Phase 3</span></div>
+    </div>
   </div>
 `;
 
 /* ── Agents ── */
 const DIRS=[
   {name:'Capture Director',    analysts:['Bid Analysis Analyst','Award Probability Analyst','Proposal Readiness Analyst']},
-  {name:'Compliance Director', analysts:['FAR/DFARS Analyst','CMMC/NIST Analyst','Set-Aside Eligibility Analyst']},
+  {name:'Compliance Director', analysts:['Rule Pack Compliance Analyst','Certifications &amp; Registration Analyst','Eligibility &amp; Set-Aside Analyst']},
   {name:'Agency Intel Director',analysts:['Agency Relationship Analyst','Program Office Intel Analyst','Requirements Prediction Analyst']},
   {name:'Technical Director',  analysts:['Requirements Analyst','Capability Gap Analyst','Technical Approach Analyst']},
   {name:'Pricing Director',    analysts:['Price-to-Win Analyst','Cost Structure Analyst','Market Pricing Analyst']},
@@ -395,23 +452,23 @@ document.getElementById('v-agents').innerHTML=`
     </div>
     <div class="pcards">
       <div class="pc"><div class="pct">Users Never See Agents</div><div class="pcd">All AI orchestration is internal. Users receive structured recommendations — never raw agent outputs or intermediate reasoning traces.</div></div>
-      <div class="pc"><div class="pct">6 Required Output Elements</div><div class="pcd">Every recommendation must include: Evidence · Confidence Score (0–1) · Regulation Citation · Assumptions · Risks · Alternative Recommendation.</div></div>
-      <div class="pc"><div class="pct">Temperature 0.0 · Versioned</div><div class="pcd">All agents run at temperature 0 for reproducibility. Model version is pinned and recorded with every recommendation for full auditability.</div></div>
+      <div class="pc"><div class="pct">Rule Pack–Injected Context</div><div class="pcd">Agent system prompts receive the active rule pack at runtime. The Compliance Director reasons about FAR for federal, Uniform Procurement Act for state, EU Directive for international — same agent, different context.</div></div>
+      <div class="pc"><div class="pct">Temperature 0.0 · Versioned</div><div class="pcd">All agents run at temperature 0 for reproducibility. Model version and rule pack ID are pinned with every recommendation for full auditability.</div></div>
     </div>
   </div>
   <div class="bl">Award Simulator Agent (Standalone)</div>
   <div class="sim-strip">
     <div class="fc" style="background:var(--flagship-bg);border-color:var(--flagship-br);cursor:pointer" onclick="openPanel('13')">
       <div class="ft" style="color:var(--flagship)">Award Simulator Agent</div>
-      <div class="fd">Runs independently of CEO/Director hierarchy. Invoked directly by the Celery simulation task. Uses <code style="font-family:monospace;font-size:10px">claude-opus-4-8</code> at temperature 0.0 with 16,384 max tokens.</div>
+      <div class="fd">Runs independently of CEO/Director hierarchy. Uses <code style="font-family:monospace;font-size:10px">claude-opus-4-8</code> at temperature 0.0 with 16,384 max tokens. Evaluation methodology injected from active rule pack.</div>
     </div>
     <div class="fc">
-      <div class="ft">System Prompt</div>
-      <div class="fd">Hardcoded FAR 15.305, DFARS PGI 215.3, and DoD source selection procedure logic. Evaluation methodology is regulatory, not heuristic.</div>
+      <div class="ft">Jurisdiction-Parameterized</div>
+      <div class="fd">Federal → FAR 15.305 / DFARS PGI 215.3. State/local → applicable state procurement code. International → EU / World Bank methodology. Same agent, rule-pack–driven logic.</div>
     </div>
     <div class="fc">
       <div class="ft">JSON Schema Output</div>
-      <div class="fd">Strict output schema: 15+ top-level fields, nested factor_ratings dict, findings arrays each with FAR citation. Fence-stripping ensures parseable output.</div>
+      <div class="fd">Strict output schema: 15+ top-level fields, nested factor_ratings dict, findings arrays each with rule citation. Fence-stripping ensures parseable output across all methodologies.</div>
     </div>
   </div>
 `;
@@ -419,17 +476,17 @@ document.getElementById('v-agents').innerHTML=`
 /* ── Journey ── */
 const STEPS=[
   {phase:'Discover',q:'Is this opportunity worth tracking?',color:'var(--discover)',bg:'var(--discover-bg)',modules:['01','08'],
-   out:'An enriched opportunity record surfaces — requirements extracted, incumbent identified, competitive intensity scored. <b>Decision in minutes, not days.</b>'},
+   out:'An enriched opportunity record surfaces — requirements extracted, incumbent identified, competitive intensity scored. jurisdiction_type set automatically. <b>Decision in minutes, not days.</b>'},
   {phase:'Decide',q:'Should we bid on this?',color:'var(--decide)',bg:'var(--decide-bg)',modules:['02','04','12'],
-   out:'A weighted composite score across 8 dimensions with a go/no-go recommendation, full rationale, and an alternative if the answer is no. <b>Evidence-backed, never gut-feel.</b>'},
+   out:'A weighted composite score across 8 dimensions with a go/no-go recommendation, full rationale, and compliance gates verified for the opportunity\'s jurisdiction. <b>Evidence-backed, never gut-feel.</b>'},
   {phase:'Strengthen',q:'What do we need to win?',color:'var(--strengthen)',bg:'var(--strengthen-bg)',modules:['03','05','06','07'],
-   out:'Gap map shows exactly what\'s missing. Past performance ranked by relevance. Teaming partners identified. Compliance gates verified. <b>Structured before a single page is written.</b>'},
-  {phase:'Simulate',q:'How would the government evaluate us today?',color:'var(--flagship)',bg:'var(--flagship-bg)',modules:['13'],
-   out:'A complete FAR 15.305 evaluation — color ratings per factor, deficiencies, red team commentary, gate review. Ranked improvements show what to fix and in what order. <b>See the SSEB\'s view before submission.</b>'},
+   out:'Gap map shows exactly what\'s missing. Past performance ranked by relevance. Teaming partners identified. Rule pack resolved and compliance verified for the jurisdiction. <b>Structured before a single page is written.</b>'},
+  {phase:'Simulate',q:'How would the evaluators score us today?',color:'var(--flagship)',bg:'var(--flagship-bg)',modules:['13'],
+   out:'A complete evaluation simulation — factor ratings per jurisdiction methodology, deficiencies, red team commentary, gate review. Ranked improvements show what to fix first. <b>See the evaluation panel\'s view before submission.</b>'},
   {phase:'Prepare',q:'Are we ready to write and submit?',color:'var(--manage)',bg:'var(--manage-bg)',modules:['09','11'],
    out:'Readiness score surfaces remaining gaps. Tailored discriminators grounded in Knowledge Vault evidence ready for integration. <b>Write the proposal knowing exactly what Outstanding looks like.</b>'},
   {phase:'Learn',q:'What do we carry forward?',color:'var(--learn)',bg:'var(--learn-bg)',modules:['14','15'],
-   out:'Debrief captured in the Knowledge Vault. Win/loss trends updated. Every future simulation and analysis gets smarter. <b>The platform compounds in value with every pursuit.</b>'},
+   out:'Debrief captured in the Knowledge Vault. Win/loss trends updated by jurisdiction. Every future simulation and analysis gets smarter. <b>The platform compounds in value with every pursuit.</b>'},
 ];
 
 document.getElementById('v-journey').innerHTML=STEPS.map((s,i)=>`
@@ -449,6 +506,98 @@ document.getElementById('v-journey').innerHTML=STEPS.map((s,i)=>`
     </div>
   </div>
 `).join('');
+
+/* ── Jurisdiction ── */
+const JURS=[
+  {type:'federal',   label:'Federal',      name:'US Federal',         color:'var(--discover)',  bg:'var(--discover-bg)',  br:'var(--discover-br)',
+   desc:'FAR / DFARS regulated. Largest single market at $700B+ annual spend. Highest process rigor and auditability requirements.',
+   pack:'us_federal_far · us_federal_dfars', status:'Live', statusStyle:'color:var(--decide);background:var(--decide-bg);border-color:var(--decide-br)'},
+  {type:'state',     label:'State',        name:'US State',           color:'var(--comply)',    bg:'var(--comply-bg)',    br:'var(--comply-br)',
+   desc:'Uniform Procurement Act plus state-specific codes. 50 distinct regulatory environments. Prevailing wage, DBE/MBE/WBE programs vary by state.',
+   pack:'state_generic · state-specific overrides', status:'Phase 3', statusStyle:'color:var(--compete);background:var(--compete-bg);border-color:var(--compete-br)'},
+  {type:'local',     label:'Local',        name:'Municipal / County', color:'var(--strengthen)', bg:'var(--strengthen-bg)', br:'var(--strengthen-br)',
+   desc:'City and county ordinances. Local preference laws and local hire requirements common. Smaller dollar thresholds, faster cycle times.',
+   pack:'state_generic · local_ordinance', status:'Phase 3', statusStyle:'color:var(--compete);background:var(--compete-bg);border-color:var(--compete-br)'},
+  {type:'tribal',    label:'Tribal',       name:'Tribal Government',  color:'var(--manage)',    bg:'var(--manage-bg)',    br:'var(--manage-br)',
+   desc:'Tribal sovereignty creates unique procurement authority. Indian Preference requirements. HUBZone overlap. Tribal enterprises as prime contractors.',
+   pack:'tribal_procurement', status:'Phase 3', statusStyle:'color:var(--compete);background:var(--compete-bg);border-color:var(--compete-br)'},
+  {type:'international',label:'International',name:'International',   color:'var(--compete)',   bg:'var(--compete-bg)',   br:'var(--compete-br)',
+   desc:'EU Directive 2014/24/EU, World Bank IPF Borrower Regs, bilateral development bank frameworks, and country-specific national procurement laws.',
+   pack:'eu_public_procurement · world_bank', status:'Phase 3', statusStyle:'color:var(--compete);background:var(--compete-bg);border-color:var(--compete-br)'},
+];
+
+const RULE_PACKS=[
+  {id:'us_federal_far',   name:'US Federal FAR',        desc:'FAR Parts 1–53. The baseline for all civilian federal procurement. Applies to all federal opportunities above micro-purchase threshold.'},
+  {id:'us_federal_dfars', name:'US Federal DFARS',       desc:'Defense FAR Supplement + DARS and agency supplements (NASA FAR, HHSAR, etc.). Required for DoD and defense-adjacent awards.'},
+  {id:'state_generic',    name:'State / Local Generic',  desc:'Uniform Procurement Act baseline applicable across most US states. Overrides applied per state code at analysis time.'},
+  {id:'eu_public_procurement', name:'EU Public Procurement', desc:'EU Directive 2014/24/EU. Open, restricted, and negotiated procedures. MEAT (Most Economically Advantageous Tender) evaluation.'},
+  {id:'world_bank',       name:'World Bank IPF',         desc:'IPF Borrower Procurement Regulations. Applicable to World Bank–financed contracts. Open International Bidding standard.'},
+  {id:'custom',           name:'Custom (Enterprise)',    desc:'Enterprise customers define rule packs for agency-specific supplements, bilateral development banks, or unique regulatory environments.'},
+];
+
+const MATRIX=[
+  {feature:'Opportunity Discovery',     f:1,s:1,l:1,t:1,i:1},
+  {feature:'Bid / No-Bid Scoring',      f:1,s:1,l:1,t:1,i:1},
+  {feature:'Compliance Engine',         f:1,s:'r',l:'r',t:'r',i:'r'},
+  {feature:'Capability Gap Analysis',   f:1,s:1,l:1,t:1,i:1},
+  {feature:'Teaming Recommendations',   f:1,s:'r',l:'r',t:'r',i:'r'},
+  {feature:'Competitive Intelligence',  f:1,s:'r',l:'r',t:'r',i:'r'},
+  {feature:'Award Simulator',           f:1,s:'r',l:'r',t:'r',i:'r'},
+  {feature:'Knowledge Vault',           f:1,s:1,l:1,t:1,i:1},
+];
+
+const JH=['Federal','State','Local','Tribal','Intl'];
+const JK=['f','s','l','t','i'];
+
+document.getElementById('v-jurisdiction').innerHTML=`
+  <div class="bl" style="margin-top:0">Jurisdiction Types</div>
+  <div class="jur-bar">
+    ${JURS.map(j=>`
+      <div class="jur-card" style="background:${j.bg};border-color:${j.br}">
+        <div class="jur-label" style="color:${j.color}">${j.label}</div>
+        <div class="jur-name" style="color:var(--t0)">${j.name}</div>
+        <div class="jur-desc" style="color:var(--t1)">${j.desc}</div>
+        <div class="jur-pack" style="color:${j.color}">${j.pack}</div>
+        <div class="jur-status" style="${j.statusStyle}">${j.status}</div>
+      </div>
+    `).join('')}
+  </div>
+
+  <div class="bl">Rule Packs</div>
+  <div class="rule-grid">
+    ${RULE_PACKS.map(r=>`
+      <div class="rp">
+        <div class="rp-id">${r.id}</div>
+        <div class="rp-name">${r.name}</div>
+        <div class="rp-desc">${r.desc}</div>
+      </div>
+    `).join('')}
+  </div>
+
+  <div class="bl">Module Coverage by Jurisdiction</div>
+  <div class="compliance-matrix">
+    <div class="cm-header">
+      <div class="cm-cell hdr">Module / Feature</div>
+      ${JH.map(h=>`<div class="cm-cell hdr">${h}</div>`).join('')}
+    </div>
+    ${MATRIX.map(row=>`
+      <div class="cm-row">
+        <div class="cm-cell label">${row.feature}</div>
+        ${JK.map(k=>{
+          const v=row[k];
+          if(v===1) return `<div class="cm-cell"><div class="chk yes">✓</div></div>`;
+          if(v==='r') return `<div class="cm-cell"><div class="chk roadmap">~</div></div>`;
+          return `<div class="cm-cell"><div class="chk no">–</div></div>`;
+        }).join('')}
+      </div>
+    `).join('')}
+  </div>
+  <div style="display:flex;gap:14px;margin-top:8px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t1)"><div class="chk yes" style="width:16px;height:16px">✓</div> Live</div>
+    <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t1)"><div class="chk roadmap" style="width:16px;height:16px">~</div> Roadmap (Phase 3)</div>
+    <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t1)"><div class="chk no" style="width:16px;height:16px">–</div> Not applicable</div>
+  </div>
+`;
 
 /* ── Panel ── */
 function openPanel(id){
