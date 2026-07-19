@@ -1,0 +1,483 @@
+
+<title>CIOS · Platform Map</title>
+<style>
+:root {
+  --bg:#F7F9FC; --s0:#FFF; --s1:#EEF2F8; --br:#DDE5F0;
+  --t0:#0D1829; --t1:#455570; --t2:#8090A8;
+  --discover:#1A56D6; --discover-bg:#EEF2FF; --discover-br:#BED0FF;
+  --decide:#0B7A68;   --decide-bg:#EDFAF7;   --decide-br:#9FF0DF;
+  --comply:#A05808;   --comply-bg:#FFF8EB;   --comply-br:#FADC80;
+  --strengthen:#166834; --strengthen-bg:#EDFDF5; --strengthen-br:#A0F0C0;
+  --compete:#5E21A8;  --compete-bg:#F5F0FF;  --compete-br:#D0B8FF;
+  --flagship:#8A4508; --flagship-bg:#FFF7E8; --flagship-br:#D48808;
+  --manage:#374151;   --manage-bg:#F8FAFB;   --manage-br:#D1D8E0;
+  --learn:#1A3A60;    --learn-bg:#EEF5FF;    --learn-br:#90B8E0;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#060C1A; --s0:#0A1628; --s1:#0E1E35; --br:#162840;
+  --t0:#D5E6F5; --t1:#7898B8; --t2:#486070;
+  --discover:#60A0F5; --discover-bg:#080E20; --discover-br:#183060;
+  --decide:#30D0B0;   --decide-bg:#061512;   --decide-br:#0C3525;
+  --comply:#F8C840;   --comply-bg:#120E00;   --comply-br:#5A3808;
+  --strengthen:#44D878; --strengthen-bg:#060E08; --strengthen-br:#124020;
+  --compete:#A080F8;  --compete-bg:#0A0820;  --compete-br:#302060;
+  --flagship:#F8C038; --flagship-bg:#130A00; --flagship-br:#886008;
+  --manage:#90A0B5;   --manage-bg:#0A1020;   --manage-br:#1E2E48;
+  --learn:#58A0F0;    --learn-bg:#060A18;    --learn-br:#142850;
+}}
+:root[data-theme=dark]{
+  --bg:#060C1A; --s0:#0A1628; --s1:#0E1E35; --br:#162840;
+  --t0:#D5E6F5; --t1:#7898B8; --t2:#486070;
+  --discover:#60A0F5; --discover-bg:#080E20; --discover-br:#183060;
+  --decide:#30D0B0;   --decide-bg:#061512;   --decide-br:#0C3525;
+  --comply:#F8C840;   --comply-bg:#120E00;   --comply-br:#5A3808;
+  --strengthen:#44D878; --strengthen-bg:#060E08; --strengthen-br:#124020;
+  --compete:#A080F8;  --compete-bg:#0A0820;  --compete-br:#302060;
+  --flagship:#F8C038; --flagship-bg:#130A00; --flagship-br:#886008;
+  --manage:#90A0B5;   --manage-bg:#0A1020;   --manage-br:#1E2E48;
+  --learn:#58A0F0;    --learn-bg:#060A18;    --learn-br:#142850;
+}
+:root[data-theme=light]{
+  --bg:#F7F9FC; --s0:#FFF; --s1:#EEF2F8; --br:#DDE5F0;
+  --t0:#0D1829; --t1:#455570; --t2:#8090A8;
+  --discover:#1A56D6; --discover-bg:#EEF2FF; --discover-br:#BED0FF;
+  --decide:#0B7A68;   --decide-bg:#EDFAF7;   --decide-br:#9FF0DF;
+  --comply:#A05808;   --comply-bg:#FFF8EB;   --comply-br:#FADC80;
+  --strengthen:#166834; --strengthen-bg:#EDFDF5; --strengthen-br:#A0F0C0;
+  --compete:#5E21A8;  --compete-bg:#F5F0FF;  --compete-br:#D0B8FF;
+  --flagship:#8A4508; --flagship-bg:#FFF7E8; --flagship-br:#D48808;
+  --manage:#374151;   --manage-bg:#F8FAFB;   --manage-br:#D1D8E0;
+  --learn:#1A3A60;    --learn-bg:#EEF5FF;    --learn-br:#90B8E0;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px}
+body{background:var(--bg);color:var(--t0);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}
+.app{max-width:1040px;margin:0 auto;padding:26px 18px 64px}
+
+/* header */
+header{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:10px;border-bottom:1px solid var(--br);padding-bottom:18px;margin-bottom:18px}
+.logo{font-family:Georgia,serif;font-size:21px;color:var(--t0);display:flex;align-items:baseline;gap:10px}
+.logo span{font-size:12px;color:var(--t2);font-family:sans-serif;font-style:normal}
+.tagline{font-size:12px;color:var(--flagship);font-style:italic}
+
+/* tabs */
+.tabs{display:flex;gap:2px;margin-bottom:20px;background:var(--s1);border:1px solid var(--br);border-radius:8px;padding:3px;width:fit-content}
+.tab{padding:5px 18px;border:none;border-radius:5px;background:transparent;color:var(--t1);font-size:12.5px;font-weight:500;cursor:pointer;transition:all .12s}
+.tab:hover{color:var(--t0)}
+.tab.on{background:var(--s0);color:var(--t0);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.view{display:none}.view.on{display:block}
+
+/* band label */
+.bl{font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--t2);margin:20px 0 10px;display:flex;align-items:center;gap:8px}
+.bl::after{content:'';flex:1;height:1px;background:var(--br)}
+.bl:first-child{margin-top:0}
+
+/* module grid */
+.mg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px}
+@media(max-width:640px){.mg{grid-template-columns:repeat(2,1fr)}}
+.mc{background:var(--s0);border:1px solid var(--br);border-radius:8px;padding:12px 12px 10px;cursor:pointer;transition:transform .12s,box-shadow .12s,border-color .12s;position:relative;overflow:hidden}
+.mc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--acc,var(--br));transition:height .12s}
+.mc:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,.09);border-color:var(--acc,var(--br))}
+.mc:hover::before{height:3px}
+.mnum{font-size:9.5px;font-family:'Courier New',monospace;color:var(--t2);margin-bottom:4px}
+.mname{font-size:12.5px;font-weight:600;color:var(--t0);margin-bottom:4px;line-height:1.3}
+.mdesc{font-size:11px;color:var(--t1);line-height:1.4}
+.mbadge{display:inline-block;margin-top:8px;padding:2px 8px;border-radius:100px;font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+
+/* flagship */
+.flagship{grid-column:1/-1;background:var(--flagship-bg);border:1.5px solid var(--flagship-br);border-radius:10px;padding:18px 20px;cursor:pointer;transition:box-shadow .15s,transform .12s;display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:20px;align-items:start}
+.flagship:hover{box-shadow:0 0 0 2px var(--flagship-br),0 8px 24px rgba(0,0,0,.1);transform:translateY(-1px)}
+@media(max-width:560px){.flagship{grid-template-columns:1fr}}
+.fs-eye{font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--flagship);margin-bottom:6px}
+.fs-name{font-family:Georgia,serif;font-size:19px;color:var(--t0);margin-bottom:6px;line-height:1.2}
+.fs-desc{font-size:12px;color:var(--t1);line-height:1.55}
+.fs-sl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--t2);margin-bottom:6px}
+.dod{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.dod-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.dod-n{font-size:11.5px;font-weight:600;color:var(--t0)}
+.dod-s{font-size:10px;color:var(--t2);margin-left:auto}
+.fs-outs{display:flex;flex-direction:column;gap:5px}
+.fs-o{font-size:11.5px;color:var(--t1);display:flex;gap:6px;align-items:flex-start}
+.fs-o::before{content:'→';color:var(--flagship);flex-shrink:0}
+
+/* foundation */
+.fstrip{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;margin-top:8px}
+@media(max-width:580px){.fstrip{grid-template-columns:1fr 1fr}}
+.fc{background:var(--s0);border:1px solid var(--br);border-radius:8px;padding:12px 14px}
+.fc.vault{background:var(--learn-bg);border-color:var(--learn-br);cursor:pointer}
+.ft{font-size:12px;font-weight:700;color:var(--t0);margin-bottom:3px}
+.fd{font-size:11px;color:var(--t1);line-height:1.4}
+.ftag{display:inline-block;margin-top:6px;font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--t2);border:1px solid var(--br);border-radius:4px;padding:2px 6px}
+
+/* agents */
+.awt{background:var(--s0);border:1px solid var(--br);border-radius:10px;padding:22px;overflow-x:auto}
+.ceo-row{display:flex;justify-content:center;margin-bottom:4px}
+.ceo-node{display:flex;flex-direction:column;align-items:center;gap:4px}
+.ceo-pill{padding:10px 30px;border-radius:100px;border:1.5px solid var(--flagship-br);background:var(--flagship-bg);color:var(--flagship);font-size:14px;font-weight:700}
+.nm{font-size:9.5px;font-family:'Courier New',monospace;color:var(--t2)}
+.nr{font-size:11px;color:var(--t2);text-align:center;max-width:160px;line-height:1.3}
+.tree-line{display:flex;justify-content:center;margin:2px 0}
+.dir-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media(max-width:640px){.dir-grid{grid-template-columns:repeat(2,1fr)}}
+.dc{background:var(--s1);border:1px solid var(--br);border-radius:8px;padding:12px}
+.dn{font-size:12px;font-weight:600;color:var(--t0);margin-bottom:2px}
+.dm{font-size:9.5px;font-family:'Courier New',monospace;color:var(--t2);margin-bottom:8px}
+.alist{border-top:1px solid var(--br);padding-top:7px;display:flex;flex-direction:column;gap:3px}
+.ai{font-size:11px;color:var(--t1);display:flex;align-items:center;gap:5px}
+.ai::before{content:'';width:3px;height:3px;border-radius:50%;background:var(--t2);flex-shrink:0}
+.ai .hk{margin-left:auto;font-size:9px;font-family:monospace;color:var(--t2);background:var(--s0);border:1px solid var(--br);border-radius:3px;padding:1px 4px}
+.pcards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
+@media(max-width:560px){.pcards{grid-template-columns:1fr}}
+.pc{background:var(--s1);border:1px solid var(--br);border-radius:8px;padding:12px 14px}
+.pct{font-size:12px;font-weight:700;color:var(--t0);margin-bottom:4px}
+.pcd{font-size:11.5px;color:var(--t1);line-height:1.5}
+
+/* simulator standalone */
+.sim-strip{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:8px;margin-top:12px}
+@media(max-width:560px){.sim-strip{grid-template-columns:1fr}}
+
+/* journey */
+.jstep{display:grid;grid-template-columns:200px 1fr;gap:14px;position:relative;min-height:72px}
+.jstep+.jstep{margin-top:2px}
+.jleft{display:flex;align-items:flex-start;gap:12px;padding:16px 0;position:relative}
+.jleft::after{content:'';position:absolute;left:19px;top:56px;bottom:-2px;width:1px;background:var(--br);z-index:0}
+.jstep:last-child .jleft::after{display:none}
+.jnum{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;position:relative;z-index:1;border:2px solid}
+.jmeta{padding-top:4px}
+.jph{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;margin-bottom:3px}
+.jq{font-size:13px;font-weight:600;color:var(--t0);line-height:1.35}
+.jright{padding:16px 0;display:flex;flex-direction:column;gap:8px}
+.jchips{display:flex;flex-wrap:wrap;gap:5px}
+.jchip{padding:4px 10px;border-radius:6px;border:1px solid;font-size:11.5px;font-weight:500;cursor:pointer;transition:opacity .12s}
+.jchip:hover{opacity:.7}
+.jout{font-size:12.5px;color:var(--t1);line-height:1.5}
+.jout b{color:var(--flagship);font-weight:600}
+@media(max-width:540px){.jstep{grid-template-columns:1fr}.jleft::after{display:none}}
+
+/* detail panel */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:40}
+.overlay.on{display:block}
+.panel{position:fixed;right:0;top:0;bottom:0;width:min(360px,90vw);background:var(--s0);border-left:1px solid var(--br);z-index:50;padding:20px;transform:translateX(100%);transition:transform .22s cubic-bezier(.4,0,.2,1);overflow-y:auto}
+.panel.on{transform:translateX(0)}
+.p-close{display:flex;justify-content:flex-end;margin-bottom:14px}
+.p-close button{background:var(--s1);border:1px solid var(--br);border-radius:6px;padding:5px 12px;font-size:12px;color:var(--t1);cursor:pointer}
+.p-close button:hover{color:var(--t0)}
+.p-num{font-size:9.5px;font-family:'Courier New',monospace;color:var(--t2);margin-bottom:5px}
+.p-name{font-family:Georgia,serif;font-size:20px;color:var(--t0);margin-bottom:6px;line-height:1.2}
+.p-cat{display:inline-block;padding:3px 10px;border-radius:100px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px;border:1px solid}
+.p-div{height:1px;background:var(--br);margin:14px 0}
+.p-sl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--t2);margin-bottom:7px}
+.p-desc{font-size:13.5px;color:var(--t1);line-height:1.65;margin-bottom:14px}
+.p-outs{display:flex;flex-direction:column;gap:5px}
+.p-out{font-size:13px;color:var(--t1);display:flex;gap:7px;align-items:flex-start;line-height:1.4}
+.p-arr{flex-shrink:0;font-weight:600}
+.p-conns{display:flex;flex-wrap:wrap;gap:5px}
+.p-conn{padding:3px 10px;background:var(--s1);border:1px solid var(--br);border-radius:5px;font-size:11px;color:var(--t1);cursor:pointer}
+.p-conn:hover{color:var(--t0)}
+</style>
+
+<div class="app">
+<header>
+  <div class="logo">CIOS <span>Contract Intelligence Operating System</span></div>
+  <div class="tagline">The Bloomberg Terminal of Procurement</div>
+</header>
+
+<div class="tabs">
+  <button class="tab on" data-t="platform">Platform Map</button>
+  <button class="tab" data-t="agents">AI Engine</button>
+  <button class="tab" data-t="journey">The Journey</button>
+</div>
+
+<div class="view on" id="v-platform"></div>
+<div class="view" id="v-agents"></div>
+<div class="view" id="v-journey"></div>
+</div>
+
+<div class="overlay" id="overlay" onclick="closePanel()"></div>
+<div class="panel" id="panel">
+  <div class="p-close"><button onclick="closePanel()">✕ Close</button></div>
+  <div id="pb"></div>
+</div>
+
+<script>
+const CAT={
+  discover:  {label:'Discover',  fg:'var(--discover)',  bg:'var(--discover-bg)',  br:'var(--discover-br)'},
+  decide:    {label:'Decide',    fg:'var(--decide)',    bg:'var(--decide-bg)',    br:'var(--decide-br)'},
+  comply:    {label:'Comply',    fg:'var(--comply)',    bg:'var(--comply-bg)',    br:'var(--comply-br)'},
+  strengthen:{label:'Strengthen',fg:'var(--strengthen)',bg:'var(--strengthen-bg)',br:'var(--strengthen-br)'},
+  compete:   {label:'Compete',   fg:'var(--compete)',   bg:'var(--compete-bg)',   br:'var(--compete-br)'},
+  flagship:  {label:'⭐ Flagship',fg:'var(--flagship)', bg:'var(--flagship-bg)', br:'var(--flagship-br)'},
+  manage:    {label:'Manage',    fg:'var(--manage)',    bg:'var(--manage-bg)',    br:'var(--manage-br)'},
+  learn:     {label:'Learn',     fg:'var(--learn)',     bg:'var(--learn-bg)',     br:'var(--learn-br)'},
+};
+
+const M={
+  '01':{name:'Opportunity Intelligence',cat:'discover',
+    short:'AI-enriched discovery from SAM.gov, state portals, and RSS feeds.',
+    desc:'Automated discovery and intelligence extraction from SAM.gov feeds, state portals, custom RSS, and manual entry. AI extracts requirements, evaluation criteria, incumbent signals, and competitive intelligence from raw solicitation documents.',
+    outputs:['Enriched opportunity records with extracted requirements','Evaluation criteria and factor weights identified','Incumbent contractor signals surfaced','Competitive intensity score per opportunity'],
+    connects:['02','05','08','12']},
+  '02':{name:'Bid / No-Bid Engine',cat:'decide',
+    short:'Evidence-based go/no-go across 8 weighted dimensions.',
+    desc:'Go/no-go decision support scored across eight dimensions: Strategic Fit (20%), Win Probability (20%), Past Performance Alignment (15%), Capability Match (15%), Competitive Position (10%), Cost of Bid ROI (10%), Risk Profile (5%), Relationship Strength (5%). Always includes full rationale and an alternative recommendation.',
+    outputs:['Weighted composite score with rationale','Go / No-Go recommendation','Per-dimension breakdown with evidence','Alternative recommendation always included'],
+    connects:['01','04','05','06','12']},
+  '03':{name:'Procurement Rule Engine',cat:'comply',
+    short:'Jurisdiction-agnostic rule packs: FAR, DFARS, EU, World Bank.',
+    desc:'Pluggable rule enforcement layer ensuring every analysis cites the applicable regulation. Supports US Federal FAR, DFARS, state/local Uniform Procurement Act, EU Directive 2014/24/EU, and World Bank IPF Borrower Procurement Regulations. Enterprise customers can define custom rule packs.',
+    outputs:['Rule pack auto-identified per solicitation','Regulation-grounded analysis for all modules','Rule packs: FAR · DFARS · State/Local · EU 2014/24 · World Bank','Custom rule packs available for Enterprise'],
+    connects:['04','13']},
+  '04':{name:'Compliance Engine',cat:'comply',
+    short:'Automated mandatory compliance verification before bid commitment.',
+    desc:'Verifies all mandatory compliance gates before bid resource commitment: SAM.gov registration, NAICS eligibility, set-aside qualifications, CMMC level requirements, security clearance needs, certifications, insurance, and financial thresholds.',
+    outputs:['SAM.gov registration status','NAICS code eligibility','Set-aside qualification: 8(a), SDVOSB, HUBZone, WOSB','CMMC / NIST 800-171 level assessment','Insurance and certification gaps flagged'],
+    connects:['03','02']},
+  '05':{name:'Capability Gap Analysis',cat:'strengthen',
+    short:'NLP requirement extraction matched to org capabilities via vector similarity.',
+    desc:'Extracts solicitation requirements using NLP, then vector-similarity-matches them against organizational capabilities in the Knowledge Vault. Produces a gap map with severity ratings and specific remediation options — teaming, hiring, or subcontracting — for each gap.',
+    outputs:['Requirement-to-capability match scores','Gap map with severity ratings','Remediation options per gap: team / hire / sub','Capability coverage percentage'],
+    connects:['01','07','14','11']},
+  '06':{name:'Past Performance Intelligence',cat:'strengthen',
+    short:'Smart relevance scoring of PP records vs. active opportunities.',
+    desc:'Scores past performance records for relevance against active opportunities using vector similarity — not keyword matching. Applies recency and dollar-value weighting. Tracks CPARS ratings and assists with narrative generation.',
+    outputs:['Relevance scores per PP record per opportunity','CPARS rating tracking','Top-ranked PP records per solicitation','Recency and dollar-value weighted rankings','Narrative generation assistance'],
+    connects:['02','11','13','14']},
+  '07':{name:'Teaming Recommendation Engine',cat:'strengthen',
+    short:'Identifies optimal teaming configuration to maximize award probability.',
+    desc:'Analyzes capability gaps, small business strategy requirements, historical teaming success, partner risk, and relationship strength to recommend the optimal teaming structure for each opportunity. Goes beyond "who we know" to identify partners that improve the proposal.',
+    outputs:['Gap-filling partner recommendations','Small business strategy: 8(a)/SDVOSB/HUBZone/WOSB','Partner risk assessment','Historical teaming success analysis','Relationship strength mapping'],
+    connects:['05','08','14']},
+  '08':{name:'Competitive Intelligence',cat:'compete',
+    short:'Competitor win rates, pricing, and incumbent vulnerability from public data.',
+    desc:'Aggregates USASpending.gov, FPDS-NG, SAM.gov, and SEC filings to build competitor profiles with win rate estimates, pricing tendencies, and incumbent vulnerability assessments.',
+    outputs:['Competitor profiles with win rate estimates','Pricing tendency analysis','Incumbent vulnerability assessment','Agency relationship mapping','Competitive intensity score per opportunity'],
+    connects:['01','02','12']},
+  '09':{name:'Value Proposition Builder',cat:'manage',
+    short:'Tailored discriminators per opportunity, grounded in Knowledge Vault evidence.',
+    desc:'Builds differentiated positioning statements and discriminator sets for each specific opportunity, drawing from the Knowledge Vault to ground every claim in verifiable evidence. Ranks discriminators by relevance to each evaluation factor.',
+    outputs:['Tailored discriminator set per opportunity','Evidence-backed positioning statement','Discriminators ranked by evaluation factor relevance'],
+    connects:['06','14','11']},
+  '10':{name:'Executive Capture Dashboard',cat:'manage',
+    short:'Board-level pipeline: weighted value, win probability, BD ROI.',
+    desc:'Aggregates all CIOS intelligence into an executive view — weighted pipeline value, win probability distribution, bid/no-bid ratio trends, cost per win, and ROI by market segment.',
+    outputs:['Weighted pipeline value (probability-adjusted)','Win probability distribution across pipeline','Bid/no-bid ratio and trends','Cost per win and BD ROI by segment'],
+    connects:['02','12','15']},
+  '11':{name:'Proposal Readiness Score',cat:'manage',
+    short:'Six-dimension readiness assessment before writing begins.',
+    desc:'Scores submission readiness across six dimensions before committing to proposal development — past performance quality, team bios, technical approach, management plan, price competitiveness, and compliance documentation.',
+    outputs:['Readiness score across 6 dimensions','Past performance quality score','Team bios completeness','Technical approach readiness','Price competitiveness estimate','Compliance documentation status'],
+    connects:['06','05','09','13']},
+  '12':{name:'Award Probability Engine',cat:'decide',
+    short:'ML win probability with confidence interval and evidence chain.',
+    desc:'ML-powered win probability drawing on bid history, competitive landscape, agency relationship signals, solution strength, and pricing position. Always includes a confidence interval and full evidence chain — never just a number.',
+    outputs:['Award probability score (0.0–1.0)','Confidence interval','Evidence chain supporting the score','Key factors driving probability up or down'],
+    connects:['01','02','08','06']},
+  '13':{name:'Award Simulator',cat:'flagship',
+    short:'FAR 15.305 source selection simulation — color ratings, red team, gate review.',
+    desc:'The only platform that emulates government source selection evaluation (FAR Part 15 / DFARS PGI 215.3) before proposal submission. AI acts as the Source Selection Evaluation Board, producing color/adjectival ratings, risk ratings, weaknesses, significant weaknesses, deficiencies, red team commentary, and a ranked improvement roadmap.',
+    outputs:['DoD color ratings per factor: Blue (Outstanding) → Red (Unacceptable)','Risk ratings: Low / Moderate / High per factor','Strengths, Weaknesses, Significant Weaknesses, Deficiencies with FAR citations','Red team commentary — 3 to 5 government evaluator observations','Gate Review Recommendation: SUBMIT / REVISE / WITHDRAW','Award probability with confidence score','Ranked improvement roadmap with expected score impact per action'],
+    connects:['01','06','07','11','14']},
+  '14':{name:'Knowledge Vault',cat:'learn',
+    short:'Per-tenant private vector DB. The memory layer for every AI agent.',
+    desc:'A per-tenant private vector database (Qdrant) containing past performance records, proposals, capability statements, resumes, debrief letters, and lessons learned. Every AI agent draws context from this vault. It compounds in value with every document added, creating switching costs and a deepening intelligence advantage.',
+    outputs:['Semantic search across all organizational documents','Debrief capture: post-award, post-loss, teaming debriefs','Context injection into all AI agent analyses','Per-tenant isolation — zero cross-contamination','AES-256 encryption with tenant-derived keys','Voyage AI voyage-3 embeddings, 1024 dimensions'],
+    connects:['05','06','07','09','13','15']},
+  '15':{name:'Organizational Intelligence',cat:'learn',
+    short:'Continuous win/loss trends, capability growth, and BD ROI analytics.',
+    desc:'Continuously tracks organizational capture performance over time — win/loss trends by segment, capability growth trajectory, market penetration rates, and BD ROI by investment category.',
+    outputs:['Win/loss trend analysis by segment and agency','Capability growth tracking over time','Market penetration analysis','BD ROI by investment category','Organizational intelligence score'],
+    connects:['10','14']},
+};
+
+function badge(cat){
+  const c=CAT[cat];
+  return `<span class="mbadge" style="background:${c.bg};color:${c.fg};border:1px solid ${c.br}">${c.label}</span>`;
+}
+function card(id){
+  const m=M[id],c=CAT[m.cat];
+  return `<div class="mc" style="--acc:${c.fg}" onclick="openPanel('${id}')">
+    <div class="mnum">MODULE ${id}</div>
+    <div class="mname">${m.name}</div>
+    <div class="mdesc">${m.short}</div>
+    ${badge(m.cat)}
+  </div>`;
+}
+
+/* ── Platform ── */
+document.getElementById('v-platform').innerHTML=`
+  <div class="bl">Intelligence &amp; Decision</div>
+  <div class="mg">${card('01')}${card('02')}${card('08')}${card('12')}</div>
+
+  <div class="bl">Flagship Feature</div>
+  <div class="mg">
+    <div class="flagship" onclick="openPanel('13')">
+      <div>
+        <div class="fs-eye">⭐ Module 13 · Flagship Feature</div>
+        <div class="fs-name">Award Simulator</div>
+        <div class="fs-desc">Emulate government source selection evaluation (FAR 15.305 / DFARS PGI 215.3) before writing a single page of proposal. The only platform that shows you what a Source Selection Evaluation Board sees — with the exact language evaluators use.</div>
+      </div>
+      <div>
+        <div class="fs-sl">DoD Color / Adjectival Ratings</div>
+        <div class="dod"><div class="dod-dot" style="background:#3B82F6"></div><span class="dod-n">Blue · Outstanding</span><span class="dod-s">95–100</span></div>
+        <div class="dod"><div class="dod-dot" style="background:#8B5CF6"></div><span class="dod-n">Purple · Good</span><span class="dod-s">80–94</span></div>
+        <div class="dod"><div class="dod-dot" style="background:#10B981"></div><span class="dod-n">Green · Acceptable</span><span class="dod-s">65–79</span></div>
+        <div class="dod"><div class="dod-dot" style="background:#F59E0B"></div><span class="dod-n">Yellow · Marginal</span><span class="dod-s">40–64</span></div>
+        <div class="dod"><div class="dod-dot" style="background:#EF4444"></div><span class="dod-n">Red · Unacceptable</span><span class="dod-s">0–39</span></div>
+      </div>
+      <div class="fs-outs">
+        <div class="fs-sl">Key Outputs</div>
+        <div class="fs-o">Per-factor color &amp; adjectival ratings</div>
+        <div class="fs-o">Weaknesses, Sig. Weaknesses, Deficiencies + FAR citations</div>
+        <div class="fs-o">Red team commentary (3–5 evaluator observations)</div>
+        <div class="fs-o">Gate Review: SUBMIT / REVISE / WITHDRAW</div>
+        <div class="fs-o">Ranked improvement roadmap with score impact</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bl">Compliance &amp; Capability</div>
+  <div class="mg">${card('03')}${card('04')}${card('05')}${card('06')}</div>
+
+  <div class="bl">Prepare, Manage &amp; Compete</div>
+  <div class="mg">${card('07')}${card('09')}${card('10')}${card('11')}</div>
+
+  <div class="bl">Learn</div>
+  <div class="mg" style="grid-template-columns:repeat(2,1fr)">${card('14')}${card('15')}</div>
+
+  <div class="bl">Data Foundation</div>
+  <div class="fstrip">
+    <div class="fc vault" onclick="openPanel('14')">
+      <div class="ft">Knowledge Vault</div>
+      <div class="fd">Per-tenant private vector DB (Qdrant). Voyage AI voyage-3 embeddings, 1024-dim. Zero cross-tenant contamination. The memory layer that compounds over time with every document added.</div>
+      <span class="ftag">voyage-3 · 1024-dim · AES-256</span>
+    </div>
+    <div class="fc"><div class="ft">SAM.gov</div><div class="fd">Federal opportunity feeds, contractor registration, set-aside eligibility data.</div><span class="ftag">Phase 2</span></div>
+    <div class="fc"><div class="ft">USASpending.gov</div><div class="fd">Historical award data, competitor win history, incumbent analysis.</div><span class="ftag">Phase 2</span></div>
+    <div class="fc"><div class="ft">FPDS-NG</div><div class="fd">Federal Procurement Data System — contract awards, modifications, pricing history.</div><span class="ftag">Phase 2</span></div>
+  </div>
+`;
+
+/* ── Agents ── */
+const DIRS=[
+  {name:'Capture Director',    analysts:['Bid Analysis Analyst','Award Probability Analyst','Proposal Readiness Analyst']},
+  {name:'Compliance Director', analysts:['FAR/DFARS Analyst','CMMC/NIST Analyst','Set-Aside Eligibility Analyst']},
+  {name:'Agency Intel Director',analysts:['Agency Relationship Analyst','Program Office Intel Analyst','Requirements Prediction Analyst']},
+  {name:'Technical Director',  analysts:['Requirements Analyst','Capability Gap Analyst','Technical Approach Analyst']},
+  {name:'Pricing Director',    analysts:['Price-to-Win Analyst','Cost Structure Analyst','Market Pricing Analyst']},
+  {name:'Competitive Intel Director',analysts:['Incumbent Analysis Analyst','Competitor Profiling Analyst','Win Pattern Analyst']},
+  {name:'Risk Director',       analysts:['Technical Risk Analyst','Programmatic Risk Analyst','Financial Risk Analyst']},
+  {name:'Proposal Director',   analysts:['Section Writer Analyst','Theme Development Analyst','Red Team Analyst']},
+];
+
+document.getElementById('v-agents').innerHTML=`
+  <div class="awt">
+    <div class="bl" style="margin-top:0">AI Orchestration Hierarchy</div>
+    <div class="ceo-row">
+      <div class="ceo-node">
+        <div class="ceo-pill">CEO Agent</div>
+        <div class="nm">claude-opus-4-8 · temperature 0.0</div>
+        <div class="nr">Synthesizes all Director outputs into executive-level recommendations</div>
+      </div>
+    </div>
+    <div class="tree-line" style="height:20px;border-left:none">
+      <div style="width:1px;height:20px;background:var(--br);margin:0 auto"></div>
+    </div>
+    <div class="dir-grid">
+      ${DIRS.map(d=>`
+        <div class="dc">
+          <div class="dn">${d.name}</div>
+          <div class="dm">claude-sonnet-4-6</div>
+          <div class="alist">
+            ${d.analysts.map(a=>`<div class="ai">${a}<span class="hk">haiku-4-5</span></div>`).join('')}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="pcards">
+      <div class="pc"><div class="pct">Users Never See Agents</div><div class="pcd">All AI orchestration is internal. Users receive structured recommendations — never raw agent outputs or intermediate reasoning traces.</div></div>
+      <div class="pc"><div class="pct">6 Required Output Elements</div><div class="pcd">Every recommendation must include: Evidence · Confidence Score (0–1) · Regulation Citation · Assumptions · Risks · Alternative Recommendation.</div></div>
+      <div class="pc"><div class="pct">Temperature 0.0 · Versioned</div><div class="pcd">All agents run at temperature 0 for reproducibility. Model version is pinned and recorded with every recommendation for full auditability.</div></div>
+    </div>
+  </div>
+  <div class="bl">Award Simulator Agent (Standalone)</div>
+  <div class="sim-strip">
+    <div class="fc" style="background:var(--flagship-bg);border-color:var(--flagship-br);cursor:pointer" onclick="openPanel('13')">
+      <div class="ft" style="color:var(--flagship)">Award Simulator Agent</div>
+      <div class="fd">Runs independently of CEO/Director hierarchy. Invoked directly by the Celery simulation task. Uses <code style="font-family:monospace;font-size:10px">claude-opus-4-8</code> at temperature 0.0 with 16,384 max tokens.</div>
+    </div>
+    <div class="fc">
+      <div class="ft">System Prompt</div>
+      <div class="fd">Hardcoded FAR 15.305, DFARS PGI 215.3, and DoD source selection procedure logic. Evaluation methodology is regulatory, not heuristic.</div>
+    </div>
+    <div class="fc">
+      <div class="ft">JSON Schema Output</div>
+      <div class="fd">Strict output schema: 15+ top-level fields, nested factor_ratings dict, findings arrays each with FAR citation. Fence-stripping ensures parseable output.</div>
+    </div>
+  </div>
+`;
+
+/* ── Journey ── */
+const STEPS=[
+  {phase:'Discover',q:'Is this opportunity worth tracking?',color:'var(--discover)',bg:'var(--discover-bg)',modules:['01','08'],
+   out:'An enriched opportunity record surfaces — requirements extracted, incumbent identified, competitive intensity scored. <b>Decision in minutes, not days.</b>'},
+  {phase:'Decide',q:'Should we bid on this?',color:'var(--decide)',bg:'var(--decide-bg)',modules:['02','04','12'],
+   out:'A weighted composite score across 8 dimensions with a go/no-go recommendation, full rationale, and an alternative if the answer is no. <b>Evidence-backed, never gut-feel.</b>'},
+  {phase:'Strengthen',q:'What do we need to win?',color:'var(--strengthen)',bg:'var(--strengthen-bg)',modules:['03','05','06','07'],
+   out:'Gap map shows exactly what\'s missing. Past performance ranked by relevance. Teaming partners identified. Compliance gates verified. <b>Structured before a single page is written.</b>'},
+  {phase:'Simulate',q:'How would the government evaluate us today?',color:'var(--flagship)',bg:'var(--flagship-bg)',modules:['13'],
+   out:'A complete FAR 15.305 evaluation — color ratings per factor, deficiencies, red team commentary, gate review. Ranked improvements show what to fix and in what order. <b>See the SSEB\'s view before submission.</b>'},
+  {phase:'Prepare',q:'Are we ready to write and submit?',color:'var(--manage)',bg:'var(--manage-bg)',modules:['09','11'],
+   out:'Readiness score surfaces remaining gaps. Tailored discriminators grounded in Knowledge Vault evidence ready for integration. <b>Write the proposal knowing exactly what Outstanding looks like.</b>'},
+  {phase:'Learn',q:'What do we carry forward?',color:'var(--learn)',bg:'var(--learn-bg)',modules:['14','15'],
+   out:'Debrief captured in the Knowledge Vault. Win/loss trends updated. Every future simulation and analysis gets smarter. <b>The platform compounds in value with every pursuit.</b>'},
+];
+
+document.getElementById('v-journey').innerHTML=STEPS.map((s,i)=>`
+  <div class="jstep">
+    <div class="jleft">
+      <div class="jnum" style="background:${s.bg};color:${s.color};border-color:${s.color}">${i+1}</div>
+      <div class="jmeta">
+        <div class="jph" style="color:${s.color}">${s.phase}</div>
+        <div class="jq">${s.q}</div>
+      </div>
+    </div>
+    <div class="jright">
+      <div class="jchips">
+        ${s.modules.map(id=>{const m=M[id],c=CAT[m.cat];return`<div class="jchip" style="background:${c.bg};color:${c.fg};border-color:${c.br}" onclick="openPanel('${id}')">M${id} · ${m.name}</div>`;}).join('')}
+      </div>
+      <div class="jout">${s.out}</div>
+    </div>
+  </div>
+`).join('');
+
+/* ── Panel ── */
+function openPanel(id){
+  const m=M[id],c=CAT[m.cat];
+  document.getElementById('pb').innerHTML=`
+    <div class="p-num">MODULE ${id}</div>
+    <div class="p-name">${m.name}</div>
+    <div class="p-cat" style="background:${c.bg};color:${c.fg};border-color:${c.br}">${c.label}</div>
+    <div class="p-sl">Description</div>
+    <div class="p-desc">${m.desc}</div>
+    <div class="p-div"></div>
+    <div class="p-sl">Key Outputs</div>
+    <div class="p-outs">${m.outputs.map(o=>`<div class="p-out"><span class="p-arr" style="color:${c.fg}">→</span>${o}</div>`).join('')}</div>
+    ${m.connects.length?`<div class="p-div"></div><div class="p-sl">Connects To</div><div class="p-conns">${m.connects.map(cid=>`<div class="p-conn" onclick="openPanel('${cid}')">M${cid} · ${M[cid].name}</div>`).join('')}</div>`:''}
+  `;
+  document.getElementById('panel').classList.add('on');
+  document.getElementById('overlay').classList.add('on');
+}
+function closePanel(){
+  document.getElementById('panel').classList.remove('on');
+  document.getElementById('overlay').classList.remove('on');
+}
+
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+    document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
+    t.classList.add('on');
+    document.getElementById('v-'+t.dataset.t).classList.add('on');
+  });
+});
+</script>
