@@ -44,7 +44,7 @@ COMPLIANCE ASSESSMENT
 =====================
 Opportunity: {opportunity_data.get('title', 'Unknown')}
 Agency: {opportunity_data.get('agency', 'Unknown')}
-Jurisdiction: {opportunity_data.get('jurisdiction', 'federal')}
+Jurisdiction: {opportunity_data.get('jurisdiction_type', 'federal')}
 Rule Pack: {context.rule_pack}
 Contract Type: {opportunity_data.get('contract_type', 'Unknown')}
 Set-Aside: {opportunity_data.get('set_aside_type', 'None')}

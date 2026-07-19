@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, func, or_
 
 from cios.core.dependencies import Auth, DB, Pages
-from cios.models.opportunity import Opportunity, OpportunityNote, OpportunityWatch
+from cios.models.opportunity import JurisdictionType, Opportunity, OpportunityNote, OpportunityWatch
 
 router = APIRouter()
 
@@ -20,7 +20,7 @@ class OpportunityCreate(BaseModel):
     agency: str | None = None
     sub_agency: str | None = None
     description: str | None = None
-    jurisdiction: str = "federal"
+    jurisdiction_type: JurisdictionType = JurisdictionType.federal
     naics_codes: list[str] = []
     set_aside_type: str | None = None
     solicitation_type: str | None = None
@@ -47,7 +47,7 @@ class OpportunityResponse(BaseModel):
     title: str
     agency: str | None
     solicitation_number: str | None
-    jurisdiction: str
+    jurisdiction_type: JurisdictionType
     status: str
     pipeline_stage: str
     award_probability_score: float | None
@@ -72,7 +72,7 @@ async def list_opportunities(
     status: str | None = Query(None),
     pipeline_stage: str | None = Query(None),
     search: str | None = Query(None),
-    jurisdiction: str | None = Query(None),
+    jurisdiction_type: JurisdictionType | None = Query(None),
     min_value: float | None = Query(None),
     max_value: float | None = Query(None),
     sort_by: str = Query("created_at"),
@@ -87,8 +87,8 @@ async def list_opportunities(
         query = query.where(Opportunity.status == status)
     if pipeline_stage:
         query = query.where(Opportunity.pipeline_stage == pipeline_stage)
-    if jurisdiction:
-        query = query.where(Opportunity.jurisdiction == jurisdiction)
+    if jurisdiction_type:
+        query = query.where(Opportunity.jurisdiction_type == jurisdiction_type)
     if min_value:
         query = query.where(Opportunity.estimated_value_max >= min_value)
     if max_value:

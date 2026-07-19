@@ -1,6 +1,7 @@
 """Opportunity Intelligence model — Module 1."""
 import uuid
 from datetime import datetime
+from enum import Enum
 from typing import Any
 
 from sqlalchemy import Boolean, DateTime, Float, Index, String, Text
@@ -11,6 +12,14 @@ from cios.core.database import Base
 from .base import UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin
 
 
+class JurisdictionType(str, Enum):
+    federal = "federal"          # US federal (FAR / DFARS)
+    state = "state"              # US state-level
+    local = "local"              # Municipal / county
+    tribal = "tribal"            # Tribal government
+    international = "international"  # EU, World Bank, bilateral
+
+
 class Opportunity(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin):
     __tablename__ = "opportunities"
     __table_args__ = (
@@ -18,6 +27,7 @@ class Opportunity(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin):
         Index("idx_opp_response_deadline", "response_deadline"),
         Index("idx_opp_award_probability", "award_probability_score"),
         Index("idx_opp_search", "search_vector", postgresql_using="gin"),
+        Index("idx_opp_jurisdiction_type", "tenant_id", "jurisdiction_type"),
     )
 
     # Identity
@@ -32,7 +42,9 @@ class Opportunity(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin):
     agency: Mapped[str | None] = mapped_column(String(256))
     sub_agency: Mapped[str | None] = mapped_column(String(256))
     office: Mapped[str | None] = mapped_column(String(256))
-    jurisdiction: Mapped[str] = mapped_column(String(64), default="federal")
+    jurisdiction_type: Mapped[JurisdictionType] = mapped_column(
+        String(32), default=JurisdictionType.federal, nullable=False
+    )
 
     # Classification
     naics_codes: Mapped[list] = mapped_column(JSONB, default=list)
