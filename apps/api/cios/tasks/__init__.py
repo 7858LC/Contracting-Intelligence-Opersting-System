@@ -18,6 +18,7 @@ celery_app = Celery(
         "cios.tasks.billing",
         "cios.tasks.email",
         "cios.tasks.onboarding",
+        "cios.tasks.pir",
     ],
 )
 
@@ -35,5 +36,12 @@ celery_app.conf.update(
         "cios.tasks.ingestion.*": {"queue": "ingestion"},
         "cios.tasks.analysis.*": {"queue": "analysis"},
         "cios.tasks.email.*": {"queue": "email"},
+        "cios.tasks.pir.*": {"queue": "pir_scan"},
+    },
+    beat_schedule={
+        "pir-daily-radar-scan": {
+            "task": "cios.tasks.pir.daily_radar_scan",
+            "schedule": 86400,  # every 24 hours
+        },
     },
 )

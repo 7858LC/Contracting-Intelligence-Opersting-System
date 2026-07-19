@@ -98,7 +98,7 @@ services:
       - api
     volumes:
       - ../../apps/api:/app
-    command: celery -A cios.tasks worker --loglevel=info --concurrency=4 -Q default,simulations,ingestion,analysis,email
+    command: celery -A cios.tasks worker --loglevel=info --concurrency=4 -Q default,simulations,ingestion,analysis,email,pir_scan
 
   # ── Celery Beat (Scheduler) ────────────────────────────────────────────────
   scheduler:
@@ -133,6 +133,34 @@ services:
       - api
     command: npm run dev
 
+  # ── n8n (Workflow automation) ─────────────────────────────────────────────
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: cios-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: admin
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD:-cios_n8n_password}
+      N8N_HOST: localhost
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: http://localhost:5678/
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: cios_n8n
+      DB_POSTGRESDB_USER: cios_user
+      DB_POSTGRESDB_PASSWORD: cios_pass
+      GENERIC_TIMEZONE: UTC
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - n8n_data:/home/node/.n8n
+    restart: unless-stopped
+
   # ── Flower (Celery monitoring) ────────────────────────────────────────────
   flower:
     build:
@@ -151,6 +179,7 @@ volumes:
   postgres_data:
   redis_data:
   qdrant_data:
+  n8n_data:
 
 networks:
   default:

@@ -302,6 +302,110 @@ class CIOSApiClient {
     const { data } = await this.client.get("/dashboard/stats");
     return data;
   }
+
+  // ── Procurement Intelligence Radar™ (PIR) ───────────────────────────────
+
+  async getRadarDashboard() {
+    const { data } = await this.client.get("/radar/dashboard");
+    return data;
+  }
+
+  async listCompanies(params?: Record<string, unknown>) {
+    const { data } = await this.client.get("/radar/companies", { params });
+    return data;
+  }
+
+  async createCompany(payload: Record<string, unknown>) {
+    const { data } = await this.client.post("/radar/companies", payload);
+    return data;
+  }
+
+  async getCompany(id: string) {
+    const { data } = await this.client.get(`/radar/companies/${id}`);
+    return data;
+  }
+
+  async updateCompany(id: string, payload: Record<string, unknown>) {
+    const { data } = await this.client.patch(`/radar/companies/${id}`, payload);
+    return data;
+  }
+
+  async deleteCompany(id: string) {
+    await this.client.delete(`/radar/companies/${id}`);
+  }
+
+  async triggerCompanyScan(id: string, daysBack = 60) {
+    const { data } = await this.client.post(`/radar/companies/${id}/scan`, null, {
+      params: { days_back: daysBack },
+    });
+    return data;
+  }
+
+  async listCompanySignals(companyId: string, params?: Record<string, unknown>) {
+    const { data } = await this.client.get(`/radar/companies/${companyId}/signals`, { params });
+    return data;
+  }
+
+  async triggerAIAnalysis(companyId: string) {
+    const { data } = await this.client.post(`/radar/companies/${companyId}/analyze`);
+    return data;
+  }
+
+  async listAIAnalyses(companyId: string) {
+    const { data } = await this.client.get(`/radar/companies/${companyId}/analyses`);
+    return data;
+  }
+
+  async getAIAnalysis(companyId: string, analysisId: string) {
+    const { data } = await this.client.get(`/radar/companies/${companyId}/analyses/${analysisId}`);
+    return data;
+  }
+
+  async listWatchlists() {
+    const { data } = await this.client.get("/radar/watchlists");
+    return data;
+  }
+
+  async createWatchlist(payload: { name: string; description?: string; is_default?: boolean }) {
+    const { data } = await this.client.post("/radar/watchlists", payload);
+    return data;
+  }
+
+  async deleteWatchlist(id: string) {
+    await this.client.delete(`/radar/watchlists/${id}`);
+  }
+
+  async addToWatchlist(watchlistId: string, companyId: string) {
+    const { data } = await this.client.post(`/radar/watchlists/${watchlistId}/companies/${companyId}`);
+    return data;
+  }
+
+  async removeFromWatchlist(watchlistId: string, companyId: string) {
+    const { data } = await this.client.delete(`/radar/watchlists/${watchlistId}/companies/${companyId}`);
+    return data;
+  }
+
+  async listSavedSearches() {
+    const { data } = await this.client.get("/radar/saved-searches");
+    return data;
+  }
+
+  async createSavedSearch(payload: { name: string; filters: Record<string, unknown>; notify_on_new?: boolean }) {
+    const { data } = await this.client.post("/radar/saved-searches", payload);
+    return data;
+  }
+
+  async triggerBulkScan(daysBack = 60, watchedOnly = false) {
+    const { data } = await this.client.post("/radar/scans", null, {
+      params: { days_back: daysBack, watched_only: watchedOnly },
+    });
+    return data;
+  }
+
+  async listScanJobs(params?: Record<string, unknown>) {
+    const { data } = await this.client.get("/radar/scans", { params });
+    return data;
+  }
 }
 
 export const api = new CIOSApiClient();

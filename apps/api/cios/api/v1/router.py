@@ -17,6 +17,7 @@ from .endpoints import (
     onboarding,
     webhooks,
     admin,
+    pir,
 )
 
 api_router = APIRouter()
@@ -65,3 +66,6 @@ api_router.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"]
 
 # Admin
 api_router.include_router(admin.router, prefix="/admin", tags=["Admin"])
+
+# Module PIR — Procurement Intelligence Radar™
+api_router.include_router(pir.router, prefix="/radar", tags=["Procurement Intelligence Radar"])

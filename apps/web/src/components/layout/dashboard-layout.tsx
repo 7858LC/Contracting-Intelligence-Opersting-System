@@ -11,6 +11,7 @@ import {
   ChevronDown,
   Home,
   LogOut,
+  Radar,
   Settings,
   Shield,
   Target,
@@ -23,6 +24,7 @@ import { clearTokens, getAccessToken } from "@/lib/auth";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Executive Dashboard", icon: Home },
+  { href: "/dashboard/radar", label: "Procurement Radar", icon: Radar, badge: "NEW" },
   { href: "/dashboard/opportunities", label: "Opportunities", icon: Target },
   { href: "/dashboard/bid-decisions", label: "Bid / No-Bid", icon: BarChart3 },
   { href: "/dashboard/award-simulator", label: "Award Simulator", icon: Award, badge: "FLAGSHIP" },
