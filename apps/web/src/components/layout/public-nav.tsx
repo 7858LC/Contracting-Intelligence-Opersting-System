@@ -17,7 +17,6 @@ const NAV_LINKS = [
   { href: "/executive-council", label: "Executive Council" },
   { href: "/pricing", label: "Pricing" },
   { href: "/about", label: "About" },
-  { href: "/#ventures", label: "Ventures" },
 ];
 
 export function PublicNav() {
