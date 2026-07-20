@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="7" fill="hsl(162,72%,36%)"/>
+  <!-- Radar rings -->
+  <circle cx="16" cy="17" r="10" stroke="white" stroke-width="1.2" stroke-opacity="0.25"/>
+  <circle cx="16" cy="17" r="6.5" stroke="white" stroke-width="1.2" stroke-opacity="0.4"/>
+  <circle cx="16" cy="17" r="3" stroke="white" stroke-width="1.2" stroke-opacity="0.6"/>
+  <!-- Sweep line -->
+  <line x1="16" y1="7" x2="16" y2="17" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-opacity="0.9"/>
+  <!-- Blip -->
+  <circle cx="21" cy="11" r="1.8" fill="hsl(38,95%,52%)"/>
+</svg>

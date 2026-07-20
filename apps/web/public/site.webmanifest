@@ -1,0 +1,12 @@
+{
+  "name": "Uzima Amka Ventures — Procurement Intelligence™",
+  "short_name": "CIOS™",
+  "description": "Executive decision support for public sector growth.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080d16",
+  "theme_color": "#1a9e6e",
+  "icons": [
+    { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any" }
+  ]
+}

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#080d16"/>
+  <rect x="0" y="0" width="4" height="630" fill="hsl(162,72%,36%)"/>
+  <text x="80" y="200" font-family="system-ui,-apple-system,sans-serif" font-size="14" font-weight="500" letter-spacing="4" fill="hsl(162,72%,46%)" text-transform="uppercase">UZIMA AMKA VENTURES</text>
+  <text x="80" y="310" font-family="system-ui,-apple-system,sans-serif" font-size="72" font-weight="700" fill="white">Procurement</text>
+  <text x="80" y="400" font-family="system-ui,-apple-system,sans-serif" font-size="72" font-weight="700" fill="white">Intelligence™</text>
+  <text x="80" y="500" font-family="system-ui,-apple-system,sans-serif" font-size="22" fill="#6b7280">Executive Decision Support for Public Sector Growth</text>
+  <!-- Radar decoration -->
+  <circle cx="1050" cy="315" r="160" stroke="hsl(162,72%,36%)" stroke-width="1" fill="none" opacity="0.2"/>
+  <circle cx="1050" cy="315" r="100" stroke="hsl(162,72%,36%)" stroke-width="1" fill="none" opacity="0.3"/>
+  <circle cx="1050" cy="315" r="45" stroke="hsl(162,72%,36%)" stroke-width="1.5" fill="none" opacity="0.4"/>
+  <line x1="1050" y1="155" x2="1050" y2="315" stroke="hsl(162,72%,36%)" stroke-width="2" opacity="0.6"/>
+  <circle cx="1110" cy="230" r="7" fill="hsl(38,95%,52%)"/>
+</svg>
