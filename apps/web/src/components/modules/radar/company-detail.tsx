@@ -73,6 +73,7 @@ interface AIAnalysis {
   suggested_messaging: string[];
   potential_stakeholders: { title: string; reason: string }[];
   confidence_explanation: string | null;
+  error_message: string | null;
   created_at: string;
 }
 
