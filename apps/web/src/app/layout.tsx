@@ -8,15 +8,33 @@ import "@/styles/globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const jetbrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains" });
 
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://uzimaamka.com";
+
 export const metadata: Metadata = {
   title: {
-    default: "CIOS — Contract Intelligence Operating System",
-    template: "%s | CIOS",
+    default: "Procurement Intelligence™ — Uzima Amka Ventures",
+    template: "%s | Uzima Amka Ventures",
   },
   description:
-    "The world's first Procurement Intelligence Platform. Increase award probability before proposal development begins.",
-  keywords: ["government contracting", "procurement intelligence", "bid decision", "award probability"],
-  robots: { index: false, follow: false },
+    "Executive decision support for public sector growth. CIOS™ — the Contract Intelligence Operating System — delivers Procurement Intelligence™ across six analytical modules.",
+  keywords: [
+    "procurement intelligence",
+    "government contracting",
+    "federal acquisition",
+    "capture management",
+    "bid decision",
+    "award probability",
+    "CIOS",
+    "Uzima Amka Ventures",
+  ],
+  metadataBase: new URL(BASE_URL),
+  robots: { index: true, follow: true },
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
+  manifest: "/site.webmanifest",
 };
 
 export const viewport: Viewport = {
