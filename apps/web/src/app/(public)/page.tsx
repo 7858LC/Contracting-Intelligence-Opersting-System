@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BarChart3, BookOpen, Brain, Radio, Shield, Target, Users } from "lucide-react";
+import { ArrowRight, BarChart3, BookOpen, Brain, Radio, Shield, Target, Activity, Home, Feather, TrendingUp, ExternalLink } from "lucide-react";
 import { buildPageMetadata } from "@/lib/metadata";
 import { organizationSchema, softwareApplicationSchema } from "@/lib/jsonld";
 
@@ -71,6 +71,41 @@ const PRINCIPLES = [
     n: "03",
     title: "Evidence-Based Commitment",
     body: "Allocate capture resources based on scored opportunity quality. Every recommendation carries a confidence score and evidence trail.",
+  },
+];
+
+const VENTURES = [
+  {
+    name: "Hostbook",
+    category: "Real Estate · Tax",
+    desc: "Bookkeeping for short-term rental hosts. Track income, expenses, and Schedule E obligations — without paying for a full accounting suite.",
+    href: "https://hostbook-app.netlify.app/",
+    icon: Home,
+    status: "live" as const,
+  },
+  {
+    name: "Unseen Layer",
+    category: "Theology · Writing",
+    desc: "Nine narrative agents. Five Pauline/Epistolary agents. Two literary modes. A textual intelligence system built by a preacher, for preachers.",
+    href: "https://unseenlayer.uzimaamka.com/",
+    icon: Feather,
+    status: "live" as const,
+  },
+  {
+    name: "Reclaim",
+    category: "Health · Protocol",
+    desc: "A structured metabolic protocol. Evidence-based frameworks for reclaiming metabolic health — built for people who want a system, not a trend.",
+    href: "https://reclaim-protocol.netlify.app/",
+    icon: Activity,
+    status: "live" as const,
+  },
+  {
+    name: "Leadflow",
+    category: "Sales · CRM",
+    desc: "Intelligent lead management and pipeline visibility for small sales teams. Capture, qualify, and close — without enterprise overhead.",
+    href: null,
+    icon: TrendingUp,
+    status: "soon" as const,
   },
 ];
 
@@ -237,6 +272,61 @@ export default function HomePage() {
             >
               Explore the CIOS™ platform <ArrowRight className="w-3.5 h-3.5" />
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Ventures */}
+      <section id="ventures" className="border-t border-border">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-24">
+          <div className="mb-12">
+            <p className="text-[11px] font-mono uppercase tracking-[0.18em] text-muted-foreground mb-5">
+              Uzima Amka Ventures
+            </p>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-5">
+              More from the portfolio
+            </h2>
+            <p className="text-muted-foreground leading-relaxed max-w-2xl">
+              Alongside CIOS™, Uzima Amka builds precision tools for underserved professional workflows —
+              each delivering institutional-grade capability at individual scale.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {VENTURES.map((v) => {
+              const card = (
+                <div
+                  key={v.name}
+                  className={`group relative border border-border rounded-lg p-5 bg-card transition-colors ${
+                    v.status === "live" ? "hover:border-primary/40 cursor-pointer" : "opacity-60"
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center">
+                      <v.icon className="w-4 h-4 text-primary" />
+                    </div>
+                    {v.status === "live" ? (
+                      <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/30 group-hover:text-primary transition-colors" />
+                    ) : (
+                      <span className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground border border-border rounded px-1.5 py-0.5">
+                        Soon
+                      </span>
+                    )}
+                  </div>
+                  <div className="font-mono text-[10px] text-muted-foreground mb-2 uppercase tracking-widest">
+                    {v.category}
+                  </div>
+                  <div className="font-semibold text-sm mb-2">{v.name}</div>
+                  <div className="text-xs text-muted-foreground leading-relaxed">{v.desc}</div>
+                </div>
+              );
+              return v.href ? (
+                <a key={v.name} href={v.href} target="_blank" rel="noopener noreferrer">
+                  {card}
+                </a>
+              ) : (
+                <div key={v.name}>{card}</div>
+              );
+            })}
           </div>
         </div>
       </section>
