@@ -104,7 +104,7 @@ export default function AboutPage() {
               Uzima Amka
             </h2>
             <p className="text-muted-foreground leading-relaxed mb-5">
-              Uzima Amka is Swahili for "wake to life" — a vital awakening. The name reflects the
+              Uzima Amka is Swahili for &ldquo;wake to life&rdquo; — a vital awakening. The name reflects the
               transformation we believe is available to procurement organizations that adopt structured
               intelligence as a core operating discipline.
             </p>

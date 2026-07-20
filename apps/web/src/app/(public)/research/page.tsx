@@ -55,7 +55,7 @@ export default function ResearchPage() {
               Institutional intelligence. Structured for retrieval.
             </p>
             <p className="text-base text-muted-foreground leading-relaxed mb-10 max-w-2xl">
-              Knowledge Vault™ is the institutional memory layer of CIOS™. It organizes your organization's
+              Knowledge Vault™ is the institutional memory layer of CIOS™. It organizes your organization&apos;s
               past performance, capability evidence, teaming relationships, and capture intelligence into
               a searchable, structured repository that reduces capture ramp time and prevents institutional forgetting.
             </p>

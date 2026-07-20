@@ -109,7 +109,7 @@ export default function SimulationPage() {
                 and technical/management approach — using the specific weights from the RFP.
               </p>
               <p className="text-muted-foreground leading-relaxed">
-                For DFARS acquisitions, the simulation uses the DOD Source Selection Procedures' color
+                For DFARS acquisitions, the simulation uses the DOD Source Selection Procedures&apos; color
                 and adjectival rating system. For non-DOD acquisitions, it adapts to the agency-specific
                 evaluation framework defined in Section M of the solicitation.
               </p>

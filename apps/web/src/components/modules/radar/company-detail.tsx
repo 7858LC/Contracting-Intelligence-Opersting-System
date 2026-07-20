@@ -566,7 +566,7 @@ export function CompanyDetail({ companyId }: { companyId: string }) {
           {!latestAnalysis && !analyzeMutation.isPending && (
             <div className="text-center py-12 text-muted-foreground">
               <Sparkles className="w-8 h-8 mx-auto mb-2 opacity-20" />
-              <p className="text-sm">No analysis yet. Click "Run Analysis" to generate intelligence.</p>
+              <p className="text-sm">No analysis yet. Click &ldquo;Run Analysis&rdquo; to generate intelligence.</p>
             </div>
           )}
         </div>

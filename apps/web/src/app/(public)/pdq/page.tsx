@@ -56,7 +56,7 @@ export default function PDQPage() {
             </p>
             <p className="text-base text-muted-foreground leading-relaxed mb-10 max-w-2xl">
               The majority of proposal losses are determined before the proposal begins — by the decision
-              to pursue. PDQ™ converts the BD team's instinct-based pursuit decision into an eight-dimension
+              to pursue. PDQ™ converts the BD team&apos;s instinct-based pursuit decision into an eight-dimension
               scored analysis with full evidence trail. Every PDQ review is auditable, reproducible, and
               comparable across pursuits and reviewers.
             </p>

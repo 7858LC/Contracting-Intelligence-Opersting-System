@@ -49,7 +49,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           {/* Testimonial */}
           <div className="border border-white/10 rounded-xl p-5 bg-white/5 backdrop-blur-sm">
             <p className="text-white/80 text-sm leading-relaxed italic mb-3">
-              "We went from a 22% win rate to 41% in two quarters. UzimaAmka showed us exactly why we were losing."
+              &ldquo;We went from a 22% win rate to 41% in two quarters. UzimaAmka showed us exactly why we were losing.&rdquo;
             </p>
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center text-xs font-bold text-primary">
