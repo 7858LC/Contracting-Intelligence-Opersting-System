@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BarChart3, BookOpen, Brain, Radio, Shield, Target, Activity, Home, Feather, TrendingUp, ExternalLink } from "lucide-react";
+import { ArrowRight, BarChart3, BookOpen, Brain, Radio, Shield, Target, Activity, Home, Feather, TrendingUp, ExternalLink, Zap, Tag, Calculator, Timer } from "lucide-react";
 import { buildPageMetadata } from "@/lib/metadata";
 import { organizationSchema, softwareApplicationSchema } from "@/lib/jsonld";
 
@@ -105,6 +105,38 @@ const VENTURES = [
     desc: "Intelligent lead management and pipeline visibility for small sales teams. Capture, qualify, and close — without enterprise overhead.",
     href: null,
     icon: TrendingUp,
+    status: "soon" as const,
+  },
+  {
+    name: "Autoflow",
+    category: "Sales · Automation",
+    desc: "Automated follow-up sequences and job workflows that connect directly to Leadflow. Turn captured leads into scheduled work without the manual handoff.",
+    href: null,
+    icon: Zap,
+    status: "soon" as const,
+  },
+  {
+    name: "Flipbook",
+    category: "Resale · Inventory",
+    desc: "Buy-sell inventory management for resellers and thrift operators. Scan UPCs, track acquisition cost, and manage listings across platforms.",
+    href: null,
+    icon: Tag,
+    status: "soon" as const,
+  },
+  {
+    name: "Fieldbook",
+    category: "Trades · Quoting",
+    desc: "Field quoting and job costing for trades contractors. Generate estimates on-site, track materials, and connect completed jobs back to Leadflow.",
+    href: null,
+    icon: Calculator,
+    status: "soon" as const,
+  },
+  {
+    name: "KB EMOM",
+    category: "Fitness · Tracking",
+    desc: "Every-minute-on-the-minute kettlebell protocol tracker. Log sessions, track volume progression, and stay accountable to the program.",
+    href: null,
+    icon: Timer,
     status: "soon" as const,
   },
 ];
