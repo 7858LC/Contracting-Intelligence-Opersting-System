@@ -108,9 +108,9 @@ const VENTURES = [
     status: "soon" as const,
   },
   {
-    name: "Autoflow",
-    category: "Sales · Automation",
-    desc: "Automated follow-up sequences and job workflows that connect directly to Leadflow. Turn captured leads into scheduled work without the manual handoff.",
+    name: "AutoFlow Systems",
+    category: "Automation · Digital Product",
+    desc: "Twelve pre-built n8n automation workflows for small business owners — lead capture, invoice reminders, support triage, social calendar, and more. Import in one click. No coding required.",
     href: null,
     icon: Zap,
     status: "soon" as const,
