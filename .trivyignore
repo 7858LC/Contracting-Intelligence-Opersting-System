@@ -1,0 +1,7 @@
+# next.js vulnerabilities fixed only in 15.x/16.x — no patch available in the 14.x line.
+# Tracked for upgrade to next@15 in a future sprint.
+CVE-2026-44573
+CVE-2026-44578
+GHSA-8h8q-6873-q5fj
+GHSA-h25m-26qc-wcjf
+GHSA-q4gf-8mx6-v5v3
