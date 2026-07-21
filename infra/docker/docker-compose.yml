@@ -121,8 +121,8 @@ services:
   # ── Next.js Frontend ──────────────────────────────────────────────────────
   web:
     build:
-      context: ../../apps/web
-      dockerfile: ../../infra/docker/Dockerfile.web
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.web
     container_name: cios-web
     ports:
       - "3000:3000"
@@ -131,7 +131,6 @@ services:
       NEXT_PUBLIC_APP_URL: http://localhost:3000
     depends_on:
       - api
-    command: npm run dev
 
   # ── n8n (Workflow automation) ─────────────────────────────────────────────
   n8n:
