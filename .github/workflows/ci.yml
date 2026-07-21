@@ -115,7 +115,7 @@ jobs:
         working-directory: apps/api
         run: |
           pip install pip-audit
-          pip-audit -r pyproject.toml
+          pip-audit .
 
   # ── Docker Build ─────────────────────────────────────────────────────────
   docker-build:
