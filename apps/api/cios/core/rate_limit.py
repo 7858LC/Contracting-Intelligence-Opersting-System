@@ -7,6 +7,8 @@ stuffing against /auth/register and /auth/login.
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
+
 from fastapi import HTTPException, Request, status
 
 from cios.core.redis import redis_client
@@ -19,7 +21,9 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-def rate_limiter(key_prefix: str, max_requests: int, window_seconds: int):
+def rate_limiter(
+    key_prefix: str, max_requests: int, window_seconds: int
+) -> Callable[[Request], Awaitable[None]]:
     """FastAPI dependency factory: fixed-window rate limit per client IP.
 
     Use as a route-level dependency, e.g.:
