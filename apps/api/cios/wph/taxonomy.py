@@ -332,6 +332,28 @@ SIGNAL_LEXICON: tuple[SignalPattern, ...] = (
         45.0,
         "Requirement ambiguity signals flexibility and risk; adaptable offerors benefit.",
     ),
+    SignalPattern(
+        SignalCategory.SHAPING_RISK,
+        (
+            "brand name or equal",
+            "salient characteristics",
+            "justification for other than full and open competition",
+            "jofoc",
+            "sole source",
+            "only one responsible source",
+            "single responsible source",
+            "proprietary system",
+            "specific make and model",
+            "particular manufacturer",
+            "exclusively compatible with",
+        ),
+        80.0,
+        "Language associated with narrowly tailored or single-source requirements is "
+        "present. The requirement may have been shaped around a specific incumbent or "
+        "vendor rather than reflecting full and open competition — read the resulting "
+        "hypothesis as a description of the written record, not confirmation the "
+        "competition is open.",
+    ),
 )
 
 

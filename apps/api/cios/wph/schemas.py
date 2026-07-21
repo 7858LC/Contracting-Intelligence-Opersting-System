@@ -80,12 +80,41 @@ class InferredAttribute:
 
 
 @dataclass
+class ShapingRiskFlag:
+    """Signals that the requirement may have been written around a specific
+    incumbent/vendor rather than reflecting full and open competition.
+
+    Deliberately kept separate from ``WinningProfile.attributes`` — folding this
+    into the normal importance-weighted average would bury a "this may be wired"
+    red flag inside the same math as ordinary evaluation-factor weighting. This
+    describes what the *written* evidence supports; it cannot detect a decision
+    made through channels that never touched the record.
+    """
+
+    risk_level: str = "none"  # none | low | moderate | high
+    signal_count: int = 0
+    supporting_evidence: list[dict] = field(default_factory=list)  # [{text, source}]
+    source_refs: list[str] = field(default_factory=list)
+    narrative: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "risk_level": self.risk_level,
+            "signal_count": self.signal_count,
+            "supporting_evidence": self.supporting_evidence,
+            "source_refs": self.source_refs,
+            "narrative": self.narrative,
+        }
+
+
+@dataclass
 class WinningProfile:
     summary: str
     overall_confidence: float  # 0–100
     evidence_strength: float  # 0–100
     attributes: list[InferredAttribute] = field(default_factory=list)
     unknown_factors: list[str] = field(default_factory=list)
+    shaping_risk: ShapingRiskFlag = field(default_factory=ShapingRiskFlag)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -95,6 +124,7 @@ class WinningProfile:
             "attribute_count": len(self.attributes),
             "attributes": [a.to_dict() for a in self.attributes],
             "unknown_factors": self.unknown_factors,
+            "shaping_risk": self.shaping_risk.to_dict(),
         }
 
 

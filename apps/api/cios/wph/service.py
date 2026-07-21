@@ -208,6 +208,7 @@ class WPHService:
             evidence_strength=profile.evidence_strength,
             attribute_count=len(profile.attributes),
             unknown_factors=profile.unknown_factors,
+            shaping_risk=profile.shaping_risk.to_dict(),
             status="generated",
             model_used=model_used,
             confidence_score=profile.overall_confidence / 100.0,
@@ -244,7 +245,7 @@ class WPHService:
     async def load_profile_dataclass(
         self, profile_row: WPHProfile, tenant_id: uuid.UUID
     ) -> WinningProfile:
-        from .schemas import InferredAttribute
+        from .schemas import InferredAttribute, ShapingRiskFlag
 
         attr_rows = (
             (
@@ -284,12 +285,20 @@ class WPHService:
         by_name = {x.name: x.key for x in ATTRIBUTE_LIBRARY}
         for a in attributes:
             a.key = by_name.get(a.name, a.name.lower().replace(" ", "_"))
+        shaping_risk_data = profile_row.shaping_risk or {}
         return WinningProfile(
             summary=profile_row.summary or "",
             overall_confidence=profile_row.overall_confidence,
             evidence_strength=profile_row.evidence_strength,
             attributes=attributes,
             unknown_factors=list(profile_row.unknown_factors or []),
+            shaping_risk=ShapingRiskFlag(
+                risk_level=shaping_risk_data.get("risk_level", "none"),
+                signal_count=shaping_risk_data.get("signal_count", 0),
+                supporting_evidence=list(shaping_risk_data.get("supporting_evidence", [])),
+                source_refs=list(shaping_risk_data.get("source_refs", [])),
+                narrative=shaping_risk_data.get("narrative", ""),
+            ),
         )
 
     # ── Alignment + ranking ──────────────────────────────────────────────────────

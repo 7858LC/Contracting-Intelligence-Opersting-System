@@ -211,6 +211,7 @@ async def _profile_payload(db: Any, profile: WPHProfile, tenant_id: uuid.UUID) -
         "evidence_strength": profile.evidence_strength,
         "attribute_count": profile.attribute_count,
         "unknown_factors": profile.unknown_factors,
+        "shaping_risk": profile.shaping_risk,
         "model_used": profile.model_used,
         "created_at": profile.created_at.isoformat() if profile.created_at else None,
         "attributes": [

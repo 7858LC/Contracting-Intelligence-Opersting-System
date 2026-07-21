@@ -57,6 +57,7 @@ class SignalCategory(StrEnum):
     GEOGRAPHIC_REQUIREMENT = "geographic_requirement"
     REQUIREMENT_AMBIGUITY = "requirement_ambiguity"
     AGENCY_PRIORITY = "agency_priority"
+    SHAPING_RISK = "shaping_risk"
 
 
 class ConfidenceLevel(StrEnum):

@@ -120,6 +120,62 @@ def test_no_signals_yields_empty_profile_with_guidance():
     assert "Insufficient evidence" in profile.summary
 
 
+# ── Shaping risk ─────────────────────────────────────────────────────────────────
+
+
+def test_extraction_classifies_shaping_risk_signal():
+    doc = EvidenceDoc(
+        document_type="section_m",
+        title="Section M",
+        content=(
+            "This is a sole source justification for other than full and open "
+            "competition; salient characteristics require a brand name or equal match."
+        ),
+    )
+    signals = SignalExtractor().extract_from_document(doc)
+    categories = {s.category for s in signals}
+    assert SignalCategory.SHAPING_RISK.value in categories
+
+
+def test_shaping_risk_is_surfaced_but_not_diluted_into_attributes():
+    """A narrowly-tailored requirement should raise a distinct flag, not quietly
+    become another weighted attribute averaged in with everything else."""
+    docs = [
+        EvidenceDoc(
+            document_type="section_m",
+            title="Section M",
+            content=(
+                "This is a sole source justification for other than full and open "
+                "competition since only one responsible source can meet the specific "
+                "make and model required. Salient characteristics include "
+                "compatibility with the existing proprietary system. This is a brand "
+                "name or equal requirement. Past performance and technical approach "
+                "will also be evaluated."
+            ),
+        )
+    ]
+    signals = SignalExtractor().extract(docs)
+    profile = AttributeInferenceEngine().build_profile(signals)
+
+    assert profile.shaping_risk.risk_level == "high"
+    assert profile.shaping_risk.signal_count >= 3
+    assert profile.shaping_risk.supporting_evidence
+    assert profile.shaping_risk.source_refs == ["section_m"]
+
+    # No attribute in the normal weighted list should be driven solely by
+    # shaping-risk language — it must not affect importance_weight/overall_confidence.
+    for attr in profile.attributes:
+        assert SignalCategory.SHAPING_RISK.value not in attr.signal_categories
+
+
+def test_no_shaping_language_yields_none_risk_level():
+    signals = SignalExtractor().extract(SAMPLE_DOCUMENTS)
+    profile = AttributeInferenceEngine().build_profile(signals)
+    assert profile.shaping_risk.risk_level == "none"
+    assert profile.shaping_risk.signal_count == 0
+    assert profile.shaping_risk.narrative
+
+
 # ── Alignment, ranking, gaps, closures ───────────────────────────────────────────
 
 
@@ -236,4 +292,6 @@ def test_result_serialization_is_json_safe(engine: WinningProfileEngine):
     result = engine.run(SAMPLE_DOCUMENTS, SAMPLE_CONTRACTORS)
     payload = result.to_dict()
     # Round-trips through JSON without error.
-    assert json.loads(json.dumps(payload))["assessment"]["recommendation"]
+    reloaded = json.loads(json.dumps(payload))
+    assert reloaded["assessment"]["recommendation"]
+    assert "shaping_risk" in reloaded["profile"]

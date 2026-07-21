@@ -16,8 +16,8 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from .constants import ConfidenceLevel
-from .schemas import ExtractedSignal, InferredAttribute, WinningProfile
+from .constants import ConfidenceLevel, SignalCategory
+from .schemas import ExtractedSignal, InferredAttribute, ShapingRiskFlag, WinningProfile
 from .taxonomy import ATTRIBUTE_LIBRARY, DOCUMENT_EVIDENCE_VALUE, AttributeDef
 
 # Document types whose presence materially raises overall evidence strength.
@@ -119,12 +119,14 @@ class AttributeInferenceEngine:
         evidence_strength = self._evidence_strength(signals)
         summary = self._summary(attributes, evidence_strength)
         unknowns = self._package_unknowns(signals, attributes)
+        shaping_risk = self._shaping_risk(signals)
         return WinningProfile(
             summary=summary,
             overall_confidence=overall_conf,
             evidence_strength=evidence_strength,
             attributes=attributes,
             unknown_factors=unknowns,
+            shaping_risk=shaping_risk,
         )
 
     # ── Component computations ───────────────────────────────────────────────────
@@ -239,3 +241,53 @@ class AttributeInferenceEngine:
                 "Price sensitivity is unstated; cost-vs-technical trade-off remains unknown."
             )
         return unknowns
+
+    @staticmethod
+    def _shaping_risk(signals: list[ExtractedSignal]) -> ShapingRiskFlag:
+        """Surface narrow/single-source language as its own flag.
+
+        Never folded into the weighted attribute average — see the
+        ``ShapingRiskFlag`` docstring for why that matters.
+        """
+        hits = [s for s in signals if s.category == SignalCategory.SHAPING_RISK.value]
+        if not hits:
+            return ShapingRiskFlag(
+                risk_level="none",
+                narrative=(
+                    "No language suggesting a narrowly tailored or single-source "
+                    "requirement was found in the evidence reviewed. This does not "
+                    "confirm the competition is open — only that the written record "
+                    "shows no textual indication otherwise."
+                ),
+            )
+
+        top = sorted(hits, key=lambda s: (s.strength, s.confidence), reverse=True)
+        n = len(top)
+        if n >= 3 or top[0].strength >= 90.0:
+            level = "high"
+        elif n == 2:
+            level = "moderate"
+        else:
+            level = "low"
+
+        supporting = [
+            {"text": s.evidence_text, "source": s.source_ref or s.source_document_type}
+            for s in top[:4]
+        ]
+        source_refs = sorted({s.source_document_type for s in hits})
+        narrative = (
+            f'{n} passage(s) use language associated with narrowly tailored or '
+            f'single-source requirements (e.g., "{top[0].evidence_text[:120]}"). '
+            "This may indicate the requirement was shaped around a specific incumbent "
+            "or vendor rather than reflecting full and open competition. Read the rest "
+            "of this hypothesis as a description of what the written record supports — "
+            "it cannot confirm or rule out a decision made through channels that never "
+            "touched the record."
+        )
+        return ShapingRiskFlag(
+            risk_level=level,
+            signal_count=n,
+            supporting_evidence=supporting,
+            source_refs=source_refs,
+            narrative=narrative,
+        )
