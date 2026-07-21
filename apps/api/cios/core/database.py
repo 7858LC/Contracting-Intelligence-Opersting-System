@@ -4,6 +4,7 @@ from collections.abc import AsyncGenerator
 from contextvars import ContextVar
 from typing import Any
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -45,7 +46,8 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             tenant_id = _current_tenant.get()
             if tenant_id:
                 await session.execute(
-                    f"SET app.current_tenant = '{tenant_id}'"  # noqa: S608
+                    text("SELECT set_config('app.current_tenant', :tenant_id, false)"),
+                    {"tenant_id": tenant_id},
                 )
             yield session
             await session.commit()
