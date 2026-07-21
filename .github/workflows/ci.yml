@@ -50,6 +50,12 @@ jobs:
         working-directory: apps/api
         run: mypy cios/ --ignore-missing-imports
 
+      - name: Run migrations
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql+asyncpg://cios_user:cios_pass@localhost:5432/cios_test
+        run: alembic upgrade head
+
       - name: Run tests
         working-directory: apps/api
         env:
