@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import {
   Crosshair, Plus, Sparkles, Play, FileText, Trophy, Gauge,
   AlertTriangle, ChevronDown, ChevronUp, ShieldCheck, Target, Layers,
+  Upload, CheckCircle2, X,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -21,6 +22,16 @@ interface Solicitation {
   pipeline_status: string;
   document_count: number;
   signal_count: number;
+}
+
+interface EvidenceDocument {
+  id: string;
+  document_type: string;
+  title: string;
+  source_url: string | null;
+  source_ref: string | null;
+  is_extracted: boolean;
+  created_at: string;
 }
 
 interface Attribute {
@@ -94,6 +105,36 @@ const SEVERITY_STYLES: Record<string, string> = {
   moderate: "bg-amber-500/15 text-amber-400 border-amber-500/30",
   minor: "bg-secondary text-muted-foreground border-border",
 };
+
+// Mirrors cios.wph.constants.EvidenceDocumentType — the complete pre-proposal
+// evidence package the engine accepts.
+const DOCUMENT_TYPES: { value: string; label: string; highValue?: boolean }[] = [
+  { value: "sources_sought", label: "Sources Sought Notice" },
+  { value: "rfi", label: "Request for Information (RFI)" },
+  { value: "draft_rfp", label: "Draft RFP" },
+  { value: "final_solicitation", label: "Final Solicitation" },
+  { value: "statement_of_work", label: "Statement of Work (SOW)" },
+  { value: "performance_work_statement", label: "Performance Work Statement (PWS)" },
+  { value: "statement_of_objectives", label: "Statement of Objectives (SOO)" },
+  { value: "section_l", label: "Section L — Instructions to Offerors", highValue: true },
+  { value: "section_m", label: "Section M — Evaluation Factors", highValue: true },
+  { value: "evaluation_criteria", label: "Evaluation Criteria", highValue: true },
+  { value: "qa_response", label: "Pre-Award Q&A Responses", highValue: true },
+  { value: "government_response", label: "Government Response", highValue: true },
+  { value: "industry_day", label: "Industry Day Materials" },
+  { value: "historical_award", label: "Historical Award Data", highValue: true },
+  { value: "incumbent_info", label: "Incumbent Information" },
+  { value: "contract_vehicle", label: "Contract Vehicle Info" },
+  { value: "agency_strategy", label: "Agency Strategic Document" },
+  { value: "procurement_forecast", label: "Procurement Forecast" },
+  { value: "amendment", label: "Amendment" },
+  { value: "attachment", label: "Attachment" },
+  { value: "other", label: "Other" },
+];
+
+function documentTypeLabel(value: string): string {
+  return DOCUMENT_TYPES.find((d) => d.value === value)?.label ?? value.replace(/_/g, " ");
+}
 
 function ScoreDial({ label, value, icon: Icon }: { label: string; value: number; icon: React.ComponentType<{ className?: string }> }) {
   const color = value >= 70 ? "text-emerald-400" : value >= 45 ? "text-amber-400" : "text-red-400";
@@ -239,6 +280,11 @@ function SolicitationDetail({ solicitationId }: { solicitationId: string }) {
     queryFn: () => api.getSolicitationIntelligence(solicitationId),
   });
 
+  const { data: documents = [], isLoading: docsLoading } = useQuery<EvidenceDocument[]>({
+    queryKey: ["wph-documents", solicitationId],
+    queryFn: () => api.listSolicitationDocuments(solicitationId),
+  });
+
   const runMutation = useMutation({
     mutationFn: () => api.runWphPipeline(solicitationId),
     onSuccess: () => {
@@ -270,11 +316,18 @@ function SolicitationDetail({ solicitationId }: { solicitationId: string }) {
         </button>
       </div>
 
+      {/* Evidence package */}
+      <DocumentsPanel solicitationId={solicitationId} documents={documents} isLoading={docsLoading} />
+
       {!profile ? (
         <div className="text-center py-16 text-muted-foreground border border-dashed border-border rounded-lg">
           <Target className="w-10 h-10 mx-auto mb-3 opacity-20" />
           <p className="font-medium">No hypothesis generated yet</p>
-          <p className="text-sm mt-1">Run the intelligence pipeline to infer the winning profile.</p>
+          <p className="text-sm mt-1">
+            {documents.length === 0
+              ? "Add at least one evidence document above, then run the intelligence pipeline."
+              : "Run the intelligence pipeline to infer the winning profile."}
+          </p>
         </div>
       ) : (
         <>
@@ -505,6 +558,163 @@ function RankingPanel({ rankings }: { rankings: Ranking[] }) {
   );
 }
 
+// ── Documents ────────────────────────────────────────────────────────────────────
+
+function DocumentsPanel({
+  solicitationId, documents, isLoading,
+}: { solicitationId: string; documents: EvidenceDocument[]; isLoading: boolean }) {
+  const [showAdd, setShowAdd] = useState(false);
+  const highValueCount = documents.filter(
+    (d) => DOCUMENT_TYPES.find((t) => t.value === d.document_type)?.highValue
+  ).length;
+
+  return (
+    <div className="bg-card border border-border rounded-lg p-5 space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold flex items-center gap-2">
+          <FileText className="w-4 h-4 text-primary" />
+          Evidence Package
+          <span className="text-xs font-normal text-muted-foreground">
+            {documents.length} document{documents.length === 1 ? "" : "s"}
+            {highValueCount > 0 && ` · ${highValueCount} high-value`}
+          </span>
+        </h2>
+        <button onClick={() => setShowAdd(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-md text-xs font-medium hover:bg-secondary transition-colors">
+          <Upload className="w-3.5 h-3.5" />
+          Add Document
+        </button>
+      </div>
+
+      {isLoading ? (
+        <div className="h-10 bg-secondary/50 rounded-md animate-pulse" />
+      ) : documents.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-2">
+          No evidence documents yet. Add a Section M, Q&amp;A response, SOW/PWS, or other
+          solicitation document to extract procurement signals from.
+        </p>
+      ) : (
+        <div className="space-y-1.5">
+          {documents.map((doc) => (
+            <div key={doc.id} className="flex items-center gap-2 px-3 py-2 bg-background/50 rounded-md text-sm">
+              {doc.is_extracted
+                ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                : <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+              <span className="flex-1 truncate">{doc.title}</span>
+              <span className="text-[10px] uppercase tracking-wide bg-secondary text-muted-foreground px-1.5 py-0.5 rounded shrink-0">
+                {documentTypeLabel(doc.document_type)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showAdd && (
+        <AddDocumentModal solicitationId={solicitationId} onClose={() => setShowAdd(false)} />
+      )}
+    </div>
+  );
+}
+
+function AddDocumentModal({
+  solicitationId, onClose,
+}: { solicitationId: string; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState({
+    document_type: "statement_of_work", title: "", content: "", source_ref: "",
+  });
+
+  const addMutation = useMutation({
+    mutationFn: () => api.addSolicitationDocument(solicitationId, {
+      document_type: form.document_type,
+      title: form.title,
+      content: form.content,
+      source_ref: form.source_ref || null,
+    }),
+    onSuccess: () => {
+      toast.success("Document added — extract signals or run intelligence to include it");
+      queryClient.invalidateQueries({ queryKey: ["wph-documents", solicitationId] });
+      queryClient.invalidateQueries({ queryKey: ["wph-solicitations"] });
+      onClose();
+    },
+    onError: () => toast.error("Failed to add document"),
+  });
+
+  const selected = DOCUMENT_TYPES.find((d) => d.value === form.document_type);
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    addMutation.mutate();
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="bg-card border border-border rounded-xl w-full max-w-xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold text-lg">Add Evidence Document</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium mb-1 text-muted-foreground">Document Type *</label>
+            <select required value={form.document_type}
+              onChange={(e) => setForm({ ...form, document_type: e.target.value })}
+              className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+              {DOCUMENT_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}{t.highValue ? " ★ high evidentiary value" : ""}
+                </option>
+              ))}
+            </select>
+            {selected?.highValue && (
+              <p className="text-[11px] text-primary mt-1">
+                ★ This document type carries above-average weight in the evidence-fusion engine.
+              </p>
+            )}
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1 text-muted-foreground">Title *</label>
+            <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+              className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="Section M — Evaluation Factors for Award" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1 text-muted-foreground">
+              Content * <span className="font-normal">(paste the document text)</span>
+            </label>
+            <textarea required value={form.content}
+              onChange={(e) => setForm({ ...form, content: e.target.value })}
+              rows={10}
+              className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm font-mono resize-y focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="Paste the raw text of this document. The engine scans it sentence-by-sentence to extract and classify procurement signals — the more complete, the stronger the resulting hypothesis." />
+            <p className="text-[11px] text-muted-foreground mt-1">{form.content.length.toLocaleString()} characters</p>
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1 text-muted-foreground">
+              Source Reference <span className="font-normal">(optional — e.g. page/section citation)</span>
+            </label>
+            <input value={form.source_ref} onChange={(e) => setForm({ ...form, source_ref: e.target.value })}
+              className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="Section M, ¶2.4" />
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose}
+              className="flex-1 py-2 border border-border rounded-md text-sm hover:bg-secondary transition-colors">
+              Cancel
+            </button>
+            <button type="submit" disabled={addMutation.isPending}
+              className="flex-1 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">
+              {addMutation.isPending ? "Adding…" : "Add Document"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ── Create modal ─────────────────────────────────────────────────────────────────
 
 function CreateSolicitationModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
@@ -571,7 +781,8 @@ function CreateSolicitationModal({ onClose, onCreated }: { onClose: () => void; 
               placeholder="Brief description of the acquisition" />
           </div>
           <p className="text-xs text-muted-foreground">
-            After creating, add evidence documents (Section M, Q&amp;A, SOW…) via the API, or use
+            After creating, use the <span className="font-medium">Evidence Package</span> panel to
+            add documents (Section M, Q&amp;A, SOW…), or use
             <span className="font-medium"> Load Sample</span> for a fully-worked example.
           </p>
           <div className="flex gap-3 pt-2">
