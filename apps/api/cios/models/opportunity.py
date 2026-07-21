@@ -1,22 +1,25 @@
 """Opportunity Intelligence model — Module 1."""
+
 import uuid
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from sqlalchemy import Boolean, DateTime, Float, Index, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID, TSVECTOR
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from cios.core.database import Base
-from .base import UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin
+
+from .base import EvidenceMixin, TenantMixin, TimestampMixin, UUIDMixin
 
 
-class JurisdictionType(str, Enum):
-    federal = "federal"          # US federal (FAR / DFARS)
-    state = "state"              # US state-level
-    local = "local"              # Municipal / county
-    tribal = "tribal"            # Tribal government
+class JurisdictionType(StrEnum):
+    federal = "federal"  # US federal (FAR / DFARS)
+    state = "state"  # US state-level
+    local = "local"  # Municipal / county
+    tribal = "tribal"  # Tribal government
     international = "international"  # EU, World Bank, bilateral
 
 
@@ -96,9 +99,7 @@ class Opportunity(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin):
 
 class OpportunityWatch(Base, UUIDMixin, TimestampMixin, TenantMixin):
     __tablename__ = "opportunity_watches"
-    __table_args__ = (
-        Index("uq_watch", "tenant_id", "opportunity_id", "user_id", unique=True),
-    )
+    __table_args__ = (Index("uq_watch", "tenant_id", "opportunity_id", "user_id", unique=True),)
 
     opportunity_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
     user_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)

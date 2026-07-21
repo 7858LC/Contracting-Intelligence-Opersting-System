@@ -1,13 +1,13 @@
 """Shared model mixins and base classes."""
+
 import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import DateTime, String, text, inspect
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
+from sqlalchemy import DateTime, String, inspect, text
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
-
-from cios.core.database import Base
 
 
 class UUIDMixin:
@@ -48,6 +48,7 @@ class TimestampMixin:
 
 class TenantMixin:
     """Row-level security anchor — every tenant-scoped model must include this."""
+
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True),
         nullable=False,
@@ -57,6 +58,7 @@ class TenantMixin:
 
 class EvidenceMixin:
     """Stores AI recommendation evidence for auditability."""
+
     evidence: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     confidence_score: Mapped[float | None] = mapped_column(nullable=True)
     ai_model_version: Mapped[str | None] = mapped_column(String(64), nullable=True)

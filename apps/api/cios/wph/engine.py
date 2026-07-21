@@ -7,6 +7,7 @@ outputs.
 
     docs → signals → profile → alignments → ranking → gaps → closures → assessment
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -28,6 +29,7 @@ from .schemas import (
 @dataclass
 class IntelligenceResult:
     """The complete pre-award intelligence output for one solicitation."""
+
     signals: list[ExtractedSignal] = field(default_factory=list)
     profile: WinningProfile | None = None
     alignments: list[ContractorAlignment] = field(default_factory=list)

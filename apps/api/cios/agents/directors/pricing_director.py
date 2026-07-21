@@ -1,8 +1,8 @@
 """Pricing Director — price-to-win analysis and cost strategy."""
+
 from typing import Any
 
 from cios.agents.base import AgentContext, BaseAgent
-
 
 PRICING_SYSTEM_PROMPT = """You are the Pricing Director for CIOS, expert in government
 contract pricing, cost estimating, and price-to-win analysis.
@@ -41,14 +41,15 @@ class PricingDirector(BaseAgent):
         user_message = f"""
 PRICING INTELLIGENCE ASSESSMENT
 ================================
-Opportunity: {opportunity_data.get('title', 'Unknown')}
-Agency: {opportunity_data.get('agency', 'Unknown')}
-Estimated Value: ${opportunity_data.get('estimated_value_max', 'Unknown')}
-Evaluation Methodology: {opportunity_data.get('evaluation_methodology', 'Best Value TRADEOFF')}
-Contract Type: {opportunity_data.get('contract_type', 'Unknown')}
-Period of Performance: {opportunity_data.get('period_of_performance_start', '?')} to {opportunity_data.get('period_of_performance_end', '?')}
+Opportunity: {opportunity_data.get("title", "Unknown")}
+Agency: {opportunity_data.get("agency", "Unknown")}
+Estimated Value: ${opportunity_data.get("estimated_value_max", "Unknown")}
+Evaluation Methodology: {opportunity_data.get("evaluation_methodology", "Best Value TRADEOFF")}
+Contract Type: {opportunity_data.get("contract_type", "Unknown")}
+Period of Performance: {opportunity_data.get("period_of_performance_start", "?")} to \
+{opportunity_data.get("period_of_performance_end", "?")}
 
-Pricing Context from Knowledge Vault: {[k.get('content', '')[:150] for k in knowledge_context[:3]]}
+Pricing Context from Knowledge Vault: {[k.get("content", "")[:150] for k in knowledge_context[:3]]}
 
 Perform pricing intelligence assessment:
 1. Price-to-win estimate range (low/mid/high)

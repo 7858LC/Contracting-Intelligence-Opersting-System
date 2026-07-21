@@ -11,6 +11,7 @@ Every attribute records the exact signals (evidence text + source) that produced
 it, plus explicit unknown factors, so the hypothesis is fully explainable and
 never presented as a black-box prediction.
 """
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -21,8 +22,12 @@ from .taxonomy import ATTRIBUTE_LIBRARY, DOCUMENT_EVIDENCE_VALUE, AttributeDef
 
 # Document types whose presence materially raises overall evidence strength.
 _HIGH_VALUE_DOCS = {
-    "section_m", "evaluation_criteria", "qa_response", "government_response",
-    "historical_award", "section_l",
+    "section_m",
+    "evaluation_criteria",
+    "qa_response",
+    "government_response",
+    "historical_award",
+    "section_l",
 }
 
 _MIN_ATTRIBUTE_IMPORTANCE = 2.0  # below this (post-normalization) an attribute is dropped
@@ -63,7 +68,7 @@ class AttributeInferenceEngine:
                 for sig in sigs
             )
             # Diminishing returns on repeated signals for the same attribute.
-            pressure = pressure ** 0.85
+            pressure = pressure**0.85
             raw_importance[key] = attr.base_importance * (0.6 + 0.9 * min(pressure, 6.0))
 
         total_raw = sum(raw_importance.values()) or 1.0
@@ -149,8 +154,9 @@ class AttributeInferenceEngine:
         return round(min(95.0, 52.0 + 0.35 * peak + corroboration), 2)
 
     @staticmethod
-    def _reasoning(attr: AttributeDef, sigs: list[ExtractedSignal],
-                   importance: float, evidence_conf: float) -> str:
+    def _reasoning(
+        attr: AttributeDef, sigs: list[ExtractedSignal], importance: float, evidence_conf: float
+    ) -> str:
         doc_types = sorted({s.source_document_type.replace("_", " ") for s in sigs})
         return (
             f"{len(sigs)} corroborating signal(s) across {len(doc_types)} document type(s) "
@@ -201,8 +207,10 @@ class AttributeInferenceEngine:
     @staticmethod
     def _summary(attributes: list[InferredAttribute], evidence_strength: float) -> str:
         if not attributes:
-            return ("Insufficient evidence to form a Winning Profile Hypothesis. Add more of "
-                    "the pre-proposal evidence package (Section M, Q&A responses, SOW/PWS).")
+            return (
+                "Insufficient evidence to form a Winning Profile Hypothesis. Add more of "
+                "the pre-proposal evidence package (Section M, Q&A responses, SOW/PWS)."
+            )
         top = attributes[: min(3, len(attributes))]
         drivers = "; ".join(f"{a.name} ({a.importance_weight:.0f}/100)" for a in top)
         return (
@@ -213,8 +221,9 @@ class AttributeInferenceEngine:
         )
 
     @staticmethod
-    def _package_unknowns(signals: list[ExtractedSignal],
-                          attributes: list[InferredAttribute]) -> list[str]:
+    def _package_unknowns(
+        signals: list[ExtractedSignal], attributes: list[InferredAttribute]
+    ) -> list[str]:
         unknowns: list[str] = []
         doc_types = {s.source_document_type for s in signals}
         if not (doc_types & {"section_m", "evaluation_criteria"}):

@@ -1,4 +1,5 @@
 """PIR Analyst Agent — Claude-powered company intelligence analysis."""
+
 from __future__ import annotations
 
 import json
@@ -9,7 +10,8 @@ from typing import Any
 import structlog
 
 from cios.config import settings
-from cios.models.pir import PIRAIAnalysis, PIRCompany, PIRSignal
+from cios.models.pir import PIRCompany, PIRSignal
+
 from .base import AgentContext, BaseAgent
 
 log = structlog.get_logger(__name__)

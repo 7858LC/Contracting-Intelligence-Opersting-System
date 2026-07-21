@@ -5,6 +5,7 @@ Given a Winning Profile Hypothesis and a set of contractor capability profiles,
 compute — deterministically and explainably — how each contractor aligns to what
 winning requires, where the gaps are, and what it would take to close them.
 """
+
 from __future__ import annotations
 
 from .schemas import (
@@ -39,13 +40,17 @@ def _keyword_level(profile: ContractorProfile, attr_key: str) -> float:
     attr = _ATTR_BY_KEY.get(attr_key)
     if not attr or not attr.capability_keywords:
         return _default_baseline(profile)
-    text = " ".join([
-        profile.capability_text or "",
-        profile.description or "",
-        " ".join(str(c) for c in profile.certifications),
-        " ".join(str(p.get("title", "")) + " " + str(p.get("description", ""))
-                 for p in profile.past_performance),
-    ]).lower()
+    text = " ".join(
+        [
+            profile.capability_text or "",
+            profile.description or "",
+            " ".join(str(c) for c in profile.certifications),
+            " ".join(
+                str(p.get("title", "")) + " " + str(p.get("description", ""))
+                for p in profile.past_performance
+            ),
+        ]
+    ).lower()
     hits = sum(1 for kw in attr.capability_keywords if kw in text)
     if hits == 0:
         return _default_baseline(profile)
@@ -106,12 +111,20 @@ class AlignmentScorer:
                 f"→ {alignment_pct:.0f}% of the bar met."
             )
             evidence = attr.supporting_evidence[0]["text"] if attr.supporting_evidence else ""
-            alignments.append(AttributeAlignment(
-                attribute_key=attr.key, attribute_name=attr.name, category=attr.category,
-                importance_weight=attr.importance_weight, required_level=required,
-                contractor_level=level, alignment=alignment_pct, contribution=contribution,
-                evidence=evidence, reasoning=reasoning,
-            ))
+            alignments.append(
+                AttributeAlignment(
+                    attribute_key=attr.key,
+                    attribute_name=attr.name,
+                    category=attr.category,
+                    importance_weight=attr.importance_weight,
+                    required_level=required,
+                    contractor_level=level,
+                    alignment=alignment_pct,
+                    contribution=contribution,
+                    evidence=evidence,
+                    reasoning=reasoning,
+                )
+            )
 
             if level >= required and attr.importance_weight >= 8.0:
                 strengths.append(f"{attr.name}: meets the high-importance bar ({level:.0f}/100).")
@@ -124,12 +137,19 @@ class AlignmentScorer:
                     f"Shortfall of {gap_size:.0f} points on a {attr.importance_weight:.0f}/100 "
                     f"importance attribute — {severity} exposure at evaluation."
                 )
-                gaps.append(CapabilityGap(
-                    attribute_key=attr.key, attribute_name=attr.name, category=attr.category,
-                    severity=severity, importance_weight=attr.importance_weight,
-                    required_level=required, contractor_level=level, gap_size=gap_size,
-                    impact=impact,
-                ))
+                gaps.append(
+                    CapabilityGap(
+                        attribute_key=attr.key,
+                        attribute_name=attr.name,
+                        category=attr.category,
+                        severity=severity,
+                        importance_weight=attr.importance_weight,
+                        required_level=required,
+                        contractor_level=level,
+                        gap_size=gap_size,
+                        impact=impact,
+                    )
+                )
                 if severity in ("critical", "major"):
                     weaknesses.append(f"{attr.name}: {severity} gap ({gap_size:.0f} points short).")
 
@@ -157,10 +177,18 @@ class AlignmentScorer:
         return "minor"
 
     @staticmethod
-    def _summary(contractor: ContractorProfile, score: float,
-                 gaps: list[CapabilityGap], strengths: list[str]) -> str:
-        band = ("strongly aligned" if score >= 75 else "competitively aligned" if score >= 60
-                else "partially aligned" if score >= 45 else "weakly aligned")
+    def _summary(
+        contractor: ContractorProfile, score: float, gaps: list[CapabilityGap], strengths: list[str]
+    ) -> str:
+        band = (
+            "strongly aligned"
+            if score >= 75
+            else "competitively aligned"
+            if score >= 60
+            else "partially aligned"
+            if score >= 45
+            else "weakly aligned"
+        )
         crit = sum(1 for g in gaps if g.severity == "critical")
         return (
             f"{contractor.name} is {band} to the winning profile ({score:.0f}/100) with "
@@ -174,71 +202,110 @@ class GapCloser:
     # Category-specific closure playbook: (action_type, template, months, feasibility, cost).
     _PLAYBOOK: dict[str, dict] = {
         "security": dict(
-            action_type="partner", base_months=9, feasibility="medium", cost="$$$",
+            action_type="partner",
+            base_months=9,
+            feasibility="medium",
+            cost="$$$",
             template="Team with or acquire a partner holding the required facility/personnel "
-                     "clearances, or sponsor an FCL and accelerate CMMC/FedRAMP accreditation.",
+            "clearances, or sponsor an FCL and accelerate CMMC/FedRAMP accreditation.",
         ),
         "past_performance": dict(
-            action_type="teaming", base_months=2, feasibility="high", cost="$",
+            action_type="teaming",
+            base_months=2,
+            feasibility="high",
+            cost="$",
             template="Add a teaming partner with directly relevant, recent CPARS of similar size "
-                     "and scope to backfill the past-performance record.",
+            "and scope to backfill the past-performance record.",
         ),
         "personnel": dict(
-            action_type="hire", base_months=3, feasibility="high", cost="$$",
+            action_type="hire",
+            base_months=3,
+            feasibility="high",
+            cost="$$",
             template="Recruit and letter-of-commit named key personnel with the required "
-                     "certifications (e.g. PMP) ahead of proposal submission.",
+            "certifications (e.g. PMP) ahead of proposal submission.",
         ),
         "capacity": dict(
-            action_type="teaming", base_months=4, feasibility="medium", cost="$$",
+            action_type="teaming",
+            base_months=4,
+            feasibility="medium",
+            cost="$$",
             template="Establish subcontractor/teaming capacity or a surge staffing pipeline to "
-                     "credibly meet scale and surge requirements.",
+            "credibly meet scale and surge requirements.",
         ),
         "technical": dict(
-            action_type="invest", base_months=4, feasibility="medium", cost="$$",
+            action_type="invest",
+            base_months=4,
+            feasibility="medium",
+            cost="$$",
             template="Invest in solution engineering / a proof-of-concept and capture reusable "
-                     "technical artifacts to deepen the technical approach.",
+            "technical artifacts to deepen the technical approach.",
         ),
         "transition": dict(
-            action_type="invest", base_months=2, feasibility="high", cost="$",
+            action_type="invest",
+            base_months=2,
+            feasibility="high",
+            cost="$",
             template="Develop a detailed, low-risk phase-in plan with a transition team and "
-                     "knowledge-capture approach to neutralize incumbent risk.",
+            "knowledge-capture approach to neutralize incumbent risk.",
         ),
         "domain": dict(
-            action_type="hire", base_months=3, feasibility="medium", cost="$$",
+            action_type="hire",
+            base_months=3,
+            feasibility="medium",
+            cost="$$",
             template="Bring on mission SMEs or advisors with agency-specific domain experience "
-                     "to establish credibility.",
+            "to establish credibility.",
         ),
         "eligibility": dict(
-            action_type="partner", base_months=6, feasibility="low", cost="$$",
+            action_type="partner",
+            base_months=6,
+            feasibility="low",
+            cost="$$",
             template="Pursue through a qualifying JV/mentor-protégé or as a subcontractor, since "
-                     "the set-aside gates prime eligibility.",
+            "the set-aside gates prime eligibility.",
         ),
         "compliance": dict(
-            action_type="certify", base_months=8, feasibility="medium", cost="$$",
+            action_type="certify",
+            base_months=8,
+            feasibility="medium",
+            cost="$$",
             template="Initiate the required certification (CMMI/ISO 9001/508) or document "
-                     "equivalent mature processes to satisfy the requirement.",
+            "equivalent mature processes to satisfy the requirement.",
         ),
         "innovation": dict(
-            action_type="invest", base_months=3, feasibility="medium", cost="$$",
+            action_type="invest",
+            base_months=3,
+            feasibility="medium",
+            cost="$$",
             template="Package modernization/innovation assets (AI, automation) and reference "
-                     "implementations to demonstrate differentiated value.",
+            "implementations to demonstrate differentiated value.",
         ),
         "price": dict(
-            action_type="reprice", base_months=1, feasibility="high", cost="$",
+            action_type="reprice",
+            base_months=1,
+            feasibility="high",
+            cost="$",
             template="Re-engineer the cost basis (labor mix, indirect rates, subcontracting) to "
-                     "reach a competitive, realistic price point.",
+            "reach a competitive, realistic price point.",
         ),
         "geographic": dict(
-            action_type="invest", base_months=3, feasibility="medium", cost="$$",
+            action_type="invest",
+            base_months=3,
+            feasibility="medium",
+            cost="$$",
             template="Stand up a local presence or on-site staffing commitment at the place of "
-                     "performance.",
+            "performance.",
         ),
     }
 
     _DEFAULT = dict(
-        action_type="pursue", base_months=3, feasibility="medium", cost="$$",
+        action_type="pursue",
+        base_months=3,
+        feasibility="medium",
+        cost="$$",
         template="Develop a targeted capture action to raise this capability toward the "
-                 "required bar.",
+        "required bar.",
     )
 
     def recommend(self, gaps: list[CapabilityGap]) -> list[GapClosure]:
@@ -255,24 +322,31 @@ class GapCloser:
             timeline = max(1, round(play["base_months"] * months_mult))
             # Closing typically lifts the contractor to just above the required bar,
             # scaled by feasibility.
-            lift = gap.gap_size * (0.9 if play["feasibility"] == "high"
-                                   else 0.7 if play["feasibility"] == "medium" else 0.45)
+            lift = gap.gap_size * (
+                0.9
+                if play["feasibility"] == "high"
+                else 0.7
+                if play["feasibility"] == "medium"
+                else 0.45
+            )
             closes_to = min(100.0, gap.contractor_level + lift)
             rec = (
                 f"[{gap.severity.upper()}] {gap.attribute_name}: {play['template']} "
                 f"Target lift {gap.contractor_level:.0f} → {closes_to:.0f}/100."
             )
-            closures.append(GapClosure(
-                gap_attribute_key=gap.attribute_key,
-                gap_attribute_name=gap.attribute_name,
-                recommendation=rec,
-                action_type=play["action_type"],
-                effort=effort,
-                timeline_months=timeline,
-                feasibility=play["feasibility"],
-                cost_band=play["cost"],
-                closes_gap_to=closes_to,
-            ))
+            closures.append(
+                GapClosure(
+                    gap_attribute_key=gap.attribute_key,
+                    gap_attribute_name=gap.attribute_name,
+                    recommendation=rec,
+                    action_type=play["action_type"],
+                    effort=effort,
+                    timeline_months=timeline,
+                    feasibility=play["feasibility"],
+                    cost_band=play["cost"],
+                    closes_gap_to=closes_to,
+                )
+            )
         return closures
 
 

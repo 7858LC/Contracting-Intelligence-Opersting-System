@@ -1,11 +1,12 @@
 """Subscription & Billing API — Stripe integration."""
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 
 from cios.config import settings
-from cios.core.dependencies import Auth, DB, AdminAuth
-from cios.models.subscription import Subscription, Invoice
+from cios.core.dependencies import DB, AdminAuth, Auth
+from cios.models.subscription import Invoice, Subscription
 
 router = APIRouter()
 
@@ -58,7 +59,8 @@ PLAN_FEATURES = {
 @router.get("/current")
 async def get_subscription(db: DB, user: Auth) -> dict:
     result = await db.execute(
-        select(Subscription).where(Subscription.tenant_id == user.tenant_id)
+        select(Subscription)
+        .where(Subscription.tenant_id == user.tenant_id)
         .order_by(Subscription.created_at.desc())
     )
     sub = result.scalars().first()
@@ -83,6 +85,7 @@ async def create_checkout_session(body: CreateCheckoutRequest, user: AdminAuth) 
         raise HTTPException(status_code=400, detail=f"Unknown plan: {body.plan}")
 
     import stripe
+
     stripe.api_key = settings.stripe_secret_key
 
     session = stripe.checkout.Session.create(
@@ -99,14 +102,13 @@ async def create_checkout_session(body: CreateCheckoutRequest, user: AdminAuth) 
 async def customer_portal(db: DB, user: Auth, body: PortalRequest = None) -> dict:
     """Stripe customer portal for billing management."""
     return_url = body.return_url if body else "/dashboard/settings"
-    result = await db.execute(
-        select(Subscription).where(Subscription.tenant_id == user.tenant_id)
-    )
+    result = await db.execute(select(Subscription).where(Subscription.tenant_id == user.tenant_id))
     sub = result.scalars().first()
     if not sub or not sub.stripe_customer_id:
         raise HTTPException(status_code=404, detail="No active subscription")
 
     import stripe
+
     stripe.api_key = settings.stripe_secret_key
     session = stripe.billing_portal.Session.create(
         customer=sub.stripe_customer_id,

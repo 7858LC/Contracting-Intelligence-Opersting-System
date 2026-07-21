@@ -1,4 +1,5 @@
 """Security utilities — JWT, encryption, tenant key management."""
+
 import base64
 import hashlib
 import hmac
@@ -16,6 +17,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 # ── JWT ──────────────────────────────────────────────────────────────────────
+
 
 def create_access_token(payload: dict[str, Any]) -> str:
     data = payload.copy()
@@ -42,6 +44,7 @@ def decode_token(token: str) -> dict[str, Any]:
 
 # ── Password ─────────────────────────────────────────────────────────────────
 
+
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
@@ -51,6 +54,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 # ── Tenant-Specific Encryption ────────────────────────────────────────────────
+
 
 def derive_tenant_key(tenant_id: str, master_key: str | None = None) -> bytes:
     """Derive a per-tenant Fernet key from the master key + tenant salt."""
@@ -81,6 +85,7 @@ class TenantEncryption:
 
 
 # ── API Key ───────────────────────────────────────────────────────────────────
+
 
 def generate_api_key(prefix: str = "cios") -> tuple[str, str]:
     """Return (plaintext_key, hashed_key). Store only the hash."""

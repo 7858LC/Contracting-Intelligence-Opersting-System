@@ -1,7 +1,8 @@
 """CIOS FastAPI application entry point."""
+
 import time
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 import structlog
 from fastapi import FastAPI, Request, Response
@@ -9,11 +10,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 
+from cios.api.v1.router import api_router
 from cios.config import settings
 from cios.core.database import engine, init_db
 from cios.core.redis import redis_client
 from cios.core.telemetry import setup_telemetry
-from cios.api.v1.router import api_router
 
 log = structlog.get_logger(__name__)
 

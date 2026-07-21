@@ -1,5 +1,7 @@
 """Capability gap analysis task."""
-import asyncio, uuid
+
+import asyncio
+
 from cios.tasks import celery_app
 
 

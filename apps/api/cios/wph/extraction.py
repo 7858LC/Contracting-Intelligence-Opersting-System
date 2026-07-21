@@ -7,6 +7,7 @@ fully traceable. No LLM is required — evidence (the document text) is the sour
 of truth. An optional LLM enrichment layer may add interpretation later, but it
 never overrides the extracted evidence.
 """
+
 from __future__ import annotations
 
 import re

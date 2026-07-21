@@ -1,4 +1,5 @@
 """Celery task workers for async processing."""
+
 from celery import Celery
 
 from cios.config import settings

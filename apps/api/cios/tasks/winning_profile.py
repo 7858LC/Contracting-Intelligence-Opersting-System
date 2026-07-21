@@ -5,6 +5,7 @@ synchronously. This task exists for bulk/async execution (e.g. re-running the
 hypothesis for many solicitations after new evidence lands) and for optional
 Claude narrative enrichment off the request path.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -38,12 +39,14 @@ def run_pipeline(
 ) -> dict:
     """Run the full pre-award pipeline for one solicitation and persist results."""
     try:
-        return _run(_async_run_pipeline(
-            uuid.UUID(solicitation_id),
-            uuid.UUID(tenant_id),
-            uuid.UUID(target_contractor_id) if target_contractor_id else None,
-            enrich,
-        ))
+        return _run(
+            _async_run_pipeline(
+                uuid.UUID(solicitation_id),
+                uuid.UUID(tenant_id),
+                uuid.UUID(target_contractor_id) if target_contractor_id else None,
+                enrich,
+            )
+        )
     except Exception as exc:  # noqa: BLE001
         log.error("wph_pipeline_failed", solicitation_id=solicitation_id, error=str(exc))
         raise self.retry(exc=exc)
@@ -72,6 +75,7 @@ async def _async_run_pipeline(
 
             if enrich:
                 from cios.agents.winning_profile_agent import enrich_profile_narrative
+
                 pdc = await service.load_profile_dataclass(profile, tenant_id)
                 narrative = await enrich_profile_narrative(
                     pdc, tenant_id, {"title": sol.title, "agency": sol.agency}

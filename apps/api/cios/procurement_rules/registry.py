@@ -1,4 +1,5 @@
 """Rule pack registry — maps jurisdiction identifiers to rule definitions."""
+
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -73,10 +74,14 @@ US_FEDERAL_DFARS = RulePack(
         "SAM.gov registration",
     ],
     evaluation_factors=[
-        EvaluationFactor("Technical/Management Approach", 0.40, "technical", "DFARS 215.3", "DOD_COLOR"),
+        EvaluationFactor(
+            "Technical/Management Approach", 0.40, "technical", "DFARS 215.3", "DOD_COLOR"
+        ),
         EvaluationFactor("Past Performance", 0.30, "past_performance", "DFARS 215.305", "PPIRS"),
         EvaluationFactor("Price", 0.20, "price", "DFARS 215.4", "numeric"),
-        EvaluationFactor("Small Business Utilization", 0.10, "small_business", "DFARS 252.219", "DOD_COLOR"),
+        EvaluationFactor(
+            "Small Business Utilization", 0.10, "small_business", "DFARS 252.219", "DOD_COLOR"
+        ),
     ],
     thresholds={
         "commercial_item": 2_000_000,
@@ -100,10 +105,16 @@ STATE_GENERIC = RulePack(
         "Performance bond (construction)",
     ],
     evaluation_factors=[
-        EvaluationFactor("Technical Capability", 0.35, "technical", "State procurement code", "numeric"),
+        EvaluationFactor(
+            "Technical Capability", 0.35, "technical", "State procurement code", "numeric"
+        ),
         EvaluationFactor("Cost/Price", 0.35, "price", "State procurement code", "numeric"),
-        EvaluationFactor("Experience/Past Performance", 0.20, "past_performance", "State code", "numeric"),
-        EvaluationFactor("Small/Disadvantaged Business", 0.10, "small_business", "State SBE law", "numeric"),
+        EvaluationFactor(
+            "Experience/Past Performance", 0.20, "past_performance", "State code", "numeric"
+        ),
+        EvaluationFactor(
+            "Small/Disadvantaged Business", 0.10, "small_business", "State SBE law", "numeric"
+        ),
     ],
     thresholds={
         "informal_quotes": 25_000,
@@ -126,9 +137,13 @@ EU_PUBLIC_PROCUREMENT = RulePack(
         "Social security compliance",
     ],
     evaluation_factors=[
-        EvaluationFactor("Quality/Technical Merit", 0.40, "technical", "Art. 67, Dir. 2014/24/EU", "numeric"),
+        EvaluationFactor(
+            "Quality/Technical Merit", 0.40, "technical", "Art. 67, Dir. 2014/24/EU", "numeric"
+        ),
         EvaluationFactor("Price", 0.30, "price", "Art. 67, Dir. 2014/24/EU", "numeric"),
-        EvaluationFactor("Environmental/Social Criteria", 0.20, "sustainability", "Art. 67", "numeric"),
+        EvaluationFactor(
+            "Environmental/Social Criteria", 0.20, "sustainability", "Art. 67", "numeric"
+        ),
         EvaluationFactor("After-Sales Service", 0.10, "service", "Art. 67", "numeric"),
     ],
     thresholds={
@@ -153,8 +168,12 @@ WORLD_BANK = RulePack(
         "Anti-corruption declaration",
     ],
     evaluation_factors=[
-        EvaluationFactor("Technical Proposal", 0.70, "technical", "Sec. IV, WB Proc. Regs.", "numeric_100"),
-        EvaluationFactor("Financial Proposal", 0.30, "price", "Sec. IV, WB Proc. Regs.", "numeric_100"),
+        EvaluationFactor(
+            "Technical Proposal", 0.70, "technical", "Sec. IV, WB Proc. Regs.", "numeric_100"
+        ),
+        EvaluationFactor(
+            "Financial Proposal", 0.30, "price", "Sec. IV, WB Proc. Regs.", "numeric_100"
+        ),
     ],
     thresholds={
         "shopping": 100_000,

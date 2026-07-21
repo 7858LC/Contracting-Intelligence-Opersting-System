@@ -1,4 +1,5 @@
 """Authentication endpoints."""
+
 import uuid
 from datetime import UTC, datetime
 
@@ -11,8 +12,6 @@ from cios.core.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
-    hash_password,
-    verify_password,
 )
 from cios.models.tenant import Tenant, TenantMember
 

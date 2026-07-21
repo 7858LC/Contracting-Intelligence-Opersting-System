@@ -1,4 +1,5 @@
 """Async PostgreSQL database engine with tenant-aware session management."""
+
 from collections.abc import AsyncGenerator
 from contextvars import ContextVar
 from typing import Any
@@ -10,7 +11,6 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.pool import NullPool
 
 from cios.config import settings
 

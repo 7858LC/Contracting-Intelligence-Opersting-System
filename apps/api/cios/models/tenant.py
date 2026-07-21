@@ -1,14 +1,17 @@
 """Tenant, user membership, invites, API keys, and audit logs."""
+
 import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, text
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, text
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from cios.core.database import Base
-from .base import UUIDMixin, TimestampMixin
+
+from .base import TimestampMixin, UUIDMixin
 
 
 class Tenant(Base, UUIDMixin, TimestampMixin):
@@ -35,9 +38,7 @@ class Tenant(Base, UUIDMixin, TimestampMixin):
 
 class TenantMember(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "tenant_members"
-    __table_args__ = (
-        Index("uq_tenant_member", "tenant_id", "user_id", unique=True),
-    )
+    __table_args__ = (Index("uq_tenant_member", "tenant_id", "user_id", unique=True),)
 
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
@@ -80,9 +81,7 @@ class ApiKey(Base, UUIDMixin, TimestampMixin):
 
 class AuditLog(Base, UUIDMixin):
     __tablename__ = "audit_logs"
-    __table_args__ = (
-        Index("idx_audit_tenant_created", "tenant_id", "created_at"),
-    )
+    __table_args__ = (Index("idx_audit_tenant_created", "tenant_id", "created_at"),)
 
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False

@@ -1,4 +1,5 @@
 """API v1 router — all CIOS modules."""
+
 from fastapi import APIRouter
 
 from .endpoints import (
@@ -39,7 +40,9 @@ api_router.include_router(bid_decisions.router, prefix="/bid-decisions", tags=["
 api_router.include_router(capabilities.router, prefix="/capabilities", tags=["Capabilities"])
 
 # Module 6 — Past Performance Intelligence
-api_router.include_router(past_performance.router, prefix="/past-performance", tags=["Past Performance"])
+api_router.include_router(
+    past_performance.router, prefix="/past-performance", tags=["Past Performance"]
+)
 
 # Module 7 — Teaming Recommendation Engine
 api_router.include_router(teaming.router, prefix="/teaming", tags=["Teaming"])
@@ -48,10 +51,14 @@ api_router.include_router(teaming.router, prefix="/teaming", tags=["Teaming"])
 api_router.include_router(competitors.router, prefix="/competitors", tags=["Competitors"])
 
 # Module 13 — Award Simulator (flagship)
-api_router.include_router(award_simulations.router, prefix="/award-simulations", tags=["Award Simulator"])
+api_router.include_router(
+    award_simulations.router, prefix="/award-simulations", tags=["Award Simulator"]
+)
 
 # Knowledge Vault
-api_router.include_router(knowledge_vault.router, prefix="/knowledge-vault", tags=["Knowledge Vault"])
+api_router.include_router(
+    knowledge_vault.router, prefix="/knowledge-vault", tags=["Knowledge Vault"]
+)
 
 # Agent Runs (audit trail)
 api_router.include_router(agent_runs.router, prefix="/agent-runs", tags=["Agent Runs"])

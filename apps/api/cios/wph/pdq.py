@@ -7,6 +7,7 @@ winning. A high PDQ means the evidence is strong and the target's competitive
 position is clear (whether that clarity points to BID or NO-BID). This preserves
 the CIOS positioning: CIOS improves decision quality; it does not predict winners.
 """
+
 from __future__ import annotations
 
 from .constants import PursuitRecommendation
@@ -33,8 +34,7 @@ class PDQEngine:
         critical_gaps = [g.to_dict() for g in target.gaps if g.severity in ("critical", "major")]
         closable = {c.gap_attribute_key for c in closures if c.feasibility in ("high", "medium")}
         unclosable_critical = [
-            g for g in target.gaps
-            if g.severity == "critical" and g.attribute_key not in closable
+            g for g in target.gaps if g.severity == "critical" and g.attribute_key not in closable
         ]
 
         decision_factors = self._decision_factors(profile, target, rank, pool)
@@ -75,8 +75,9 @@ class PDQEngine:
     def _win_positioning(target: ContractorAlignment, ranked: list[ContractorAlignment]) -> float:
         """Alignment adjusted for competitive separation from the field."""
         score = target.overall_alignment_score
-        others = [a.overall_alignment_score for a in ranked
-                  if a.contractor_name != target.contractor_name]
+        others = [
+            a.overall_alignment_score for a in ranked if a.contractor_name != target.contractor_name
+        ]
         if others:
             best_other = max(others)
             # Reward/penalize the lead or deficit vs the strongest competitor.
@@ -85,8 +86,9 @@ class PDQEngine:
         return round(score, 2)
 
     @staticmethod
-    def _pdq_score(profile: WinningProfile, target: ContractorAlignment,
-                   ranked: list[ContractorAlignment]) -> float:
+    def _pdq_score(
+        profile: WinningProfile, target: ContractorAlignment, ranked: list[ContractorAlignment]
+    ) -> float:
         """Decision-quality confidence.
 
         Driven by how well we understand winning (evidence strength + profile
@@ -101,8 +103,9 @@ class PDQEngine:
         return round(max(0.0, min(100.0, pdq)), 2)
 
     @staticmethod
-    def _recommend(profile: WinningProfile, target: ContractorAlignment,
-                   closures: list[GapClosure]) -> str:
+    def _recommend(
+        profile: WinningProfile, target: ContractorAlignment, closures: list[GapClosure]
+    ) -> str:
         score = target.overall_alignment_score
         critical = [g for g in target.gaps if g.severity == "critical"]
         closable = {c.gap_attribute_key for c in closures if c.feasibility in ("high", "medium")}
@@ -123,32 +126,41 @@ class PDQEngine:
     # ── Narrative builders ───────────────────────────────────────────────────────
 
     @staticmethod
-    def _decision_factors(profile: WinningProfile, target: ContractorAlignment,
-                          rank: int | None, pool: int) -> list[dict]:
+    def _decision_factors(
+        profile: WinningProfile, target: ContractorAlignment, rank: int | None, pool: int
+    ) -> list[dict]:
         factors = [
-            {"factor": "Winning-profile clarity",
-             "value": f"{profile.overall_confidence:.0f}/100 confidence, "
-                      f"{profile.evidence_strength:.0f}/100 evidence strength"},
-            {"factor": "Target alignment",
-             "value": f"{target.overall_alignment_score:.0f}/100"},
-            {"factor": "Competitive position",
-             "value": f"rank {rank} of {pool}" if rank else "unranked"},
-            {"factor": "Critical gaps",
-             "value": f"{sum(1 for g in target.gaps if g.severity == 'critical')} critical, "
-                      f"{sum(1 for g in target.gaps if g.severity == 'major')} major"},
+            {
+                "factor": "Winning-profile clarity",
+                "value": f"{profile.overall_confidence:.0f}/100 confidence, "
+                f"{profile.evidence_strength:.0f}/100 evidence strength",
+            },
+            {"factor": "Target alignment", "value": f"{target.overall_alignment_score:.0f}/100"},
+            {
+                "factor": "Competitive position",
+                "value": f"rank {rank} of {pool}" if rank else "unranked",
+            },
+            {
+                "factor": "Critical gaps",
+                "value": f"{sum(1 for g in target.gaps if g.severity == 'critical')} critical, "
+                f"{sum(1 for g in target.gaps if g.severity == 'major')} major",
+            },
         ]
         # Add the top-3 profile drivers.
         for a in profile.attributes[:3]:
-            factors.append({
-                "factor": f"Driver — {a.name}",
-                "value": f"importance {a.importance_weight:.0f}/100, "
-                         f"required {a.required_level:.0f}/100",
-            })
+            factors.append(
+                {
+                    "factor": f"Driver — {a.name}",
+                    "value": f"importance {a.importance_weight:.0f}/100, "
+                    f"required {a.required_level:.0f}/100",
+                }
+            )
         return factors
 
     @staticmethod
-    def _key_findings(profile: WinningProfile, target: ContractorAlignment,
-                      rank: int | None, pool: int, rec: str) -> list[str]:
+    def _key_findings(
+        profile: WinningProfile, target: ContractorAlignment, rank: int | None, pool: int, rec: str
+    ) -> list[str]:
         findings = [profile.summary, target.summary]
         if rank == 1 and pool > 1:
             findings.append(f"{target.contractor_name} is the best-aligned candidate in the field.")
@@ -164,34 +176,45 @@ class PDQEngine:
     def _actions(rec: str, closures: list[GapClosure]) -> list[dict]:
         actions = [c.to_dict() for c in closures[:6]]
         if rec == PursuitRecommendation.MONITOR.value:
-            actions.insert(0, {
-                "recommendation": "Acquire more of the pre-proposal evidence package (Section M, "
-                                  "Q&A responses, SOW) before committing B&P investment.",
-                "action_type": "intel", "effort": "low", "timeline_months": 1,
-                "feasibility": "high", "cost_band": "$",
-            })
+            actions.insert(
+                0,
+                {
+                    "recommendation": "Acquire more of the pre-proposal evidence package "
+                    "(Section M, Q&A responses, SOW) before committing B&P investment.",
+                    "action_type": "intel",
+                    "effort": "low",
+                    "timeline_months": 1,
+                    "feasibility": "high",
+                    "cost_band": "$",
+                },
+            )
         return actions
 
     @staticmethod
     def _risks(profile: WinningProfile, unclosable_critical: list) -> list[dict]:
         risks: list[dict] = []
         for g in unclosable_critical:
-            risks.append({
-                "risk": f"Unclosable critical gap: {g.attribute_name}",
-                "severity": "high",
-                "mitigation": "Reposition as subcontractor/teaming member, or no-bid.",
-            })
+            risks.append(
+                {
+                    "risk": f"Unclosable critical gap: {g.attribute_name}",
+                    "severity": "high",
+                    "mitigation": "Reposition as subcontractor/teaming member, or no-bid.",
+                }
+            )
         if profile.evidence_strength < 50.0:
-            risks.append({
-                "risk": "Winning profile rests on limited evidence; weighting may shift "
-                        "materially.",
-                "severity": "medium",
-                "mitigation": "Re-run the hypothesis once Section M and Q&A responses are "
-                              "released.",
-            })
+            risks.append(
+                {
+                    "risk": "Winning profile rests on limited evidence; weighting may shift "
+                    "materially.",
+                    "severity": "medium",
+                    "mitigation": "Re-run the hypothesis once Section M and Q&A responses are "
+                    "released.",
+                }
+            )
         for u in profile.unknown_factors[:3]:
-            risks.append({"risk": u, "severity": "low",
-                          "mitigation": "Track amendments and pre-award Q&A."})
+            risks.append(
+                {"risk": u, "severity": "low", "mitigation": "Track amendments and pre-award Q&A."}
+            )
         return risks
 
     @staticmethod
@@ -205,9 +228,15 @@ class PDQEngine:
         ]
 
     @staticmethod
-    def _executive_summary(profile: WinningProfile, target: ContractorAlignment,
-                           rank: int | None, pool: int, rec: str,
-                           pdq: float, win_pos: float) -> str:
+    def _executive_summary(
+        profile: WinningProfile,
+        target: ContractorAlignment,
+        rank: int | None,
+        pool: int,
+        rec: str,
+        pdq: float,
+        win_pos: float,
+    ) -> str:
         rec_label = rec.replace("_", "-").upper()
         pos = f"ranks {rank} of {pool}" if rank and pool > 1 else "was assessed"
         return (

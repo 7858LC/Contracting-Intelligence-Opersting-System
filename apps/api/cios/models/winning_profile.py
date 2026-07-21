@@ -17,6 +17,7 @@ Pipeline (each stage persists here):
       → Contractor Alignment Analysis™ / Ranking™ / Gap Analysis™ (WPHAlignment)
       → Executive Opportunity Intelligence Assessment™ + PDQ™ (WPHAssessment)
 """
+
 from __future__ import annotations
 
 import uuid
@@ -49,6 +50,7 @@ from .base import EvidenceMixin, TenantMixin, TimestampMixin, UUIDMixin
 
 # ── Solicitation package ─────────────────────────────────────────────────────────
 
+
 class WPHSolicitation(Base, UUIDMixin, TimestampMixin, TenantMixin):
     """A pre-award solicitation package — the unit of analysis for the engine.
 
@@ -56,6 +58,7 @@ class WPHSolicitation(Base, UUIDMixin, TimestampMixin, TenantMixin):
     can be exercised on any evidence package (e.g. a Sources Sought before the
     opportunity is tracked).
     """
+
     __tablename__ = "wph_solicitations"
     __table_args__ = (
         Index("idx_wph_sol_tenant_status", "tenant_id", "pipeline_status"),
@@ -97,8 +100,10 @@ class WPHSolicitation(Base, UUIDMixin, TimestampMixin, TenantMixin):
 
 # ── Evidence documents ───────────────────────────────────────────────────────────
 
+
 class WPHEvidenceDocument(Base, UUIDMixin, TimestampMixin, TenantMixin):
     """One document within a solicitation package (e.g. Section M, a Q&A response)."""
+
     __tablename__ = "wph_evidence_documents"
     __table_args__ = (
         Index("idx_wph_doc_sol", "solicitation_id"),
@@ -121,12 +126,14 @@ class WPHEvidenceDocument(Base, UUIDMixin, TimestampMixin, TenantMixin):
 
 # ── Extracted & classified procurement signals ───────────────────────────────────
 
+
 class WPHSignal(Base, UUIDMixin, TimestampMixin, TenantMixin):
     """A single classified acquisition signal extracted from an evidence document.
 
     Every signal preserves the *verbatim* evidence text and its source, so any
     downstream inference is auditable back to the exact document snippet.
     """
+
     __tablename__ = "wph_signals"
     __table_args__ = (
         Index("idx_wph_signal_sol", "solicitation_id"),
@@ -157,11 +164,13 @@ class WPHSignal(Base, UUIDMixin, TimestampMixin, TenantMixin):
 
 # ── Winning Profile Hypothesis™ ──────────────────────────────────────────────────
 
+
 class WPHProfile(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin):
     """The Winning Profile Hypothesis™ — an explainable inference of what the ideal
     awardee would most likely look like for this acquisition. Versioned per
     solicitation; ``is_current`` marks the latest.
     """
+
     __tablename__ = "wph_profiles"
     __table_args__ = (
         Index("idx_wph_profile_sol", "solicitation_id"),
@@ -178,7 +187,7 @@ class WPHProfile(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin):
     summary: Mapped[str | None] = mapped_column(Text)
     narrative: Mapped[str | None] = mapped_column(Text)  # optional Claude enrichment
     overall_confidence: Mapped[float] = mapped_column(Float, default=0.0)  # 0–100
-    evidence_strength: Mapped[float] = mapped_column(Float, default=0.0)   # 0–100
+    evidence_strength: Mapped[float] = mapped_column(Float, default=0.0)  # 0–100
     attribute_count: Mapped[int] = mapped_column(Integer, default=0)
     unknown_factors: Mapped[list] = mapped_column(JSONB, default=list)
 
@@ -198,6 +207,7 @@ class WPHProfileAttribute(Base, UUIDMixin, TimestampMixin, TenantMixin):
     name, description, importance weight, evidence confidence, supporting evidence,
     evidence source references, reasoning, unknown factors, confidence level.
     """
+
     __tablename__ = "wph_profile_attributes"
     __table_args__ = (
         Index("idx_wph_attr_profile", "profile_id"),
@@ -212,7 +222,7 @@ class WPHProfileAttribute(Base, UUIDMixin, TimestampMixin, TenantMixin):
     category: Mapped[str] = mapped_column(String(48), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
 
-    importance_weight: Mapped[float] = mapped_column(Float, default=0.0)   # 0–100
+    importance_weight: Mapped[float] = mapped_column(Float, default=0.0)  # 0–100
     evidence_confidence: Mapped[float] = mapped_column(Float, default=0.0)  # 0–100
     confidence_level: Mapped[str] = mapped_column(String(16), default=ConfidenceLevel.LOW)
 
@@ -230,11 +240,13 @@ class WPHProfileAttribute(Base, UUIDMixin, TimestampMixin, TenantMixin):
 
 # ── Contractor capability profiles ───────────────────────────────────────────────
 
+
 class WPHContractor(Base, UUIDMixin, TimestampMixin, TenantMixin):
     """A candidate contractor (may be the customer's own org or a competitor)
     scored against a Winning Profile Hypothesis. Tenant-scoped and reusable
     across solicitations.
     """
+
     __tablename__ = "wph_contractors"
     __table_args__ = (
         Index("idx_wph_contractor_tenant", "tenant_id"),
@@ -262,12 +274,14 @@ class WPHContractor(Base, UUIDMixin, TimestampMixin, TenantMixin):
 
 # ── Contractor Alignment Analysis™ / Ranking™ / Gap Analysis™ ─────────────────────
 
+
 class WPHAlignment(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin):
     """How well one contractor aligns to the Winning Profile Hypothesis.
 
     Carries the full auditable breakdown: per-attribute alignment, ranking,
     capability gaps, and gap-closure recommendations.
     """
+
     __tablename__ = "wph_alignments"
     __table_args__ = (
         Index("idx_wph_align_profile", "profile_id"),
@@ -307,10 +321,12 @@ class WPHAlignment(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin):
 
 # ── Executive Opportunity Intelligence Assessment™ + PDQ™ ─────────────────────────
 
+
 class WPHAssessment(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin):
     """The executive-level output: a Pursuit Decision Quality™ score and an
     explainable Bid / No-Bid / Conditional recommendation for a target contractor.
     """
+
     __tablename__ = "wph_assessments"
     __table_args__ = (
         Index("idx_wph_assess_sol", "solicitation_id"),
@@ -326,7 +342,7 @@ class WPHAssessment(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin)
     target_contractor_id: Mapped[uuid.UUID | None] = mapped_column(PG_UUID(as_uuid=True))
     target_contractor_name: Mapped[str | None] = mapped_column(String(256))
 
-    pdq_score: Mapped[float] = mapped_column(Float, default=0.0)          # 0–100
+    pdq_score: Mapped[float] = mapped_column(Float, default=0.0)  # 0–100
     win_positioning_score: Mapped[float] = mapped_column(Float, default=0.0)  # 0–100
     competitive_rank: Mapped[int | None] = mapped_column(Integer)
     candidate_pool_size: Mapped[int] = mapped_column(Integer, default=0)

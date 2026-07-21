@@ -7,6 +7,7 @@ It never changes weights, scores, or attributes — it only explains them. If th
 Claude call fails or no API key is configured, the deterministic output stands
 on its own.
 """
+
 from __future__ import annotations
 
 from typing import Any

@@ -1,14 +1,17 @@
 """Agent execution audit trail — every AI run is logged and traceable."""
+
 import uuid
 from datetime import datetime
 from typing import Any
 
 from sqlalchemy import DateTime, Float, Index, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from cios.core.database import Base
-from .base import UUIDMixin, TimestampMixin, TenantMixin
+
+from .base import TenantMixin, TimestampMixin, UUIDMixin
 
 
 class AgentRun(Base, UUIDMixin, TimestampMixin, TenantMixin):
@@ -16,6 +19,7 @@ class AgentRun(Base, UUIDMixin, TimestampMixin, TenantMixin):
     Immutable record of every agent invocation.
     Every recommendation surfaced to a user traces to an AgentRun.
     """
+
     __tablename__ = "agent_runs"
     __table_args__ = (
         Index("idx_ar_tenant_type", "tenant_id", "agent_type"),

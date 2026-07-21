@@ -1,4 +1,5 @@
 """Procurement Intelligence Radar™ (PIR) — REST API endpoints."""
+
 from __future__ import annotations
 
 import uuid
@@ -9,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
-from cios.core.dependencies import Auth, DB, Pages
+from cios.core.dependencies import DB, Auth, Pages
 from cios.models.pir import (
     PIRAIAnalysis,
     PIRCompany,
@@ -18,14 +19,13 @@ from cios.models.pir import (
     PIRSignal,
     PIRWatchlist,
     PriorityTier,
-    SignalSource,
-    SignalType,
 )
 
 router = APIRouter()
 
 
 # ── Pydantic schemas ───────────────────────────────────────────────────────────
+
 
 class CompanyCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=256)
@@ -203,6 +203,7 @@ class DashboardStats(BaseModel):
 
 # ── Companies ─────────────────────────────────────────────────────────────────
 
+
 @router.get("/companies", response_model=dict)
 async def list_companies(
     user: Auth,
@@ -320,7 +321,7 @@ async def trigger_company_scan(
     db: DB,
     days_back: int = Query(60, ge=1, le=365),
 ) -> dict:
-    company = await _get_company_or_404(db, company_id, user.tenant_id)
+    await _get_company_or_404(db, company_id, user.tenant_id)
 
     job = PIRScanJob(
         tenant_id=user.tenant_id,
@@ -334,12 +335,14 @@ async def trigger_company_scan(
     await db.refresh(job)
 
     from cios.tasks.pir import scan_company
+
     scan_company.delay(str(company_id), str(user.tenant_id), {"days_back": days_back})
 
     return {"job_id": str(job.id), "status": "queued"}
 
 
 # ── Signals ───────────────────────────────────────────────────────────────────
+
 
 @router.get("/companies/{company_id}/signals", response_model=dict)
 async def list_company_signals(
@@ -367,6 +370,7 @@ async def list_company_signals(
         q = q.where(PIRSignal.source == source)
     if since_days:
         from datetime import timedelta
+
         cutoff = datetime.now(UTC) - timedelta(days=since_days)
         q = q.where(PIRSignal.detected_at >= cutoff)
 
@@ -386,13 +390,14 @@ async def list_company_signals(
 
 # ── AI Analysis ───────────────────────────────────────────────────────────────
 
+
 @router.post(
     "/companies/{company_id}/analyze",
     response_model=AIAnalysisResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def trigger_ai_analysis(company_id: uuid.UUID, user: Auth, db: DB) -> PIRAIAnalysis:
-    company = await _get_company_or_404(db, company_id, user.tenant_id)
+    await _get_company_or_404(db, company_id, user.tenant_id)
 
     analysis = PIRAIAnalysis(
         tenant_id=user.tenant_id,
@@ -404,6 +409,7 @@ async def trigger_ai_analysis(company_id: uuid.UUID, user: Auth, db: DB) -> PIRA
     await db.refresh(analysis)
 
     from cios.tasks.pir import analyze_company_ai
+
     analyze_company_ai.delay(
         str(company_id),
         str(user.tenant_id),
@@ -415,9 +421,7 @@ async def trigger_ai_analysis(company_id: uuid.UUID, user: Auth, db: DB) -> PIRA
 
 
 @router.get("/companies/{company_id}/analyses", response_model=dict)
-async def list_ai_analyses(
-    company_id: uuid.UUID, user: Auth, db: DB, pages: Pages
-) -> dict:
+async def list_ai_analyses(company_id: uuid.UUID, user: Auth, db: DB, pages: Pages) -> dict:
     await _get_company_or_404(db, company_id, user.tenant_id)
 
     q = (
@@ -456,6 +460,7 @@ async def get_ai_analysis(
 
 
 # ── Watchlists ────────────────────────────────────────────────────────────────
+
 
 @router.get("/watchlists", response_model=list[WatchlistResponse])
 async def list_watchlists(user: Auth, db: DB) -> list[PIRWatchlist]:
@@ -518,6 +523,7 @@ async def remove_from_watchlist(
 
 # ── Saved Searches ────────────────────────────────────────────────────────────
 
+
 @router.get("/saved-searches", response_model=list[SavedSearchResponse])
 async def list_saved_searches(user: Auth, db: DB) -> list[PIRSavedSearch]:
     result = await db.execute(
@@ -560,6 +566,7 @@ async def delete_saved_search(search_id: uuid.UUID, user: Auth, db: DB) -> None:
 
 # ── Scan Jobs ─────────────────────────────────────────────────────────────────
 
+
 @router.post("/scans", response_model=ScanJobResponse, status_code=status.HTTP_202_ACCEPTED)
 async def trigger_bulk_scan(
     user: Auth,
@@ -579,6 +586,7 @@ async def trigger_bulk_scan(
     await db.refresh(job)
 
     from cios.tasks.pir import bulk_radar_scan
+
     bulk_radar_scan.delay(str(user.tenant_id), None, {"days_back": days_back})
 
     return job
@@ -618,10 +626,10 @@ async def get_scan_job(job_id: uuid.UUID, user: Auth, db: DB) -> PIRScanJob:
 
 # ── Dashboard stats ───────────────────────────────────────────────────────────
 
+
 @router.get("/dashboard", response_model=DashboardStats)
 async def get_dashboard_stats(user: Auth, db: DB) -> DashboardStats:
     from datetime import timedelta
-    from sqlalchemy import case, cast, Float
 
     tid = user.tenant_id
 
@@ -630,10 +638,12 @@ async def get_dashboard_stats(user: Auth, db: DB) -> DashboardStats:
         select(
             PIRCompany.priority_tier,
             func.count(PIRCompany.id),
-        ).where(
+        )
+        .where(
             PIRCompany.tenant_id == tid,
             PIRCompany.is_active.is_(True),
-        ).group_by(PIRCompany.priority_tier)
+        )
+        .group_by(PIRCompany.priority_tier)
     )
     tier_map: dict[str, int] = {}
     total_companies = 0
@@ -687,15 +697,13 @@ async def get_dashboard_stats(user: Auth, db: DB) -> DashboardStats:
         watched_count=watched.scalar_one(),
         signals_last_7d=signals_7d.scalar_one(),
         avg_signal_score=round(avg_score.scalar_one() or 0.0, 1),
-        top_signal_types=[
-            {"signal_type": st, "count": cnt}
-            for st, cnt in top_types.fetchall()
-        ],
+        top_signal_types=[{"signal_type": st, "count": cnt} for st, cnt in top_types.fetchall()],
         scan_jobs_running=running_scans.scalar_one(),
     )
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 async def _get_company_or_404(db: Any, company_id: uuid.UUID, tenant_id: uuid.UUID) -> PIRCompany:
     result = await db.execute(

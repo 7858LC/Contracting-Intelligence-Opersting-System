@@ -4,13 +4,15 @@ Kept free of any ORM/SQLAlchemy import so the evidence-fusion pipeline can be
 imported and unit-tested with no database dependency. The ORM models re-export
 these same enums.
 """
+
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class EvidenceDocumentType(str, Enum):
+class EvidenceDocumentType(StrEnum):
     """The complete pre-proposal evidence package accepted by the engine."""
+
     SOURCES_SOUGHT = "sources_sought"
     RFI = "rfi"
     DRAFT_RFP = "draft_rfp"
@@ -20,11 +22,11 @@ class EvidenceDocumentType(str, Enum):
     SOO = "statement_of_objectives"
     ATTACHMENT = "attachment"
     AMENDMENT = "amendment"
-    SECTION_L = "section_l"            # Instructions to offerors
-    SECTION_M = "section_m"            # Evaluation factors for award
+    SECTION_L = "section_l"  # Instructions to offerors
+    SECTION_M = "section_m"  # Evaluation factors for award
     EVALUATION_CRITERIA = "evaluation_criteria"
     INDUSTRY_DAY = "industry_day"
-    QA_RESPONSE = "qa_response"        # Pre-award questions + gov answers (high value)
+    QA_RESPONSE = "qa_response"  # Pre-award questions + gov answers (high value)
     GOV_RESPONSE = "government_response"
     PROCUREMENT_FORECAST = "procurement_forecast"
     AGENCY_STRATEGY = "agency_strategy"
@@ -34,8 +36,9 @@ class EvidenceDocumentType(str, Enum):
     OTHER = "other"
 
 
-class SignalCategory(str, Enum):
+class SignalCategory(StrEnum):
     """Classified acquisition signals extracted from the evidence package."""
+
     EVALUATION_EMPHASIS = "evaluation_emphasis"
     TRANSITION_RISK = "transition_risk"
     INCUMBENT_ADVANTAGE = "incumbent_advantage"
@@ -56,13 +59,13 @@ class SignalCategory(str, Enum):
     AGENCY_PRIORITY = "agency_priority"
 
 
-class ConfidenceLevel(str, Enum):
+class ConfidenceLevel(StrEnum):
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
 
 
-class PipelineStatus(str, Enum):
+class PipelineStatus(StrEnum):
     DRAFT = "draft"
     EVIDENCE_READY = "evidence_ready"
     SIGNALS_EXTRACTED = "signals_extracted"
@@ -72,7 +75,7 @@ class PipelineStatus(str, Enum):
     FAILED = "failed"
 
 
-class PursuitRecommendation(str, Enum):
+class PursuitRecommendation(StrEnum):
     BID = "bid"
     NO_BID = "no_bid"
     CONDITIONAL_BID = "conditional_bid"

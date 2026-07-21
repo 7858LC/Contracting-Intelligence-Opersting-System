@@ -5,6 +5,7 @@ DB rows to engine dataclasses, runs a pipeline stage, and persists the results �
 keeping API endpoints and Celery tasks thin. All queries are tenant-scoped; RLS
 provides defense in depth.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -50,12 +51,14 @@ def _to_contractor_profile(c: WPHContractor) -> ContractorProfile:
                     caps[name.lower()] = float(item["level"])
                 except (TypeError, ValueError):
                     pass
-    capability_text = " ".join([
-        c.description or "",
-        " ".join(cap_names),
-        " ".join(str(x) for x in (c.certifications or [])),
-        " ".join(str(x) for x in (c.clearances or [])),
-    ])
+    capability_text = " ".join(
+        [
+            c.description or "",
+            " ".join(cap_names),
+            " ".join(str(x) for x in (c.certifications or [])),
+            " ".join(str(x) for x in (c.clearances or [])),
+        ]
+    )
     return ContractorProfile(
         name=c.name,
         description=c.description or "",
@@ -81,12 +84,18 @@ class WPHService:
     async def extract_signals(
         self, solicitation: WPHSolicitation, tenant_id: uuid.UUID
     ) -> list[WPHSignal]:
-        docs_rows = (await self.db.execute(
-            select(WPHEvidenceDocument).where(
-                WPHEvidenceDocument.solicitation_id == solicitation.id,
-                WPHEvidenceDocument.tenant_id == tenant_id,
+        docs_rows = (
+            (
+                await self.db.execute(
+                    select(WPHEvidenceDocument).where(
+                        WPHEvidenceDocument.solicitation_id == solicitation.id,
+                        WPHEvidenceDocument.tenant_id == tenant_id,
+                    )
+                )
             )
-        )).scalars().all()
+            .scalars()
+            .all()
+        )
 
         # Replace prior signals — extraction is deterministic and idempotent.
         await self.db.execute(
@@ -128,23 +137,37 @@ class WPHService:
     # ── Profile generation ───────────────────────────────────────────────────────
 
     async def generate_profile(
-        self, solicitation: WPHSolicitation, tenant_id: uuid.UUID,
-        model_used: str | None = None, narrative: str | None = None,
+        self,
+        solicitation: WPHSolicitation,
+        tenant_id: uuid.UUID,
+        model_used: str | None = None,
+        narrative: str | None = None,
     ) -> WPHProfile:
-        signal_rows = (await self.db.execute(
-            select(WPHSignal).where(
-                WPHSignal.solicitation_id == solicitation.id,
-                WPHSignal.tenant_id == tenant_id,
+        signal_rows = (
+            (
+                await self.db.execute(
+                    select(WPHSignal).where(
+                        WPHSignal.solicitation_id == solicitation.id,
+                        WPHSignal.tenant_id == tenant_id,
+                    )
+                )
             )
-        )).scalars().all()
+            .scalars()
+            .all()
+        )
 
         from .schemas import ExtractedSignal
+
         eng_signals = [
             ExtractedSignal(
-                category=s.category, evidence_text=s.evidence_text,
-                interpretation=s.interpretation or "", strength=s.strength,
-                confidence=s.confidence, source_document_type=s.source_document_type or "other",
-                source_ref=s.source_ref, keywords=list(s.keywords or []),
+                category=s.category,
+                evidence_text=s.evidence_text,
+                interpretation=s.interpretation or "",
+                strength=s.strength,
+                confidence=s.confidence,
+                source_document_type=s.source_document_type or "other",
+                source_ref=s.source_ref,
+                keywords=list(s.keywords or []),
                 document_id=str(s.document_id) if s.document_id else None,
             )
             for s in signal_rows
@@ -154,17 +177,24 @@ class WPHService:
         # Supersede any prior current profile; bump version.
         await self.db.execute(
             update(WPHProfile)
-            .where(WPHProfile.solicitation_id == solicitation.id,
-                   WPHProfile.tenant_id == tenant_id,
-                   WPHProfile.is_current.is_(True))
-            .values(is_current=False)
-        )
-        prior = (await self.db.execute(
-            select(WPHProfile.version).where(
+            .where(
                 WPHProfile.solicitation_id == solicitation.id,
                 WPHProfile.tenant_id == tenant_id,
-            ).order_by(WPHProfile.version.desc()).limit(1)
-        )).scalar_one_or_none()
+                WPHProfile.is_current.is_(True),
+            )
+            .values(is_current=False)
+        )
+        prior = (
+            await self.db.execute(
+                select(WPHProfile.version)
+                .where(
+                    WPHProfile.solicitation_id == solicitation.id,
+                    WPHProfile.tenant_id == tenant_id,
+                )
+                .order_by(WPHProfile.version.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
         version = (prior or 0) + 1
 
         row = WPHProfile(
@@ -187,22 +217,24 @@ class WPHService:
         await self.db.flush()
 
         for attr in profile.attributes:
-            self.db.add(WPHProfileAttribute(
-                tenant_id=tenant_id,
-                profile_id=row.id,
-                name=attr.name,
-                category=attr.category,
-                description=attr.description,
-                importance_weight=attr.importance_weight,
-                evidence_confidence=attr.evidence_confidence,
-                confidence_level=attr.confidence_level,
-                required_level=attr.required_level,
-                supporting_evidence=attr.supporting_evidence,
-                evidence_source_refs=attr.evidence_source_refs,
-                signal_ids=[],
-                reasoning=attr.reasoning,
-                unknown_factors=attr.unknown_factors,
-            ))
+            self.db.add(
+                WPHProfileAttribute(
+                    tenant_id=tenant_id,
+                    profile_id=row.id,
+                    name=attr.name,
+                    category=attr.category,
+                    description=attr.description,
+                    importance_weight=attr.importance_weight,
+                    evidence_confidence=attr.evidence_confidence,
+                    confidence_level=attr.confidence_level,
+                    required_level=attr.required_level,
+                    supporting_evidence=attr.supporting_evidence,
+                    evidence_source_refs=attr.evidence_source_refs,
+                    signal_ids=[],
+                    reasoning=attr.reasoning,
+                    unknown_factors=attr.unknown_factors,
+                )
+            )
 
         solicitation.pipeline_status = PipelineStatus.PROFILE_GENERATED.value
         await self.db.commit()
@@ -213,26 +245,42 @@ class WPHService:
         self, profile_row: WPHProfile, tenant_id: uuid.UUID
     ) -> WinningProfile:
         from .schemas import InferredAttribute
-        attr_rows = (await self.db.execute(
-            select(WPHProfileAttribute).where(
-                WPHProfileAttribute.profile_id == profile_row.id,
-                WPHProfileAttribute.tenant_id == tenant_id,
-            ).order_by(WPHProfileAttribute.importance_weight.desc())
-        )).scalars().all()
+
+        attr_rows = (
+            (
+                await self.db.execute(
+                    select(WPHProfileAttribute)
+                    .where(
+                        WPHProfileAttribute.profile_id == profile_row.id,
+                        WPHProfileAttribute.tenant_id == tenant_id,
+                    )
+                    .order_by(WPHProfileAttribute.importance_weight.desc())
+                )
+            )
+            .scalars()
+            .all()
+        )
         attributes = [
             InferredAttribute(
-                key="", name=a.name, category=a.category, description=a.description or "",
-                importance_weight=a.importance_weight, evidence_confidence=a.evidence_confidence,
-                confidence_level=a.confidence_level, required_level=a.required_level,
+                key="",
+                name=a.name,
+                category=a.category,
+                description=a.description or "",
+                importance_weight=a.importance_weight,
+                evidence_confidence=a.evidence_confidence,
+                confidence_level=a.confidence_level,
+                required_level=a.required_level,
                 supporting_evidence=list(a.supporting_evidence or []),
                 evidence_source_refs=list(a.evidence_source_refs or []),
-                reasoning=a.reasoning or "", unknown_factors=list(a.unknown_factors or []),
+                reasoning=a.reasoning or "",
+                unknown_factors=list(a.unknown_factors or []),
                 signal_categories=[],
             )
             for a in attr_rows
         ]
         # Re-map attribute keys from the library by name for contractor matching.
         from .taxonomy import ATTRIBUTE_LIBRARY
+
         by_name = {x.name: x.key for x in ATTRIBUTE_LIBRARY}
         for a in attributes:
             a.key = by_name.get(a.name, a.name.lower().replace(" ", "_"))
@@ -247,8 +295,11 @@ class WPHService:
     # ── Alignment + ranking ──────────────────────────────────────────────────────
 
     async def align_contractors(
-        self, solicitation: WPHSolicitation, profile_row: WPHProfile,
-        tenant_id: uuid.UUID, contractor_ids: list[uuid.UUID] | None = None,
+        self,
+        solicitation: WPHSolicitation,
+        profile_row: WPHProfile,
+        tenant_id: uuid.UUID,
+        contractor_ids: list[uuid.UUID] | None = None,
     ) -> list[WPHAlignment]:
         q = select(WPHContractor).where(WPHContractor.tenant_id == tenant_id)
         if contractor_ids:
@@ -298,18 +349,30 @@ class WPHService:
     # ── Executive assessment ─────────────────────────────────────────────────────
 
     async def assess(
-        self, solicitation: WPHSolicitation, profile_row: WPHProfile,
-        tenant_id: uuid.UUID, target_contractor_id: uuid.UUID | None = None,
-        model_used: str | None = None, narrative: str | None = None,
+        self,
+        solicitation: WPHSolicitation,
+        profile_row: WPHProfile,
+        tenant_id: uuid.UUID,
+        target_contractor_id: uuid.UUID | None = None,
+        model_used: str | None = None,
+        narrative: str | None = None,
     ) -> WPHAssessment | None:
         profile = await self.load_profile_dataclass(profile_row, tenant_id)
 
-        align_rows = (await self.db.execute(
-            select(WPHAlignment).where(
-                WPHAlignment.profile_id == profile_row.id,
-                WPHAlignment.tenant_id == tenant_id,
-            ).order_by(WPHAlignment.rank.asc())
-        )).scalars().all()
+        align_rows = (
+            (
+                await self.db.execute(
+                    select(WPHAlignment)
+                    .where(
+                        WPHAlignment.profile_id == profile_row.id,
+                        WPHAlignment.tenant_id == tenant_id,
+                    )
+                    .order_by(WPHAlignment.rank.asc())
+                )
+            )
+            .scalars()
+            .all()
+        )
         if not align_rows:
             return None
 
@@ -320,23 +383,26 @@ class WPHService:
             ContractorAlignment,
             GapClosure,
         )
+
         ranked: list[ContractorAlignment] = []
         for r in align_rows:
             # Persisted JSONB dicts mirror the dataclass fields exactly (see *.to_dict),
             # so they can be re-hydrated directly.
-            ranked.append(ContractorAlignment(
-                contractor_name=r.contractor_name,
-                overall_alignment_score=r.overall_alignment_score,
-                rank=r.rank,
-                attribute_alignments=[
-                    AttributeAlignment(**a) for a in (r.attribute_alignments or [])
-                ],
-                gaps=[CapabilityGap(**g) for g in (r.gaps or [])],
-                gap_closures=[GapClosure(**c) for c in (r.gap_closures or [])],
-                strengths=list(r.strengths or []),
-                weaknesses=list(r.weaknesses or []),
-                summary=r.summary or "",
-            ))
+            ranked.append(
+                ContractorAlignment(
+                    contractor_name=r.contractor_name,
+                    overall_alignment_score=r.overall_alignment_score,
+                    rank=r.rank,
+                    attribute_alignments=[
+                        AttributeAlignment(**a) for a in (r.attribute_alignments or [])
+                    ],
+                    gaps=[CapabilityGap(**g) for g in (r.gaps or [])],
+                    gap_closures=[GapClosure(**c) for c in (r.gap_closures or [])],
+                    strengths=list(r.strengths or []),
+                    weaknesses=list(r.weaknesses or []),
+                    summary=r.summary or "",
+                )
+            )
 
         target = None
         target_name = None
@@ -346,11 +412,13 @@ class WPHService:
                 target_name = tc.name
                 target = next((a for a in ranked if a.contractor_name == tc.name), None)
         if target is None:
-            self_row = (await self.db.execute(
-                select(WPHContractor).where(
-                    WPHContractor.tenant_id == tenant_id, WPHContractor.is_self.is_(True)
-                ).limit(1)
-            )).scalar_one_or_none()
+            self_row = (
+                await self.db.execute(
+                    select(WPHContractor)
+                    .where(WPHContractor.tenant_id == tenant_id, WPHContractor.is_self.is_(True))
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
             if self_row:
                 target = next((a for a in ranked if a.contractor_name == self_row.name), None)
                 target_name = self_row.name if target else target_name
@@ -363,12 +431,16 @@ class WPHService:
         # Resolve target contractor id.
         tid = target_contractor_id
         if tid is None:
-            match = (await self.db.execute(
-                select(WPHContractor.id).where(
-                    WPHContractor.tenant_id == tenant_id,
-                    WPHContractor.name == target.contractor_name,
-                ).limit(1)
-            )).scalar_one_or_none()
+            match = (
+                await self.db.execute(
+                    select(WPHContractor.id)
+                    .where(
+                        WPHContractor.tenant_id == tenant_id,
+                        WPHContractor.name == target.contractor_name,
+                    )
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
             tid = match
 
         row = WPHAssessment(

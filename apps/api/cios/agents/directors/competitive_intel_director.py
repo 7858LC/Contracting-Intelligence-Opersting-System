@@ -2,10 +2,10 @@
 Competitive Intelligence Director — Module 8.
 Analyzes competitive landscape, incumbency, pricing trends, and win patterns.
 """
+
 from typing import Any
 
 from cios.agents.base import AgentContext, BaseAgent
-
 
 COMPETITIVE_INTEL_SYSTEM_PROMPT = """You are the Competitive Intelligence Director for CIOS.
 You analyze competitive landscapes for government contract opportunities.
@@ -49,15 +49,16 @@ class CompetitiveIntelDirector(BaseAgent):
         user_message = f"""
 COMPETITIVE INTELLIGENCE ASSESSMENT
 =====================================
-Opportunity: {opportunity_data.get('title', 'Unknown')}
-Agency: {opportunity_data.get('agency', 'Unknown')}
-Value: ${opportunity_data.get('estimated_value_max', 'Unknown')}
-NAICS: {opportunity_data.get('naics_codes', [])}
-Incumbent: {opportunity_data.get('incumbent', 'Unknown')}
-Anticipated Competitors: {opportunity_data.get('anticipated_competitors', [])}
-Set-Aside: {opportunity_data.get('set_aside_type', 'None')}
+Opportunity: {opportunity_data.get("title", "Unknown")}
+Agency: {opportunity_data.get("agency", "Unknown")}
+Value: ${opportunity_data.get("estimated_value_max", "Unknown")}
+NAICS: {opportunity_data.get("naics_codes", [])}
+Incumbent: {opportunity_data.get("incumbent", "Unknown")}
+Anticipated Competitors: {opportunity_data.get("anticipated_competitors", [])}
+Set-Aside: {opportunity_data.get("set_aside_type", "None")}
 
-Known Competitors from Knowledge Vault: {[k.get('content', '')[:150] for k in knowledge_context[:4]]}
+Known Competitors from Knowledge Vault: \
+{[k.get("content", "")[:150] for k in knowledge_context[:4]]}
 
 Perform competitive intelligence assessment:
 1. Competitive intensity rating (low/medium/high/very-high)

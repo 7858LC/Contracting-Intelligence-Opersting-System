@@ -1,9 +1,10 @@
 """Competitive Intelligence API — Module 8."""
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 
-from cios.core.dependencies import Auth, DB
+from cios.core.dependencies import DB, Auth
 from cios.models.competitor import Competitor, CompetitorIntelligence
 
 router = APIRouter()
@@ -83,6 +84,7 @@ async def add_competitor_intel(
 @router.post("/analyze")
 async def analyze_competitive_landscape(body: dict, db: DB, user: Auth) -> dict:
     from cios.tasks.competitive_intel import run_competitive_analysis
+
     task = run_competitive_analysis.delay(
         str(user.tenant_id), str(user.user_id), body.get("opportunity_id")
     )

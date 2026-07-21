@@ -4,6 +4,7 @@ Revision ID: 005_winning_profile_schema
 Revises: 004_pir_schema
 Create Date: 2026-07-21
 """
+
 from __future__ import annotations
 
 import sqlalchemy as sa
@@ -19,13 +20,26 @@ depends_on = None
 
 def _tenant_cols() -> list:
     return [
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True,
-                  server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"),
-                  nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"),
-                  onupdate=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            onupdate=sa.text("now()"),
+            nullable=False,
+        ),
     ]
 
 
@@ -67,8 +81,9 @@ def upgrade() -> None:
         sa.Column("signal_count", sa.Integer, nullable=False, server_default="0"),
         sa.Column("created_by", postgresql.UUID(as_uuid=True), nullable=True),
     )
-    op.create_index("idx_wph_sol_tenant_status", "wph_solicitations",
-                    ["tenant_id", "pipeline_status"])
+    op.create_index(
+        "idx_wph_sol_tenant_status", "wph_solicitations", ["tenant_id", "pipeline_status"]
+    )
     op.create_index("idx_wph_sol_number", "wph_solicitations", ["solicitation_number"])
     _enable_rls("wph_solicitations")
 
@@ -87,8 +102,9 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["solicitation_id"], ["wph_solicitations.id"], ondelete="CASCADE"),
     )
     op.create_index("idx_wph_doc_sol", "wph_evidence_documents", ["solicitation_id"])
-    op.create_index("idx_wph_doc_type", "wph_evidence_documents",
-                    ["solicitation_id", "document_type"])
+    op.create_index(
+        "idx_wph_doc_type", "wph_evidence_documents", ["solicitation_id", "document_type"]
+    )
     _enable_rls("wph_evidence_documents")
 
     # ── wph_signals ───────────────────────────────────────────────────────────
@@ -155,8 +171,9 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["profile_id"], ["wph_profiles.id"], ondelete="CASCADE"),
     )
     op.create_index("idx_wph_attr_profile", "wph_profile_attributes", ["profile_id"])
-    op.create_index("idx_wph_attr_importance", "wph_profile_attributes",
-                    ["profile_id", "importance_weight"])
+    op.create_index(
+        "idx_wph_attr_importance", "wph_profile_attributes", ["profile_id", "importance_weight"]
+    )
     _enable_rls("wph_profile_attributes")
 
     # ── wph_contractors ───────────────────────────────────────────────────────
@@ -203,8 +220,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["solicitation_id"], ["wph_solicitations.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["profile_id"], ["wph_profiles.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["contractor_id"], ["wph_contractors.id"], ondelete="CASCADE"),
-        sa.UniqueConstraint("profile_id", "contractor_id",
-                            name="uq_wph_align_profile_contractor"),
+        sa.UniqueConstraint("profile_id", "contractor_id", name="uq_wph_align_profile_contractor"),
     )
     op.create_index("idx_wph_align_profile", "wph_alignments", ["profile_id"])
     op.create_index("idx_wph_align_rank", "wph_alignments", ["profile_id", "rank"])
@@ -238,8 +254,9 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["profile_id"], ["wph_profiles.id"], ondelete="CASCADE"),
     )
     op.create_index("idx_wph_assess_sol", "wph_assessments", ["solicitation_id"])
-    op.create_index("idx_wph_assess_target", "wph_assessments",
-                    ["solicitation_id", "target_contractor_id"])
+    op.create_index(
+        "idx_wph_assess_target", "wph_assessments", ["solicitation_id", "target_contractor_id"]
+    )
     _enable_rls("wph_assessments")
 
 

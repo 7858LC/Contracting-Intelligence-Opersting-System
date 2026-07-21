@@ -1,9 +1,9 @@
 """Base agent framework — evidence-first, explainable-by-design."""
+
 import time
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
 from typing import Any, TypeVar
 
 import anthropic
@@ -19,6 +19,7 @@ T = TypeVar("T")
 @dataclass
 class Evidence:
     """Every recommendation is grounded in evidence."""
+
     source: str
     content: str
     relevance: float = 1.0
@@ -47,6 +48,7 @@ class Recommendation:
     The atomic output unit of the CIOS AI system.
     Every recommendation surface is fully auditable.
     """
+
     title: str
     recommendation: str
     confidence_score: float
@@ -62,6 +64,7 @@ class Recommendation:
 @dataclass
 class AgentContext:
     """Execution context passed through the agent hierarchy."""
+
     tenant_id: uuid.UUID
     user_id: uuid.UUID
     opportunity_id: uuid.UUID | None = None
@@ -104,7 +107,12 @@ class BaseAgent(ABC):
                 duration_ms=duration_ms,
                 tenant=str(context.tenant_id),
             )
-            return {"run_id": run_id, "agent": self.name, "result": result, "duration_ms": duration_ms}
+            return {
+                "run_id": run_id,
+                "agent": self.name,
+                "result": result,
+                "duration_ms": duration_ms,
+            }
         except Exception as e:
             duration_ms = int((time.monotonic() - start) * 1000)
             self._log.error("agent_error", agent=self.name, run_id=run_id, error=str(e))
@@ -141,6 +149,6 @@ class BaseAgent(ABC):
         if not evidence:
             return "No direct evidence available. Reasoning from domain knowledge."
         return "\n".join(
-            f"[{i+1}] {e.get('source', 'Unknown')}: {e.get('content', '')[:300]}"
+            f"[{i + 1}] {e.get('source', 'Unknown')}: {e.get('content', '')[:300]}"
             for i, e in enumerate(evidence)
         )

@@ -1,11 +1,15 @@
 """Teaming Recommendation Engine models — Module 7."""
+
 import uuid
+
 from sqlalchemy import Boolean, Float, Index, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from cios.core.database import Base
-from .base import UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin
+
+from .base import EvidenceMixin, TenantMixin, TimestampMixin, UUIDMixin
 
 
 class TeamingRecommendation(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin):
@@ -25,9 +29,7 @@ class TeamingRecommendation(Base, UUIDMixin, TimestampMixin, TenantMixin, Eviden
 
 class TeamingPartner(Base, UUIDMixin, TimestampMixin, TenantMixin):
     __tablename__ = "teaming_partners"
-    __table_args__ = (
-        Index("idx_tp_tenant", "tenant_id"),
-    )
+    __table_args__ = (Index("idx_tp_tenant", "tenant_id"),)
 
     company_name: Mapped[str] = mapped_column(String(256), nullable=False)
     cage_code: Mapped[str | None] = mapped_column(String(8))

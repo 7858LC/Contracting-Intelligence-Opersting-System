@@ -2,10 +2,10 @@
 Compliance Director — procurement rule engine and compliance gap analysis.
 Module 3 (Procurement Rule Engine) + Module 4 (Compliance Engine)
 """
+
 from typing import Any
 
 from cios.agents.base import AgentContext, BaseAgent
-
 
 COMPLIANCE_SYSTEM_PROMPT = """You are the Compliance Director for CIOS, an expert in
 procurement regulations across all government jurisdictions.
@@ -42,15 +42,15 @@ class ComplianceDirector(BaseAgent):
         user_message = f"""
 COMPLIANCE ASSESSMENT
 =====================
-Opportunity: {opportunity_data.get('title', 'Unknown')}
-Agency: {opportunity_data.get('agency', 'Unknown')}
-Jurisdiction: {opportunity_data.get('jurisdiction_type', 'federal')}
+Opportunity: {opportunity_data.get("title", "Unknown")}
+Agency: {opportunity_data.get("agency", "Unknown")}
+Jurisdiction: {opportunity_data.get("jurisdiction_type", "federal")}
 Rule Pack: {context.rule_pack}
-Contract Type: {opportunity_data.get('contract_type', 'Unknown')}
-Set-Aside: {opportunity_data.get('set_aside_type', 'None')}
-Key Requirements: {opportunity_data.get('key_requirements', [])}
+Contract Type: {opportunity_data.get("contract_type", "Unknown")}
+Set-Aside: {opportunity_data.get("set_aside_type", "None")}
+Key Requirements: {opportunity_data.get("key_requirements", [])}
 
-Organizational Context: {[k.get('content', '')[:200] for k in knowledge_context[:3]]}
+Organizational Context: {[k.get("content", "")[:200] for k in knowledge_context[:3]]}
 
 Perform comprehensive compliance assessment:
 1. Mandatory requirements matrix (go/no-go)

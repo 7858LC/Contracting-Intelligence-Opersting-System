@@ -5,6 +5,7 @@ full vertical slice can be demonstrated end-to-end without external data. The
 scenario: a mid-size federal IT modernization + O&M recompete with a security
 overlay, a small-business set-aside, and an active incumbent.
 """
+
 from __future__ import annotations
 
 from .schemas import ContractorProfile, EvidenceDoc
@@ -115,8 +116,11 @@ SAMPLE_CONTRACTORS: list[ContractorProfile] = [
             "transition phase-in knowledge transfer NIST 800-171"
         ),
         past_performance=[
-            {"title": "DHA Cloud Migration", "description": "Similar size and scope cloud "
-             "migration and O&M with a clean CPARS and successful phase-in."},
+            {
+                "title": "DHA Cloud Migration",
+                "description": "Similar size and scope cloud "
+                "migration and O&M with a clean CPARS and successful phase-in.",
+            },
         ],
     ),
     ContractorProfile(
@@ -132,8 +136,10 @@ SAMPLE_CONTRACTORS: list[ContractorProfile] = [
             "24/7 nationwide staffing PMP program manager past performance CPARS"
         ),
         past_performance=[
-            {"title": "EITMOS (incumbent)", "description": "Directly relevant incumbent "
-             "performance on this exact requirement."},
+            {
+                "title": "EITMOS (incumbent)",
+                "description": "Directly relevant incumbent performance on this exact requirement.",
+            },
         ],
     ),
     ContractorProfile(
@@ -152,8 +158,10 @@ SAMPLE_CONTRACTORS: list[ContractorProfile] = [
             "cloud analytics innovation modernization"
         ),
         past_performance=[
-            {"title": "Commercial AI Platform", "description": "Commercial modernization; "
-             "limited directly-relevant federal CPARS."},
+            {
+                "title": "Commercial AI Platform",
+                "description": "Commercial modernization; limited directly-relevant federal CPARS.",
+            },
         ],
     ),
 ]

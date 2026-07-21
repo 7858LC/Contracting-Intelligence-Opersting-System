@@ -1,23 +1,25 @@
 """Bid/No-Bid analysis Celery task."""
-import asyncio, uuid
+
+import asyncio
+import uuid
+
 from cios.tasks import celery_app
 
 
 @celery_app.task(bind=True, max_retries=2, soft_time_limit=300)
 def run_bid_analysis(self, tenant_id: str, user_id: str, decision_id: str) -> dict:
-    return asyncio.get_event_loop().run_until_complete(
-        _run_async(tenant_id, user_id, decision_id)
-    )
+    return asyncio.get_event_loop().run_until_complete(_run_async(tenant_id, user_id, decision_id))
 
 
 async def _run_async(tenant_id: str, user_id: str, decision_id: str) -> dict:
-    from cios.core.database import async_session_factory
+    from sqlalchemy import select
+
+    from cios.agents.base import AgentContext
     from cios.agents.directors.capture_director import CaptureDirector
     from cios.agents.directors.risk_director import RiskDirector
-    from cios.agents.base import AgentContext
+    from cios.core.database import async_session_factory
     from cios.models.bid_decision import BidDecision
     from cios.models.opportunity import Opportunity
-    from sqlalchemy import select
 
     async with async_session_factory() as db:
         d_result = await db.execute(
@@ -42,10 +44,13 @@ async def _run_async(tenant_id: str, user_id: str, decision_id: str) -> dict:
         capture = CaptureDirector()
         risk = RiskDirector()
 
-        capture_out = await capture.run(context, opportunity_data=opportunity_data, knowledge_context=[])
+        capture_out = await capture.run(
+            context, opportunity_data=opportunity_data, knowledge_context=[]
+        )
         risk_out = await risk.run(context, opportunity_data=opportunity_data, knowledge_context=[])
 
         import json
+
         try:
             c = json.loads(capture_out.get("result", {}).get("capture_assessment", "{}") or "{}")
             r = json.loads(risk_out.get("result", {}).get("risk_assessment", "{}") or "{}")

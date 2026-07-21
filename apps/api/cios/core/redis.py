@@ -1,4 +1,5 @@
 """Redis client with async support and tenant-namespaced caching."""
+
 import json
 from typing import Any
 

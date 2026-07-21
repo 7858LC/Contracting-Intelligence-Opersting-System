@@ -3,6 +3,7 @@
 These are DB-agnostic so the entire evidence-fusion pipeline can be unit-tested
 without a database or network. The service layer maps ORM rows to/from these.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -23,8 +24,8 @@ class ExtractedSignal:
     category: str
     evidence_text: str
     interpretation: str
-    strength: float          # 0–100
-    confidence: float        # 0–100
+    strength: float  # 0–100
+    confidence: float  # 0–100
     source_document_type: str
     source_ref: str | None = None
     keywords: list[str] = field(default_factory=list)
@@ -50,10 +51,10 @@ class InferredAttribute:
     name: str
     category: str
     description: str
-    importance_weight: float     # 0–100, normalized to sum to 100 across the profile
-    evidence_confidence: float   # 0–100
-    confidence_level: str        # high | medium | low
-    required_level: float        # 0–100 proficiency bar for a candidate
+    importance_weight: float  # 0–100, normalized to sum to 100 across the profile
+    evidence_confidence: float  # 0–100
+    confidence_level: str  # high | medium | low
+    required_level: float  # 0–100 proficiency bar for a candidate
     supporting_evidence: list[dict] = field(default_factory=list)  # [{text, source}]
     evidence_source_refs: list[str] = field(default_factory=list)
     reasoning: str = ""
@@ -81,8 +82,8 @@ class InferredAttribute:
 @dataclass
 class WinningProfile:
     summary: str
-    overall_confidence: float    # 0–100
-    evidence_strength: float     # 0–100
+    overall_confidence: float  # 0–100
+    evidence_strength: float  # 0–100
     attributes: list[InferredAttribute] = field(default_factory=list)
     unknown_factors: list[str] = field(default_factory=list)
 
@@ -121,8 +122,8 @@ class AttributeAlignment:
     importance_weight: float
     required_level: float
     contractor_level: float
-    alignment: float          # 0–100 (% of requirement met, capped)
-    contribution: float       # weighted contribution to overall score
+    alignment: float  # 0–100 (% of requirement met, capped)
+    contribution: float  # weighted contribution to overall score
     evidence: str = ""
     reasoning: str = ""
 
@@ -146,11 +147,11 @@ class CapabilityGap:
     attribute_key: str
     attribute_name: str
     category: str
-    severity: str             # critical | major | moderate | minor
+    severity: str  # critical | major | moderate | minor
     importance_weight: float
     required_level: float
     contractor_level: float
-    gap_size: float           # required - contractor (positive)
+    gap_size: float  # required - contractor (positive)
     impact: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -172,12 +173,12 @@ class GapClosure:
     gap_attribute_key: str
     gap_attribute_name: str
     recommendation: str
-    action_type: str          # teaming | hire | invest | certify | partner | reprice | pursue
-    effort: str               # low | medium | high
+    action_type: str  # teaming | hire | invest | certify | partner | reprice | pursue
+    effort: str  # low | medium | high
     timeline_months: int
-    feasibility: str          # high | medium | low
-    cost_band: str            # $ | $$ | $$$
-    closes_gap_to: float      # projected contractor_level after action
+    feasibility: str  # high | medium | low
+    cost_band: str  # $ | $$ | $$$
+    closes_gap_to: float  # projected contractor_level after action
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -196,7 +197,7 @@ class GapClosure:
 @dataclass
 class ContractorAlignment:
     contractor_name: str
-    overall_alignment_score: float   # 0–100
+    overall_alignment_score: float  # 0–100
     rank: int = 0
     attribute_alignments: list[AttributeAlignment] = field(default_factory=list)
     gaps: list[CapabilityGap] = field(default_factory=list)
@@ -221,9 +222,9 @@ class ContractorAlignment:
 
 @dataclass
 class Assessment:
-    pdq_score: float                 # 0–100 Pursuit Decision Quality
-    win_positioning_score: float     # 0–100
-    recommendation: str              # bid | no_bid | conditional_bid | monitor
+    pdq_score: float  # 0–100 Pursuit Decision Quality
+    win_positioning_score: float  # 0–100
+    recommendation: str  # bid | no_bid | conditional_bid | monitor
     competitive_rank: int | None
     candidate_pool_size: int
     executive_summary: str

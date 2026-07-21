@@ -3,6 +3,7 @@
 Pure-domain tests — no database or network required. They verify the engine is
 explainable, deterministic, and behaves correctly across the full vertical slice.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -24,6 +25,7 @@ def engine() -> WinningProfileEngine:
 
 
 # ── Signal extraction ────────────────────────────────────────────────────────────
+
 
 def test_extraction_classifies_security_signal():
     doc = EvidenceDoc(
@@ -64,12 +66,16 @@ def test_high_value_documents_carry_more_weight():
 
 
 def test_empty_document_yields_no_signals():
-    assert SignalExtractor().extract_from_document(
-        EvidenceDoc(document_type="other", title="x", content="")
-    ) == []
+    assert (
+        SignalExtractor().extract_from_document(
+            EvidenceDoc(document_type="other", title="x", content="")
+        )
+        == []
+    )
 
 
 # ── Attribute inference / weighting ──────────────────────────────────────────────
+
 
 def test_importance_weights_normalize_to_100():
     signals = SignalExtractor().extract(SAMPLE_DOCUMENTS)
@@ -116,16 +122,19 @@ def test_no_signals_yields_empty_profile_with_guidance():
 
 # ── Alignment, ranking, gaps, closures ───────────────────────────────────────────
 
+
 def test_full_pipeline_ranks_self_first(engine: WinningProfileEngine):
     result = engine.run(SAMPLE_DOCUMENTS, SAMPLE_CONTRACTORS)
     assert result.profile is not None
     assert result.alignments
     # The self/SDVOSB/cleared firm should out-rank the non-set-aside large firm.
     ranked_names = [a.contractor_name for a in result.alignments]
-    apex_rank = next(a.rank for a in result.alignments
-                     if a.contractor_name == "Apex Digital Partners")
-    meridian_rank = next(a.rank for a in result.alignments
-                         if a.contractor_name == "Meridian Federal Solutions")
+    apex_rank = next(
+        a.rank for a in result.alignments if a.contractor_name == "Apex Digital Partners"
+    )
+    meridian_rank = next(
+        a.rank for a in result.alignments if a.contractor_name == "Meridian Federal Solutions"
+    )
     assert meridian_rank < apex_rank
     assert ranked_names[0] in ("Meridian Federal Solutions", "LegacyGov Systems Inc.")
 
@@ -159,8 +168,9 @@ def test_ineligible_large_firm_has_setaside_gap(engine: WinningProfileEngine):
 
 def test_gap_severity_reflects_importance_and_size(engine: WinningProfileEngine):
     profile = engine.build_profile(engine.extract_signals(SAMPLE_DOCUMENTS))
-    weak = ContractorProfile(name="No-Cap Firm", capability_text="general services",
-                             set_asides=[], clearances=[])
+    weak = ContractorProfile(
+        name="No-Cap Firm", capability_text="general services", set_asides=[], clearances=[]
+    )
     alignment = engine.align_contractor(profile, weak)
     assert alignment.gaps
     assert any(g.severity == "critical" for g in alignment.gaps)
@@ -168,13 +178,17 @@ def test_gap_severity_reflects_importance_and_size(engine: WinningProfileEngine)
 
 # ── Executive assessment / PDQ ───────────────────────────────────────────────────
 
+
 def test_assessment_recommends_bid_for_strong_target(engine: WinningProfileEngine):
-    result = engine.run(SAMPLE_DOCUMENTS, SAMPLE_CONTRACTORS,
-                        target_name="Meridian Federal Solutions")
+    result = engine.run(
+        SAMPLE_DOCUMENTS, SAMPLE_CONTRACTORS, target_name="Meridian Federal Solutions"
+    )
     assert result.assessment is not None
     a = result.assessment
-    assert a.recommendation in (PursuitRecommendation.BID.value,
-                                PursuitRecommendation.CONDITIONAL_BID.value)
+    assert a.recommendation in (
+        PursuitRecommendation.BID.value,
+        PursuitRecommendation.CONDITIONAL_BID.value,
+    )
     assert 0 <= a.pdq_score <= 100
     assert a.candidate_pool_size == len(SAMPLE_CONTRACTORS)
     assert a.executive_summary
@@ -182,8 +196,9 @@ def test_assessment_recommends_bid_for_strong_target(engine: WinningProfileEngin
 
 
 def test_assessment_no_bids_weak_target(engine: WinningProfileEngine):
-    weak = ContractorProfile(name="Generalist LLC", capability_text="general consulting",
-                             set_asides=[], clearances=[])
+    weak = ContractorProfile(
+        name="Generalist LLC", capability_text="general consulting", set_asides=[], clearances=[]
+    )
     result = engine.run(SAMPLE_DOCUMENTS, [weak], target_name="Generalist LLC")
     assert result.assessment is not None
     assert result.assessment.recommendation in (
@@ -194,8 +209,13 @@ def test_assessment_no_bids_weak_target(engine: WinningProfileEngine):
 
 
 def test_monitor_when_evidence_is_thin(engine: WinningProfileEngine):
-    thin = [EvidenceDoc(document_type="rfi", title="RFI",
-                        content="The agency seeks information about cloud services.")]
+    thin = [
+        EvidenceDoc(
+            document_type="rfi",
+            title="RFI",
+            content="The agency seeks information about cloud services.",
+        )
+    ]
     contractor = ContractorProfile(name="Cloud Co", capability_text="cloud services")
     result = engine.run(thin, [contractor], target_name="Cloud Co")
     assert result.assessment is not None
@@ -212,6 +232,7 @@ def test_pipeline_without_contractors_still_produces_profile(engine: WinningProf
 
 def test_result_serialization_is_json_safe(engine: WinningProfileEngine):
     import json
+
     result = engine.run(SAMPLE_DOCUMENTS, SAMPLE_CONTRACTORS)
     payload = result.to_dict()
     # Round-trips through JSON without error.

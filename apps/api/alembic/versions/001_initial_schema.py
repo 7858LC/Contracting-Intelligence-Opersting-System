@@ -4,9 +4,11 @@ Revision ID: 001_initial
 Revises:
 Create Date: 2026-07-18
 """
-from alembic import op
+
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import UUID, JSONB, TSVECTOR
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
+
+from alembic import op
 
 revision = "001_initial"
 down_revision = None
@@ -16,14 +18,16 @@ depends_on = None
 
 def upgrade() -> None:
     # Enable extensions
-    op.execute("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"")
-    op.execute("CREATE EXTENSION IF NOT EXISTS \"pgcrypto\"")
-    op.execute("CREATE EXTENSION IF NOT EXISTS \"pg_trgm\"")
+    op.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"')
+    op.execute('CREATE EXTENSION IF NOT EXISTS "pgcrypto"')
+    op.execute('CREATE EXTENSION IF NOT EXISTS "pg_trgm"')
 
     # ── Tenants ──────────────────────────────────────────────────────────────
     op.create_table(
         "tenants",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")
+        ),
         sa.Column("name", sa.String(256), nullable=False),
         sa.Column("slug", sa.String(128), nullable=False, unique=True),
         sa.Column("plan", sa.String(32), default="starter"),
@@ -46,8 +50,15 @@ def upgrade() -> None:
     # ── Tenant Members ────────────────────────────────────────────────────────
     op.create_table(
         "tenant_members",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("tenant_id", UUID(as_uuid=True), sa.ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")
+        ),
+        sa.Column(
+            "tenant_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("tenants.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("user_id", UUID(as_uuid=True), nullable=False),
         sa.Column("email", sa.String(256), nullable=False),
         sa.Column("full_name", sa.String(256)),
@@ -63,8 +74,15 @@ def upgrade() -> None:
     # ── Audit Logs ────────────────────────────────────────────────────────────
     op.create_table(
         "audit_logs",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("tenant_id", UUID(as_uuid=True), sa.ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")
+        ),
+        sa.Column(
+            "tenant_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("tenants.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("user_id", UUID(as_uuid=True)),
         sa.Column("action", sa.String(128), nullable=False),
         sa.Column("resource_type", sa.String(64), nullable=False),
@@ -73,14 +91,21 @@ def upgrade() -> None:
         sa.Column("metadata", JSONB()),
         sa.Column("ip_address", sa.String(45)),
         sa.Column("user_agent", sa.String(512)),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("NOW()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("NOW()"),
+            nullable=False,
+        ),
     )
     op.create_index("idx_audit_tenant_created", "audit_logs", ["tenant_id", "created_at"])
 
     # ── Opportunities ─────────────────────────────────────────────────────────
     op.create_table(
         "opportunities",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")
+        ),
         sa.Column("tenant_id", UUID(as_uuid=True), nullable=False),
         sa.Column("external_id", sa.String(128)),
         sa.Column("source", sa.String(64), nullable=False, default="manual"),
@@ -162,7 +187,9 @@ def upgrade() -> None:
     # ── Award Simulations ─────────────────────────────────────────────────────
     op.create_table(
         "award_simulations",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")
+        ),
         sa.Column("tenant_id", UUID(as_uuid=True), nullable=False),
         sa.Column("opportunity_id", UUID(as_uuid=True), nullable=False),
         sa.Column("name", sa.String(256), nullable=False),
@@ -211,7 +238,9 @@ def upgrade() -> None:
     # ── Knowledge Documents ───────────────────────────────────────────────────
     op.create_table(
         "knowledge_documents",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")
+        ),
         sa.Column("tenant_id", UUID(as_uuid=True), nullable=False),
         sa.Column("title", sa.String(512), nullable=False),
         sa.Column("document_type", sa.String(64), nullable=False),
@@ -247,7 +276,9 @@ def upgrade() -> None:
     # ── Subscriptions ─────────────────────────────────────────────────────────
     op.create_table(
         "subscriptions",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")
+        ),
         sa.Column("tenant_id", UUID(as_uuid=True), nullable=False),
         sa.Column("plan", sa.String(32), nullable=False),
         sa.Column("status", sa.String(32), default="active"),

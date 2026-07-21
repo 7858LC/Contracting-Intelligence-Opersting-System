@@ -1,20 +1,21 @@
 """Bid/No-Bid Engine model — Module 2."""
+
 import uuid
 from typing import Any
 
 from sqlalchemy import Float, ForeignKey, Index, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from cios.core.database import Base
-from .base import UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin
+
+from .base import EvidenceMixin, TenantMixin, TimestampMixin, UUIDMixin
 
 
 class BidDecision(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin):
     __tablename__ = "bid_decisions"
-    __table_args__ = (
-        Index("idx_bid_decision_tenant_opp", "tenant_id", "opportunity_id"),
-    )
+    __table_args__ = (Index("idx_bid_decision_tenant_opp", "tenant_id", "opportunity_id"),)
 
     opportunity_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
     created_by: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
