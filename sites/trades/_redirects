@@ -1,0 +1,14 @@
+# uzimaamka.com redirect rules
+# Netlify processes top-to-bottom, first match wins
+
+# Friendly alias
+/price-check   /benchmark/   301
+/pricing-tool  /benchmark/   301
+/free-report   /benchmark/   301
+
+# Gumroad product shortlinks
+/starter       https://gumroad.com/l/prbymh  302
+/get           https://gumroad.com/l/prbymh  302
+
+# Fallback — any unmatched route serves the landing page (SPA-style)
+/*             /index.html   200

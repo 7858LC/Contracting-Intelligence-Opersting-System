@@ -1,0 +1,754 @@
+<title>Free Price Benchmark Report — FieldBook by UzimaAmka</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#090E18;--bg2:#0F1628;--bg3:#141E35;--bg4:#1A2540;
+  --border:#1E2E50;--border2:#253660;
+  --text:#E8F0FB;--muted:#6B88B0;--dim:#2A3E60;
+  --amber:#E8932A;--amber-lo:rgba(232,147,42,0.10);--amber-mid:rgba(232,147,42,0.22);
+  --green:#1A9060;--green-lo:rgba(26,144,96,0.10);--green-bright:#22C17A;
+  --red:#E05060;--red-lo:rgba(224,80,96,0.10);
+  --blue:#3D8EE8;--blue-lo:rgba(61,142,232,0.10);
+  --r:8px;
+}
+@media(prefers-color-scheme:light){:root{
+  --bg:#F2F5FA;--bg2:#FFFFFF;--bg3:#EBF0FA;--bg4:#E0E8F5;
+  --border:#C8D5EC;--border2:#B0C0DC;
+  --text:#0A1428;--muted:#4A6080;--dim:#C0CDE0;
+  --amber:#C07010;--amber-lo:rgba(192,112,16,0.08);--amber-mid:rgba(192,112,16,0.18);
+  --green:#0A7048;--green-lo:rgba(10,112,72,0.08);--green-bright:#0A9050;
+  --red:#C02830;--red-lo:rgba(192,40,48,0.08);
+  --blue:#1858C0;--blue-lo:rgba(24,88,192,0.08);
+}}
+:root[data-theme="dark"]{--bg:#090E18;--bg2:#0F1628;--bg3:#141E35;--bg4:#1A2540;--border:#1E2E50;--border2:#253660;--text:#E8F0FB;--muted:#6B88B0;--dim:#2A3E60;--amber:#E8932A;--amber-lo:rgba(232,147,42,0.10);--amber-mid:rgba(232,147,42,0.22);--green:#1A9060;--green-lo:rgba(26,144,96,0.10);--green-bright:#22C17A;--red:#E05060;--red-lo:rgba(224,80,96,0.10);--blue:#3D8EE8;--blue-lo:rgba(61,142,232,0.10)}
+:root[data-theme="light"]{--bg:#F2F5FA;--bg2:#FFFFFF;--bg3:#EBF0FA;--bg4:#E0E8F5;--border:#C8D5EC;--border2:#B0C0DC;--text:#0A1428;--muted:#4A6080;--dim:#C0CDE0;--amber:#C07010;--amber-lo:rgba(192,112,16,0.08);--amber-mid:rgba(192,112,16,0.18);--green:#0A7048;--green-lo:rgba(10,112,72,0.08);--green-bright:#0A9050;--red:#C02830;--red-lo:rgba(192,40,48,0.08);--blue:#1858C0;--blue-lo:rgba(24,88,192,0.08)}
+
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;min-height:100vh}
+
+/* ── TOPBAR ── */
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-mark{width:28px;height:28px;background:var(--amber);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;color:#000;letter-spacing:-.02em;flex-shrink:0}
+.brand-text{font-size:13px;font-weight:700;color:var(--text);line-height:1.1}
+.brand-sub{font-size:10px;color:var(--muted);font-weight:500}
+.topbar-cta{font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.topbar-cta a{color:var(--amber);font-weight:600;text-decoration:none}
+
+/* ── HERO ── */
+.hero{text-align:center;padding:56px 24px 40px;max-width:640px;margin:0 auto}
+.hero-badge{display:inline-block;padding:4px 12px;background:var(--amber-lo);border:1px solid var(--amber-mid);border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);margin-bottom:18px}
+.hero h1{font-size:32px;font-weight:900;letter-spacing:-.03em;line-height:1.1;text-wrap:balance;margin-bottom:14px}
+.hero h1 span{color:var(--amber)}
+.hero p{font-size:15px;color:var(--muted);line-height:1.65;max-width:520px;margin:0 auto}
+
+/* ── FORM CARD ── */
+.form-wrap{max-width:720px;margin:0 auto 48px;padding:0 24px}
+.form-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.form-header{padding:20px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.form-title{font-size:13px;font-weight:700;color:var(--text);letter-spacing:.01em}
+.form-subtitle{font-size:11.5px;color:var(--muted)}
+.form-body{padding:28px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group.span2{grid-column:span 2}
+.form-group.full{grid-column:1/-1}
+label{font-size:11.5px;font-weight:600;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+input,select{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:10px 14px;font-size:13.5px;color:var(--text);font-family:inherit;width:100%;transition:border-color .15s,box-shadow .15s;outline:none}
+input:focus,select:focus{border-color:var(--amber);box-shadow:0 0 0 3px var(--amber-lo)}
+select option{background:var(--bg3);color:var(--text)}
+.optional-row{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:16px 20px;margin-bottom:24px}
+.optional-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.opt-tag{font-size:9px;padding:2px 6px;background:var(--green-lo);color:var(--green-bright);border-radius:3px;font-weight:700;letter-spacing:.06em}
+.optional-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.hint{font-size:11px;color:var(--dim);margin-top:4px;font-style:italic}
+.btn-generate{width:100%;padding:14px 24px;background:var(--amber);color:#000;font-size:14px;font-weight:800;border:none;border-radius:6px;cursor:pointer;letter-spacing:.02em;transition:opacity .15s,transform .1s;font-family:inherit}
+.btn-generate:hover{opacity:.9}
+.btn-generate:active{transform:scale(.99)}
+.btn-generate:disabled{opacity:.5;cursor:not-allowed}
+
+/* ── LOADING ── */
+.loading{display:none;text-align:center;padding:48px 24px;max-width:520px;margin:0 auto}
+.loading.show{display:block}
+.loading-bar-wrap{width:100%;height:4px;background:var(--bg3);border-radius:2px;margin:20px 0;overflow:hidden}
+.loading-bar{height:100%;background:var(--amber);border-radius:2px;width:0;transition:width .4s ease}
+.loading-status{font-size:12px;color:var(--muted);min-height:20px;transition:opacity .3s}
+
+/* ── RESULTS ── */
+.results{display:none;max-width:720px;margin:0 auto 48px;padding:0 24px}
+.results.show{display:block}
+
+.report-header{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r) var(--r) 0 0;padding:20px 28px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.report-title-group{}
+.report-eyebrow{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);font-weight:700;margin-bottom:5px}
+.report-title{font-size:18px;font-weight:800;letter-spacing:-.02em;color:var(--text)}
+.report-meta{font-size:12px;color:var(--muted);margin-top:3px}
+.report-stamp{text-align:right;font-size:11px;color:var(--muted);line-height:1.8;font-variant-numeric:tabular-nums;font-family:ui-monospace,'SF Mono',monospace}
+
+/* BENCHMARK BAND */
+.benchmark-card{background:var(--bg2);border:1px solid var(--border);border-left:none;border-right:none;padding:24px 28px}
+.bench-label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:16px}
+
+.price-range{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin-bottom:20px}
+.price-tier{text-align:center;padding:16px 12px;border-right:1px solid var(--border)}
+.price-tier:last-child{border-right:none}
+.price-tier.median{background:var(--amber-lo)}
+.pt-label{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--muted);margin-bottom:6px}
+.pt-label.amb{color:var(--amber)}
+.pt-val{font-size:28px;font-weight:900;letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:var(--muted)}
+.pt-val.med{color:var(--amber)}
+.pt-sub{font-size:11px;color:var(--dim);margin-top:3px}
+
+.range-bar-wrap{margin-bottom:8px;padding:0 4px}
+.range-bar{position:relative;height:8px;background:var(--bg4);border-radius:4px}
+.range-fill{position:absolute;top:0;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--blue) 0%,var(--amber) 50%,var(--green-bright) 100%)}
+.range-marker{position:absolute;top:-4px;width:16px;height:16px;border-radius:50%;border:2px solid #fff;transform:translateX(-50%);transition:left .6s ease}
+.range-marker.your-price{background:var(--blue);border-color:var(--blue)}
+.range-marker.median{background:var(--amber);border-color:var(--amber)}
+.range-labels{display:flex;justify-content:space-between;margin-top:6px;font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* YOUR PRICE ROW */
+.your-price-row{background:var(--bg3);border-radius:6px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:12px}
+.yp-label{font-size:12px;color:var(--muted)}
+.yp-label strong{color:var(--text)}
+.yp-diff{font-size:14px;font-weight:800;font-variant-numeric:tabular-nums}
+.yp-diff.low{color:var(--red)}
+.yp-diff.high{color:var(--green-bright)}
+.yp-diff.at{color:var(--amber)}
+
+/* STAT CARDS */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border-top:1px solid var(--border)}
+.stat-card{padding:20px 24px;border-right:1px solid var(--border)}
+.stat-card:last-child{border-right:none}
+.sc-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--muted);margin-bottom:6px}
+.sc-val{font-size:24px;font-weight:900;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin-bottom:3px}
+.sc-sub{font-size:11.5px;color:var(--muted);line-height:1.4}
+.sc-green{color:var(--green-bright)}
+.sc-amber{color:var(--amber)}
+.sc-red{color:var(--red)}
+
+/* PROFIT LEAK */
+.profit-leak{background:var(--red-lo);border:1px solid var(--red);border-left:none;border-right:none;padding:24px 28px;display:none}
+.profit-leak.show{display:block}
+.pl-eyebrow{font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--red);margin-bottom:10px}
+.pl-headline{font-size:22px;font-weight:900;letter-spacing:-.02em;color:var(--text);text-wrap:balance;margin-bottom:8px}
+.pl-body{font-size:13px;color:var(--muted);line-height:1.6;max-width:560px}
+.pl-body strong{color:var(--text)}
+.pl-number{font-size:40px;font-weight:900;letter-spacing:-.04em;color:var(--red);font-variant-numeric:tabular-nums;margin:10px 0;display:block}
+
+/* MARKET INTEL */
+.market-intel{background:var(--bg2);border:1px solid var(--border);border-left:none;border-right:none;padding:24px 28px}
+.mi-label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:14px}
+.mi-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mi-item{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:12px 16px}
+.mi-key{font-size:11px;color:var(--muted);margin-bottom:3px}
+.mi-val{font-size:14px;font-weight:700;color:var(--text)}
+.mi-val.green{color:var(--green-bright)}
+.mi-val.amber{color:var(--amber)}
+
+/* MARGIN GAUGE */
+.margin-row{display:flex;align-items:center;gap:16px;margin-top:16px;padding:14px 18px;background:var(--bg3);border:1px solid var(--border);border-radius:6px}
+.mg-label{font-size:12px;color:var(--muted);flex:1}
+.mg-label strong{color:var(--text);display:block;font-size:13px;margin-bottom:2px}
+.mg-bar-wrap{flex:1}
+.mg-bar{height:10px;background:var(--bg4);border-radius:5px;overflow:hidden}
+.mg-fill{height:100%;border-radius:5px;transition:width .8s ease;background:var(--green-bright)}
+.mg-fill.warn{background:var(--amber)}
+.mg-fill.danger{background:var(--red)}
+.mg-pct{font-size:18px;font-weight:900;color:var(--green-bright);font-variant-numeric:tabular-nums;width:52px;text-align:right;flex-shrink:0}
+.mg-pct.warn{color:var(--amber)}
+.mg-pct.danger{color:var(--red)}
+
+/* EMAIL CAPTURE */
+.email-capture{background:linear-gradient(135deg,var(--bg2) 0%,var(--bg3) 100%);border:1px solid var(--border);border-left:none;border-right:none;padding:28px;text-align:center}
+.ec-icon{font-size:28px;margin-bottom:12px}
+.ec-title{font-size:17px;font-weight:800;letter-spacing:-.02em;margin-bottom:6px}
+.ec-sub{font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.5}
+.ec-form{display:flex;gap:10px;max-width:440px;margin:0 auto}
+.ec-input{flex:1;padding:11px 16px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:13.5px;font-family:inherit;outline:none;transition:border-color .15s}
+.ec-input:focus{border-color:var(--amber)}
+.ec-btn{padding:11px 20px;background:var(--amber);color:#000;font-size:13px;font-weight:800;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;font-family:inherit;transition:opacity .15s}
+.ec-btn:hover{opacity:.9}
+.ec-privacy{font-size:11px;color:var(--dim);margin-top:8px}
+.ec-success{display:none;padding:12px 20px;background:var(--green-lo);border:1px solid var(--green);border-radius:6px;font-size:13px;color:var(--green-bright);font-weight:600;max-width:440px;margin:0 auto}
+
+/* CTA */
+.report-cta{background:var(--amber);border-radius:0;padding:32px 28px;text-align:center}
+.rc-title{font-size:19px;font-weight:900;color:#000;letter-spacing:-.02em;text-wrap:balance;margin-bottom:6px}
+.rc-sub{font-size:13px;color:rgba(0,0,0,0.65);margin-bottom:20px;line-height:1.5}
+.rc-btn{display:inline-block;padding:12px 28px;background:#000;color:var(--amber);font-size:13.5px;font-weight:800;border-radius:6px;text-decoration:none;letter-spacing:.01em;transition:opacity .15s}
+.rc-btn:hover{opacity:.8}
+.rc-features{display:flex;justify-content:center;gap:24px;margin-top:16px;flex-wrap:wrap}
+.rc-feat{font-size:12px;color:rgba(0,0,0,0.55);display:flex;align-items:center;gap:5px}
+.rc-feat::before{content:'✓';color:rgba(0,0,0,0.4);font-weight:700}
+
+/* REPORT FOOTER */
+.report-footer{background:var(--bg2);border:1px solid var(--border);border-radius:0 0 var(--r) var(--r);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.rf-left{font-size:11px;color:var(--dim);line-height:1.6}
+.rf-powered{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px}
+.fb-badge{background:var(--amber-lo);border:1px solid var(--amber-mid);border-radius:4px;padding:2px 8px;font-size:10px;font-weight:700;color:var(--amber);letter-spacing:.04em}
+
+/* NEW SEARCH */
+.new-search-row{text-align:center;padding:16px;border-top:1px solid var(--border);background:var(--bg2)}
+.new-search-btn{padding:8px 20px;background:none;border:1px solid var(--border2);border-radius:6px;color:var(--muted);font-size:12.5px;cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s}
+.new-search-btn:hover{border-color:var(--amber);color:var(--amber)}
+
+@media(max-width:640px){
+  .form-grid{grid-template-columns:1fr}
+  .form-group.span2{grid-column:span 1}
+  .optional-grid{grid-template-columns:1fr}
+  .price-range{grid-template-columns:1fr}
+  .price-tier{border-right:none;border-bottom:1px solid var(--border)}
+  .price-tier:last-child{border-bottom:none}
+  .stat-grid{grid-template-columns:1fr}
+  .stat-card{border-right:none;border-bottom:1px solid var(--border)}
+  .stat-card:last-child{border-bottom:none}
+  .mi-grid{grid-template-columns:1fr}
+  .ec-form{flex-direction:column}
+  .ec-btn{width:100%}
+  .report-footer{flex-direction:column;gap:8px}
+  .hero h1{font-size:24px}
+}
+</style>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark">UA</div>
+    <div>
+      <div class="brand-text">FieldBook</div>
+      <div class="brand-sub">by UzimaAmka</div>
+    </div>
+  </div>
+  <div class="topbar-cta">Free tool · <a href="https://uzimaamka.com">Learn about FieldBook →</a></div>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">Free · No Account Required</div>
+  <h1>What should you be charging for <span>that job?</span></h1>
+  <p>Enter your ZIP, trade, and job type. Get the market rate for your area, your estimated profit margin, and exactly how much you might be leaving on the table.</p>
+</div>
+
+<!-- FORM -->
+<div class="form-wrap">
+  <div class="form-card">
+    <div class="form-header">
+      <div>
+        <div class="form-title">Get Your Free Price Benchmark</div>
+        <div class="form-subtitle">Results in under 10 seconds</div>
+      </div>
+    </div>
+    <div class="form-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="zip">ZIP Code</label>
+          <input type="text" id="zip" placeholder="e.g. 77001" maxlength="5" inputmode="numeric" pattern="[0-9]*">
+        </div>
+        <div class="form-group">
+          <label for="trade">Your Trade</label>
+          <select id="trade" onchange="updateJobs()">
+            <option value="">Select trade…</option>
+            <option value="hvac">HVAC</option>
+            <option value="landscaping">Landscaping</option>
+            <option value="plumbing">Plumbing</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="job">Job Type</label>
+          <select id="job">
+            <option value="">Select trade first…</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="optional-row">
+        <div class="optional-label">
+          <span>Unlock your Profit Leak number</span>
+          <span class="opt-tag">Recommended</span>
+        </div>
+        <div class="optional-grid">
+          <div class="form-group">
+            <label for="current-price">What you currently charge</label>
+            <input type="text" id="current-price" placeholder="e.g. $4,200" inputmode="numeric">
+            <div class="hint">Leave blank to skip</div>
+          </div>
+          <div class="form-group">
+            <label for="monthly-jobs">Jobs per month</label>
+            <input type="text" id="monthly-jobs" placeholder="e.g. 8" inputmode="numeric">
+            <div class="hint">Used to calculate monthly profit leak</div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-generate" id="gen-btn" onclick="generate()">Generate My Free Benchmark Report →</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div class="loading" id="loading">
+  <div style="font-size:13px;color:var(--muted);margin-bottom:8px" id="loading-msg">Pulling market data for your area…</div>
+  <div class="loading-bar-wrap"><div class="loading-bar" id="loading-bar"></div></div>
+  <div class="loading-status" id="loading-status">Checking regional rates…</div>
+</div>
+
+<!-- RESULTS -->
+<div class="results" id="results">
+
+  <div class="report-header">
+    <div class="report-title-group">
+      <div class="report-eyebrow">Price Benchmark Report</div>
+      <div class="report-title" id="r-job-name">—</div>
+      <div class="report-meta" id="r-meta">—</div>
+    </div>
+    <div class="report-stamp" id="r-stamp">—</div>
+  </div>
+
+  <!-- BENCHMARK BAND -->
+  <div class="benchmark-card">
+    <div class="bench-label">Market Rate — Your Area</div>
+
+    <div class="price-range">
+      <div class="price-tier">
+        <div class="pt-label">Low end</div>
+        <div class="pt-val" id="r-low">—</div>
+        <div class="pt-sub">Discount / volume shops</div>
+      </div>
+      <div class="price-tier median">
+        <div class="pt-label amb">Market Median ★</div>
+        <div class="pt-val med" id="r-median">—</div>
+        <div class="pt-sub">What most contractors charge</div>
+      </div>
+      <div class="price-tier">
+        <div class="pt-label">Premium</div>
+        <div class="pt-val" id="r-high">—</div>
+        <div class="pt-sub">Top-rated, established shops</div>
+      </div>
+    </div>
+
+    <div class="range-bar-wrap">
+      <div class="range-bar">
+        <div class="range-fill" id="r-fill" style="left:0;right:0;position:absolute;top:0;height:100%;border-radius:4px"></div>
+        <div class="range-marker median" id="r-median-dot" style="left:50%"></div>
+        <div class="range-marker your-price" id="r-your-dot" style="left:50%;display:none"></div>
+      </div>
+      <div class="range-labels">
+        <span id="r-label-low">—</span>
+        <span style="color:var(--amber);font-weight:700">Median</span>
+        <span id="r-label-high">—</span>
+      </div>
+    </div>
+
+    <div class="your-price-row" id="r-your-row" style="display:none">
+      <div class="yp-label">Your current price: <strong id="r-your-price-label">—</strong></div>
+      <div class="yp-diff" id="r-diff-label">—</div>
+    </div>
+  </div>
+
+  <!-- STAT CARDS -->
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="sc-label">Est. Gross Margin</div>
+      <div class="sc-val sc-green" id="r-margin">—</div>
+      <div class="sc-sub">At market median price</div>
+    </div>
+    <div class="stat-card">
+      <div class="sc-label">Typical Job Duration</div>
+      <div class="sc-val sc-amber" id="r-hours">—</div>
+      <div class="sc-sub">Including travel + setup</div>
+    </div>
+    <div class="stat-card">
+      <div class="sc-label">Effective Rate / Hour</div>
+      <div class="sc-val sc-green" id="r-rate">—</div>
+      <div class="sc-sub">At median, full job duration</div>
+    </div>
+  </div>
+
+  <!-- PROFIT LEAK -->
+  <div class="profit-leak" id="profit-leak">
+    <div class="pl-eyebrow">Profit Leak Alert</div>
+    <div class="pl-headline" id="pl-headline">—</div>
+    <div class="pl-body" id="pl-body">—</div>
+    <span class="pl-number" id="pl-number">—</span>
+    <div class="pl-body" id="pl-body2">—</div>
+  </div>
+
+  <!-- MARKET INTEL -->
+  <div class="market-intel">
+    <div class="mi-label">Market Intelligence — <span id="r-region-name">Your Region</span></div>
+    <div class="mi-grid">
+      <div class="mi-item">
+        <div class="mi-key">Regional demand signal</div>
+        <div class="mi-val green" id="mi-demand">—</div>
+      </div>
+      <div class="mi-item">
+        <div class="mi-key">Price trend (last 12 mo)</div>
+        <div class="mi-val amber" id="mi-trend">—</div>
+      </div>
+      <div class="mi-item">
+        <div class="mi-key">Typical payment terms</div>
+        <div class="mi-val" id="mi-payment">—</div>
+      </div>
+      <div class="mi-item">
+        <div class="mi-key">Avg days to payment</div>
+        <div class="mi-val amber" id="mi-days">—</div>
+      </div>
+    </div>
+
+    <div class="margin-row">
+      <div class="mg-label">
+        <strong>Margin health at median price</strong>
+        <span id="mg-status">—</span>
+      </div>
+      <div class="mg-bar-wrap">
+        <div class="mg-bar"><div class="mg-fill" id="mg-fill" style="width:0%"></div></div>
+      </div>
+      <div class="mg-pct" id="mg-pct">—</div>
+    </div>
+  </div>
+
+  <!-- EMAIL CAPTURE -->
+  <div class="email-capture">
+    <div class="ec-icon">📊</div>
+    <div class="ec-title">Save this report + get rate change alerts</div>
+    <div class="ec-sub">We'll email you when market rates shift in your area — and when new job benchmarks are added for your trade. Free. Unsubscribe anytime.</div>
+    <div class="ec-form" id="ec-form">
+      <input class="ec-input" type="email" id="ec-email" placeholder="your@email.com">
+      <button class="ec-btn" onclick="saveReport()">Save Report</button>
+    </div>
+    <div class="ec-success" id="ec-success">✓ Saved. Check your inbox for the report PDF — we'll alert you when rates change.</div>
+    <div class="ec-privacy">No spam. Your data is never sold. UzimaAmka privacy policy at uzimaamka.com.</div>
+  </div>
+
+  <!-- REPORT CTA -->
+  <div class="report-cta">
+    <div class="rc-title">Stop leaving money on the table. Automate the follow-up.</div>
+    <div class="rc-sub">AutoFlow is the automation system behind FieldBook — 12 production-ready workflows that handle invoice chasing, lead follow-up, scheduling confirmation, and more. $49 one-time, import in 60 minutes.</div>
+    <a class="rc-btn" href="https://gumroad.com/l/prbymh">Get AutoFlow — $49 →</a>
+    <div class="rc-features">
+      <span class="rc-feat">12 workflows included</span>
+      <span class="rc-feat">WF-12 Scheduling Confirmation</span>
+      <span class="rc-feat">Invoice bot + lead capture</span>
+      <span class="rc-feat">30-day performance guarantee</span>
+    </div>
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(0,0,0,0.15);font-size:12px;color:rgba(0,0,0,0.5)">
+      FieldBook (live pricing benchmarks + quote builder) launching Q3 2026 —
+      <a href="mailto:waitlist@uzimaamka.com" style="color:rgba(0,0,0,0.7);font-weight:700;text-decoration:underline">join the waitlist</a>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="report-footer">
+    <div class="rf-left">
+      Data based on aggregated regional market surveys, contractor community data, and publicly available service pricing. Ranges are estimates — actual rates vary by company reputation, equipment tier, and local competition. Updated quarterly.<br>
+      <strong style="color:var(--muted)">Report ID: <span id="r-id">—</span></strong>
+    </div>
+    <div class="rf-powered">
+      Powered by <span class="fb-badge">FieldBook</span> · uzimaamka.com
+    </div>
+  </div>
+
+  <div class="new-search-row">
+    <button class="new-search-btn" onclick="resetForm()">← Run another benchmark</button>
+  </div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────
+// DATA LAYER
+// ─────────────────────────────────────────
+
+const JOBS = {
+  hvac: {
+    'ac-replacement':   { name:'Central AC Replacement (2–3 ton)', low:3800, median:5400, high:7800, labor:0.35, hrs:6, margin:48 },
+    'furnace-replace':  { name:'Gas Furnace Replacement',           low:2800, median:4200, high:6500, labor:0.30, hrs:5, margin:44 },
+    'hvac-full':        { name:'Full HVAC System (AC + Furnace)',   low:6500, median:9800, high:14500,labor:0.32, hrs:10,margin:46 },
+    'heat-pump':        { name:'Heat Pump Installation',            low:4200, median:6800, high:11000,labor:0.38, hrs:8, margin:50 },
+    'ac-repair':        { name:'AC Repair / Refrigerant Recharge',  low:180,  median:380,  high:750,  labor:0.70, hrs:2, margin:58 },
+    'tune-up':          { name:'Annual Maintenance / Tune-Up',      low:75,   median:140,  high:250,  labor:0.70, hrs:1.5,margin:60 },
+    'ductwork':         { name:'Ductwork Repair / Replacement',     low:1200, median:2800, high:5500, labor:0.55, hrs:8, margin:52 },
+    'mini-split':       { name:'Mini-Split Install (single zone)',  low:1800, median:3200, high:5500, labor:0.40, hrs:6, margin:48 },
+    'thermostat':       { name:'Smart Thermostat Installation',     low:150,  median:280,  high:550,  labor:0.60, hrs:1.5,margin:55 },
+    'emergency':        { name:'Emergency Service Call',            low:150,  median:295,  high:500,  labor:0.85, hrs:2, margin:65 },
+  },
+  landscaping: {
+    'lawn-mowing':      { name:'Weekly Lawn Mowing (¼ acre)',       low:35,   median:55,   high:90,   labor:0.80, hrs:0.75,margin:62 },
+    'landscaping-install':{ name:'Landscape Design & Install',      low:1500, median:4500, high:12000,labor:0.50, hrs:20, margin:45 },
+    'tree-removal':     { name:'Tree Removal (medium, 30–50 ft)',   low:500,  median:950,  high:2000, labor:0.65, hrs:6, margin:55 },
+    'mulching':         { name:'Mulch Installation (10 cu yd)',     low:400,  median:700,  high:1200, labor:0.60, hrs:4, margin:50 },
+    'irrigation':       { name:'Irrigation System Installation',    low:1800, median:3500, high:7000, labor:0.45, hrs:12,margin:48 },
+    'sod':              { name:'Sod Installation (1,000 sq ft)',    low:800,  median:1600, high:3000, labor:0.55, hrs:8, margin:46 },
+    'seasonal-cleanup': { name:'Seasonal Cleanup',                  low:150,  median:350,  high:700,  labor:0.75, hrs:4, margin:58 },
+  },
+  plumbing: {
+    'water-heater':     { name:'Water Heater Replacement (40-gal)', low:800,  median:1400, high:2500, labor:0.40, hrs:3, margin:50 },
+    'drain-cleaning':   { name:'Drain Cleaning (main line)',        low:150,  median:280,  high:500,  labor:0.80, hrs:2, margin:62 },
+    'toilet-replace':   { name:'Toilet Replacement',                low:250,  median:450,  high:800,  labor:0.55, hrs:2, margin:55 },
+    'leak-repair':      { name:'Pipe Leak Repair',                  low:150,  median:350,  high:800,  labor:0.70, hrs:2, margin:58 },
+    'bath-remodel':     { name:'Bathroom Remodel Plumbing',         low:1200, median:3500, high:8000, labor:0.55, hrs:16,margin:48 },
+    'sewer-line':       { name:'Sewer Line Repair / Replace',       low:1500, median:4500, high:12000,labor:0.45, hrs:20,margin:44 },
+    'faucet':           { name:'Faucet / Fixture Installation',     low:100,  median:200,  high:400,  labor:0.70, hrs:1.5,margin:58 },
+  }
+};
+
+// Regional multiplier by ZIP first digit
+const REGIONS = {
+  '0': { name:'New England',        mult:1.30, city:'Connecticut / Massachusetts' },
+  '1': { name:'Northeast',          mult:1.22, city:'New York / Pennsylvania' },
+  '2': { name:'Mid-Atlantic',       mult:1.16, city:'DC / Maryland / Virginia' },
+  '3': { name:'Southeast',          mult:1.00, city:'Florida / Georgia / Tennessee' },
+  '4': { name:'Midwest',            mult:0.96, city:'Ohio / Michigan / Indiana' },
+  '5': { name:'Upper Midwest',      mult:0.93, city:'Minnesota / Wisconsin / Iowa' },
+  '6': { name:'Central',            mult:0.95, city:'Illinois / Missouri / Kansas' },
+  '7': { name:'South Central',      mult:0.97, city:'Texas / Louisiana / Oklahoma' },
+  '8': { name:'Mountain West',      mult:1.12, city:'Colorado / Arizona / Nevada' },
+  '9': { name:'West Coast',         mult:1.28, city:'California / Washington / Oregon' },
+};
+
+const MARKET_INTEL = {
+  hvac: {
+    demand: 'High — seasonal peaks in June–Aug and Dec–Jan',
+    trend:  '↑ +7–11% (labor + equipment costs)',
+    payment:'50% deposit, balance on completion',
+    days:   '14–28 days avg · 23% go 30+ days',
+  },
+  landscaping: {
+    demand: 'Moderate-High — spring surge Mar–May',
+    trend:  '↑ +5–8% (fuel and labor)',
+    payment:'Payment at completion common',
+    days:   '8–18 days avg · 15% go 30+ days',
+  },
+  plumbing: {
+    demand: 'Steady — emergency jobs year-round',
+    trend:  '↑ +6–9% (copper prices + labor)',
+    payment:'Varies — emergency: COD; projects: deposit',
+    days:   '12–22 days avg · 20% go 30+ days',
+  }
+};
+
+// ─────────────────────────────────────────
+// FORM LOGIC
+// ─────────────────────────────────────────
+
+function updateJobs() {
+  const trade = document.getElementById('trade').value;
+  const sel = document.getElementById('job');
+  sel.innerHTML = '<option value="">Select job type…</option>';
+  if (!trade) return;
+  Object.entries(JOBS[trade]).forEach(([k,v]) => {
+    sel.innerHTML += `<option value="${k}">${v.name}</option>`;
+  });
+}
+
+function parseMoney(s) {
+  if (!s) return null;
+  const n = parseFloat(s.replace(/[^0-9.]/g,''));
+  return isNaN(n) ? null : n;
+}
+
+function fmt(n) {
+  return '$' + Math.round(n).toLocaleString();
+}
+
+function fmtPct(n) { return Math.round(n) + '%'; }
+
+// ─────────────────────────────────────────
+// GENERATE
+// ─────────────────────────────────────────
+
+function generate() {
+  const zip = document.getElementById('zip').value.trim();
+  const trade = document.getElementById('trade').value;
+  const jobKey = document.getElementById('job').value;
+
+  if (zip.length !== 5 || !/^\d{5}$/.test(zip)) {
+    alert('Please enter a valid 5-digit ZIP code.');
+    return;
+  }
+  if (!trade) { alert('Please select your trade.'); return; }
+  if (!jobKey) { alert('Please select a job type.'); return; }
+
+  // Hide form, show loading
+  document.querySelector('.form-wrap').style.display = 'none';
+  document.querySelector('.hero').style.opacity = '0.4';
+  const loading = document.getElementById('loading');
+  loading.classList.add('show');
+  document.getElementById('results').classList.remove('show');
+
+  // Animate loading bar
+  const bar = document.getElementById('loading-bar');
+  const msgs = [
+    'Pulling market data for your area…',
+    'Checking regional contractor rates…',
+    'Calculating profit margins…',
+    'Compiling your benchmark report…',
+  ];
+  let step = 0;
+  const statusEl = document.getElementById('loading-status');
+  const msgEl = document.getElementById('loading-msg');
+
+  const tick = setInterval(() => {
+    step++;
+    bar.style.width = (step * 25) + '%';
+    if (msgs[step]) { statusEl.style.opacity='0'; setTimeout(()=>{statusEl.textContent=msgs[step];statusEl.style.opacity='1'},200); }
+    if (step >= 4) {
+      clearInterval(tick);
+      setTimeout(() => {
+        loading.classList.remove('show');
+        renderResults(zip, trade, jobKey);
+      }, 500);
+    }
+  }, 550);
+}
+
+// ─────────────────────────────────────────
+// RENDER RESULTS
+// ─────────────────────────────────────────
+
+function renderResults(zip, trade, jobKey) {
+  const region = REGIONS[zip[0]] || REGIONS['3'];
+  const job = JOBS[trade][jobKey];
+  const m = region.mult;
+
+  const low    = Math.round(job.low    * m / 50) * 50;
+  const median = Math.round(job.median * m / 50) * 50;
+  const high   = Math.round(job.high   * m / 50) * 50;
+
+  // Header
+  document.getElementById('r-job-name').textContent = job.name;
+  document.getElementById('r-meta').textContent = `${region.city} · ZIP ${zip} · ${region.name} market`;
+  const now = new Date();
+  document.getElementById('r-stamp').innerHTML =
+    `Generated ${now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}<br>` +
+    `${region.name} Region (+${Math.round((m-1)*100)}% vs national avg)<br>` +
+    `<span style="color:var(--amber);font-weight:700">FieldBook · uzimaamka.com</span>`;
+
+  // Prices
+  document.getElementById('r-low').textContent    = fmt(low);
+  document.getElementById('r-median').textContent = fmt(median);
+  document.getElementById('r-high').textContent   = fmt(high);
+  document.getElementById('r-label-low').textContent  = fmt(low);
+  document.getElementById('r-label-high').textContent = fmt(high);
+
+  // Range bar — median dot
+  const range = high - low;
+  const medPct = ((median - low) / range) * 100;
+  document.getElementById('r-median-dot').style.left = medPct + '%';
+
+  // Stats
+  const grossMargin = job.margin + Math.round((m - 1) * 5);
+  const hrs = job.hrs + 0.5; // include travel
+  const ratePerHr = Math.round(median / hrs);
+  document.getElementById('r-margin').textContent = fmtPct(grossMargin);
+  document.getElementById('r-hours').textContent  = job.hrs + ' hrs';
+  document.getElementById('r-rate').textContent   = fmt(ratePerHr) + '/hr';
+
+  // Margin gauge
+  const mgFill = document.getElementById('mg-fill');
+  const mgPct  = document.getElementById('mg-pct');
+  mgFill.style.width = grossMargin + '%';
+  mgPct.textContent  = fmtPct(grossMargin);
+  if (grossMargin >= 50) {
+    mgFill.className = 'mg-fill'; mgPct.className = 'mg-pct sc-green';
+    document.getElementById('mg-status').textContent = 'Strong — at or above industry benchmark';
+  } else if (grossMargin >= 38) {
+    mgFill.className = 'mg-fill warn'; mgPct.className = 'mg-pct warn';
+    document.getElementById('mg-status').textContent = 'Acceptable — room to improve with better pricing';
+  } else {
+    mgFill.className = 'mg-fill danger'; mgPct.className = 'mg-pct danger';
+    document.getElementById('mg-status').textContent = 'Caution — below industry minimum for sustainable growth';
+  }
+
+  // Your price (optional)
+  const yourPrice = parseMoney(document.getElementById('current-price').value);
+  const monthlyJobs = parseMoney(document.getElementById('monthly-jobs').value);
+
+  if (yourPrice) {
+    const yourPct = Math.max(0, Math.min(100, ((yourPrice - low) / range) * 100));
+    const dot = document.getElementById('r-your-dot');
+    dot.style.left    = yourPct + '%';
+    dot.style.display = 'block';
+
+    const diff  = yourPrice - median;
+    const row   = document.getElementById('r-your-row');
+    const diffEl= document.getElementById('r-diff-label');
+    row.style.display = 'flex';
+    document.getElementById('r-your-price-label').textContent = fmt(yourPrice);
+
+    if (Math.abs(diff) < median * 0.03) {
+      diffEl.textContent = 'Right at market median ✓';
+      diffEl.className   = 'yp-diff at';
+    } else if (diff < 0) {
+      diffEl.textContent = fmt(Math.abs(diff)) + ' below median';
+      diffEl.className   = 'yp-diff low';
+    } else {
+      diffEl.textContent = fmt(diff) + ' above median';
+      diffEl.className   = 'yp-diff high';
+    }
+
+    // Profit leak
+    if (diff < 0 && monthlyJobs) {
+      const leakPerJob   = Math.abs(diff);
+      const monthlyLeak  = leakPerJob * monthlyJobs;
+      const annualLeak   = monthlyLeak * 12;
+      const leak = document.getElementById('profit-leak');
+      leak.classList.add('show');
+      document.getElementById('pl-headline').textContent =
+        `You're leaving ${fmt(annualLeak)} on the table every year.`;
+      document.getElementById('pl-number').textContent = fmt(monthlyLeak) + '/month';
+      document.getElementById('pl-body').innerHTML =
+        `Your current price is <strong>${fmt(yourPrice)}</strong>. The market median in your area is <strong>${fmt(median)}</strong>. ` +
+        `That's a <strong>${fmt(leakPerJob)} gap per job</strong>.`;
+      document.getElementById('pl-body2').innerHTML =
+        `At <strong>${Math.round(monthlyJobs)} jobs/month</strong>, that's <strong>${fmt(monthlyLeak)} every month</strong> — ` +
+        `<strong>${fmt(annualLeak)}/year</strong> that your competitors are collecting and you're not. ` +
+        `FieldBook's quote builder flags this gap on every estimate before you send it.`;
+    }
+  }
+
+  // Market intel
+  const intel = MARKET_INTEL[trade];
+  document.getElementById('r-region-name').textContent = region.name;
+  document.getElementById('mi-demand').textContent  = intel.demand;
+  document.getElementById('mi-trend').textContent   = intel.trend;
+  document.getElementById('mi-payment').textContent = intel.payment;
+  document.getElementById('mi-days').textContent    = intel.days;
+
+  // Report ID
+  document.getElementById('r-id').textContent =
+    'FB-' + zip + '-' + trade.toUpperCase().slice(0,2) + '-' +
+    Date.now().toString(36).toUpperCase().slice(-5);
+
+  // Show
+  document.getElementById('results').classList.add('show');
+  setTimeout(() => {
+    document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'});
+  }, 100);
+}
+
+// ─────────────────────────────────────────
+// EMAIL + RESET
+// ─────────────────────────────────────────
+
+function saveReport() {
+  const email = document.getElementById('ec-email').value.trim();
+  if (!email || !email.includes('@')) { alert('Please enter a valid email address.'); return; }
+  document.getElementById('ec-form').style.display   = 'none';
+  document.getElementById('ec-success').style.display = 'block';
+  // In production: POST to your email list endpoint
+}
+
+function resetForm() {
+  document.getElementById('results').classList.remove('show');
+  document.getElementById('profit-leak').classList.remove('show');
+  document.getElementById('r-your-row').style.display = 'none';
+  document.getElementById('r-your-dot').style.display  = 'none';
+  document.getElementById('ec-form').style.display     = 'flex';
+  document.getElementById('ec-success').style.display  = 'none';
+  document.querySelector('.form-wrap').style.display   = 'block';
+  document.querySelector('.hero').style.opacity        = '1';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>

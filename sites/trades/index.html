@@ -1,0 +1,811 @@
+
+<title>Uzima Amka Trades — The Trade Business That Runs Itself</title>
+<meta name="description" content="FieldBook quotes at market rate. AutoFlow handles the admin. LeadFlow delivers new clients. Three tools. One system. Built for trade professionals." />
+<meta property="og:title" content="Uzima Amka Trades — The Trade Business That Runs Itself" />
+<meta property="og:description" content="FieldBook, AutoFlow, and LeadFlow — the trades operating system built for professionals who are done white-knuckling it." />
+<meta property="og:url" content="https://trades.uzimaamka.com" />
+<link rel="canonical" href="https://trades.uzimaamka.com" />
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root {
+  --bg:        #090E18;
+  --bg2:       #111B2A;
+  --bg3:       #172030;
+  --border:    #1E2E44;
+  --text:      #EDF1F8;
+  --muted:     #6B84A8;
+  --dim:       #2A3E58;
+  --amber:     #E8932A;
+  --amber-lo:  #1E1408;
+  --amber-mid: #7A4A10;
+  --green:     #1A8C5B;
+  --green-lo:  #0A1A10;
+  --white:     #FFFFFF;
+}
+@media(prefers-color-scheme:light){
+  :root{
+    --bg:      #F2EDE6;
+    --bg2:     #FFFFFF;
+    --bg3:     #EBE5DC;
+    --border:  #D5CABC;
+    --text:    #0C1520;
+    --muted:   #5A6E88;
+    --dim:     #C4B8A8;
+    --amber:   #B8690E;
+    --amber-lo:#FEF3E2;
+    --amber-mid:#8A4A08;
+    --green:   #157A4F;
+    --green-lo:#E6F7EF;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#090E18;--bg2:#111B2A;--bg3:#172030;--border:#1E2E44;
+  --text:#EDF1F8;--muted:#6B84A8;--dim:#2A3E58;
+  --amber:#E8932A;--amber-lo:#1E1408;--amber-mid:#7A4A10;
+  --green:#1A8C5B;--green-lo:#0A1A10;
+}
+:root[data-theme="light"]{
+  --bg:#F2EDE6;--bg2:#FFFFFF;--bg3:#EBE5DC;--border:#D5CABC;
+  --text:#0C1520;--muted:#5A6E88;--dim:#C4B8A8;
+  --amber:#B8690E;--amber-lo:#FEF3E2;--amber-mid:#8A4A08;
+  --green:#157A4F;--green-lo:#E6F7EF;
+}
+
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:ui-sans-serif,system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;
+  font-size:15px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+
+/* ── NAV ─────────────────────────────────────────────── */
+nav{
+  position:sticky;top:0;z-index:100;
+  background:color-mix(in srgb,var(--bg) 90%,transparent);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  padding:0 40px;
+  display:flex;align-items:center;justify-content:space-between;
+  height:56px;
+}
+.nav-logo{
+  font-weight:800;font-size:13px;letter-spacing:0.14em;text-transform:uppercase;
+  color:var(--text);text-decoration:none;
+}
+.nav-logo span{color:var(--amber)}
+.nav-links{display:flex;align-items:center;gap:32px;list-style:none}
+.nav-links a{
+  font-size:12px;letter-spacing:0.06em;text-transform:uppercase;
+  color:var(--muted);text-decoration:none;transition:color .15s;
+  font-weight:500;
+}
+.nav-links a:hover{color:var(--text)}
+.nav-cta{
+  background:var(--amber);color:var(--white);
+  font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;
+  padding:8px 18px;border-radius:4px;text-decoration:none;
+  transition:opacity .15s;
+}
+.nav-cta:hover{opacity:0.88}
+
+/* ── HERO ─────────────────────────────────────────────── */
+.hero{
+  padding:96px 40px 80px;
+  max-width:1100px;margin:0 auto;
+  position:relative;
+}
+.hero-eyebrow{
+  font-size:11px;letter-spacing:0.16em;text-transform:uppercase;
+  color:var(--amber);font-weight:600;margin-bottom:24px;
+  display:flex;align-items:center;gap:10px;
+}
+.hero-eyebrow::before{
+  content:'';display:inline-block;width:28px;height:1px;background:var(--amber);
+}
+.hero-headline{
+  font-size:clamp(56px,9vw,108px);
+  font-weight:900;
+  line-height:0.95;
+  letter-spacing:-0.04em;
+  text-wrap:balance;
+  margin-bottom:32px;
+  color:var(--text);
+}
+.hero-headline .amber{color:var(--amber)}
+.hero-headline .line2{
+  display:block;
+  -webkit-text-stroke:1px var(--muted);
+  color:transparent;
+}
+:root[data-theme="light"] .hero-headline .line2,
+@media(prefers-color-scheme:light){
+  .hero-headline .line2{-webkit-text-stroke:1px var(--dim)}
+}
+.hero-sub{
+  font-size:17px;line-height:1.65;color:var(--muted);
+  max-width:520px;margin-bottom:40px;
+}
+.hero-sub strong{color:var(--text);font-weight:600}
+.hero-actions{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:64px}
+.btn-primary{
+  background:var(--amber);color:var(--white);
+  font-size:14px;font-weight:700;letter-spacing:0.04em;
+  padding:14px 28px;border-radius:4px;text-decoration:none;
+  transition:opacity .15s;display:inline-block;
+}
+.btn-primary:hover{opacity:0.88}
+.btn-ghost{
+  font-size:14px;font-weight:500;color:var(--muted);text-decoration:none;
+  border:1px solid var(--border);padding:14px 28px;border-radius:4px;
+  transition:border-color .15s,color .15s;display:inline-block;
+}
+.btn-ghost:hover{border-color:var(--muted);color:var(--text)}
+.hero-stats{
+  display:flex;gap:48px;flex-wrap:wrap;
+  padding-top:40px;border-top:1px solid var(--border);
+}
+.stat-item{}
+.stat-num{
+  font-size:32px;font-weight:800;letter-spacing:-0.02em;
+  color:var(--text);font-variant-numeric:tabular-nums;
+  display:block;
+}
+.stat-label{font-size:12px;color:var(--muted);letter-spacing:0.04em;margin-top:2px}
+
+/* ── FLYWHEEL ─────────────────────────────────────────── */
+.flywheel-section{
+  background:var(--bg2);
+  border-top:1px solid var(--border);
+  border-bottom:1px solid var(--border);
+  padding:72px 40px;
+}
+.flywheel-inner{max-width:900px;margin:0 auto}
+.section-label{
+  font-size:10px;letter-spacing:0.16em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;margin-bottom:16px;text-align:center;
+}
+.flywheel-title{
+  font-size:28px;font-weight:800;letter-spacing:-0.02em;
+  text-align:center;margin-bottom:8px;text-wrap:balance;
+}
+.flywheel-desc{
+  font-size:14px;color:var(--muted);text-align:center;
+  margin-bottom:56px;max-width:480px;margin-left:auto;margin-right:auto;
+}
+.fw-diagram{width:100%;max-width:820px;margin:0 auto;display:block}
+
+/* Flywheel node labels */
+.fw-label-group{font-family:ui-sans-serif,system-ui,sans-serif}
+
+/* ── PRODUCTS ─────────────────────────────────────────── */
+.products-section{max-width:1100px;margin:0 auto;padding:0 40px}
+.product-row{
+  display:grid;grid-template-columns:220px 1fr;gap:64px;
+  padding:80px 0;border-bottom:1px solid var(--border);
+  align-items:start;
+}
+.product-row:last-child{border-bottom:none}
+.product-left{}
+.product-tag{
+  font-size:10px;letter-spacing:0.16em;text-transform:uppercase;
+  font-weight:700;margin-bottom:12px;display:block;
+}
+.product-tag.amber{color:var(--amber)}
+.product-tag.green{color:var(--green)}
+.product-tag.blue{color:#4A9EE8}
+.product-name{
+  font-size:32px;font-weight:900;letter-spacing:-0.03em;
+  line-height:1;margin-bottom:20px;
+}
+.product-one-line{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:28px}
+.product-cta{
+  font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;
+  color:var(--amber);text-decoration:none;
+  display:inline-flex;align-items:center;gap:6px;
+}
+.product-cta:hover{opacity:0.8}
+.product-cta .arrow{transition:transform .15s}
+.product-cta:hover .arrow{transform:translateX(3px)}
+.product-right{}
+.product-headline{
+  font-size:22px;font-weight:700;letter-spacing:-0.015em;
+  margin-bottom:16px;text-wrap:balance;line-height:1.25;
+}
+.product-body{font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:28px;max-width:560px}
+.product-features{
+  display:grid;grid-template-columns:1fr 1fr;gap:12px;
+}
+.feature-item{
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:6px;padding:14px 16px;
+}
+.feature-title{font-size:12px;font-weight:600;color:var(--text);margin-bottom:3px}
+.feature-desc{font-size:11.5px;color:var(--muted);line-height:1.45}
+.product-stat-row{
+  display:flex;gap:32px;margin-top:28px;flex-wrap:wrap;
+}
+.p-stat{border-left:2px solid var(--amber);padding-left:12px}
+.p-stat-n{font-size:22px;font-weight:800;letter-spacing:-0.02em;font-variant-numeric:tabular-nums}
+.p-stat-l{font-size:11px;color:var(--muted)}
+
+/* ── PRICING ──────────────────────────────────────────── */
+.pricing-section{
+  background:var(--bg2);
+  border-top:1px solid var(--border);
+  padding:80px 40px;
+}
+.pricing-inner{max-width:900px;margin:0 auto}
+.pricing-title{
+  font-size:36px;font-weight:900;letter-spacing:-0.03em;
+  margin-bottom:8px;text-wrap:balance;
+}
+.pricing-sub{font-size:15px;color:var(--muted);margin-bottom:48px;max-width:480px}
+.pricing-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.pricing-card{
+  border:1px solid var(--border);border-radius:8px;
+  padding:28px 24px;background:var(--bg3);
+  display:flex;flex-direction:column;gap:0;
+}
+.pricing-card.featured{border-color:var(--amber)}
+.pricing-tier{
+  font-size:10px;letter-spacing:0.14em;text-transform:uppercase;
+  font-weight:700;color:var(--muted);margin-bottom:16px;
+}
+.pricing-price{
+  font-size:38px;font-weight:900;letter-spacing:-0.03em;
+  font-variant-numeric:tabular-nums;margin-bottom:4px;
+  line-height:1;
+}
+.pricing-price sup{font-size:18px;font-weight:600;vertical-align:super;letter-spacing:0}
+.pricing-cadence{font-size:12px;color:var(--muted);margin-bottom:20px}
+.pricing-divider{height:1px;background:var(--border);margin-bottom:20px}
+.pricing-features{list-style:none;display:flex;flex-direction:column;gap:8px;flex:1}
+.pricing-features li{
+  font-size:12.5px;color:var(--muted);padding-left:18px;position:relative;line-height:1.4;
+}
+.pricing-features li::before{
+  content:'—';position:absolute;left:0;color:var(--dim);font-size:10px;top:2px;
+}
+.pricing-features li.hi{color:var(--text);font-weight:500}
+.pricing-features li.hi::before{content:'→';color:var(--amber)}
+.pricing-btn{
+  margin-top:24px;display:block;text-align:center;
+  padding:11px;border-radius:4px;font-size:12px;font-weight:700;
+  letter-spacing:0.05em;text-transform:uppercase;text-decoration:none;
+  transition:opacity .15s;
+}
+.pricing-btn.filled{background:var(--amber);color:var(--white)}
+.pricing-btn.outlined{border:1px solid var(--border);color:var(--muted)}
+.pricing-btn:hover{opacity:0.82}
+
+/* ── FOOTER ───────────────────────────────────────────── */
+footer{
+  border-top:1px solid var(--border);
+  padding:40px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:16px;
+}
+.footer-logo{font-weight:800;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text)}
+.footer-logo span{color:var(--amber)}
+.footer-links{display:flex;gap:24px;list-style:none;flex-wrap:wrap}
+.footer-links a{font-size:12px;color:var(--muted);text-decoration:none}
+.footer-links a:hover{color:var(--text)}
+.footer-copy{font-size:11px;color:var(--dim)}
+
+/* ── ANIMATIONS ───────────────────────────────────────── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes flowDash{to{stroke-dashoffset:0}}
+
+.hero-eyebrow,.hero-headline,.hero-sub,.hero-actions,.hero-stats{
+  animation:fadeUp .6s ease both;
+}
+.hero-eyebrow{animation-delay:.05s}
+.hero-headline{animation-delay:.12s}
+.hero-sub{animation-delay:.2s}
+.hero-actions{animation-delay:.28s}
+.hero-stats{animation-delay:.38s}
+
+@media(prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+}
+
+/* ── RESPONSIVE ───────────────────────────────────────── */
+@media(max-width:768px){
+  nav{padding:0 20px}
+  .nav-links{display:none}
+  .hero{padding:64px 20px 56px}
+  .product-row{grid-template-columns:1fr;gap:32px;padding:56px 0}
+  .products-section{padding:0 20px}
+  .product-features{grid-template-columns:1fr}
+  .pricing-cards{grid-template-columns:1fr}
+  .pricing-section,.flywheel-section{padding:56px 20px}
+  footer{padding:32px 20px;flex-direction:column;align-items:flex-start}
+}
+</style>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#"><span>Uzima</span> Amka</a>
+  <ul class="nav-links">
+    <li><a href="#fieldbook">FieldBook</a></li>
+    <li><a href="#autoflow">AutoFlow</a></li>
+    <li><a href="#leadflow">LeadFlow</a></li>
+    <li><a href="#pricing">Pricing</a></li>
+    <li><a href="https://uzimaamka.com" style="opacity:0.6">← uzimaamka.com</a></li>
+  </ul>
+  <a class="nav-cta" href="https://gumroad.com/l/prbymh">Get Started — $49</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-eyebrow">The trade business operating system</div>
+  <h1 class="hero-headline">
+    The business<br>
+    <span class="amber">that runs</span><br>
+    <span class="line2">itself.</span>
+  </h1>
+  <p class="hero-sub">
+    <strong>FieldBook</strong> quotes at market rate.
+    <strong>AutoFlow</strong> handles the admin.
+    <strong>LeadFlow</strong> delivers new clients.
+    Three tools. One system. Built for trade professionals who are done white-knuckling it.
+  </p>
+  <div class="hero-actions">
+    <a class="btn-primary" href="https://gumroad.com/l/prbymh">Start with AutoFlow — $49</a>
+    <a class="btn-ghost" href="#fieldbook">See how it works</a>
+  </div>
+  <div class="hero-stats">
+    <div class="stat-item">
+      <span class="stat-num">20+</span>
+      <span class="stat-label">hrs/week recovered from admin</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">$1,300</span>
+      <span class="stat-label">avg margin recovered per job</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">19 → 1</span>
+      <span class="stat-label">days to invoice payment</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">50K+</span>
+      <span class="stat-label">jobs in the benchmark database</span>
+    </div>
+  </div>
+</section>
+
+<!-- FLYWHEEL -->
+<section class="flywheel-section" id="system">
+  <div class="flywheel-inner">
+    <div class="section-label">How it connects</div>
+    <h2 class="flywheel-title">A self-funding loop — not three separate tools</h2>
+    <p class="flywheel-desc">Every quote you send through FieldBook captures demand. AutoFlow routes it. LeadFlow sells it back. Each vendor on the platform makes the network stronger for every other vendor.</p>
+
+    <canvas id="fw" width="820" height="460" style="width:100%;max-width:820px;display:block;margin:0 auto" aria-label="Flywheel diagram"></canvas>
+    <script>
+    (function(){
+      function deg(d){ return d * Math.PI / 180; }
+
+      function draw(){
+        var canvas = document.getElementById('fw');
+        if(!canvas) return;
+        var ctx = canvas.getContext('2d');
+        var W = canvas.width, H = canvas.height;
+        ctx.clearRect(0,0,W,H);
+
+        var isDark = document.documentElement.dataset.theme === 'dark' ||
+          (!document.documentElement.dataset.theme &&
+           window.matchMedia('(prefers-color-scheme:dark)').matches);
+
+        var C = isDark ? {
+          amber:'#E8932A', amberGlow:'rgba(232,147,42,0.18)',
+          text:'#EDF1F8', muted:'#6B84A8', dim:'#253650',
+          green:'#1A8C5B', blue:'#4A9EE8',
+          sa:'rgba(232,147,42,0.10)', sg:'rgba(26,140,91,0.10)', sb:'rgba(74,158,232,0.10)'
+        } : {
+          amber:'#B8690E', amberGlow:'rgba(184,105,14,0.12)',
+          text:'#0C1520', muted:'#5A6E88', dim:'#C8BBAA',
+          green:'#157A4F', blue:'#1E6DB8',
+          sa:'rgba(184,105,14,0.10)', sg:'rgba(21,122,79,0.10)', sb:'rgba(30,109,184,0.10)'
+        };
+
+        // ── Circle params ────────────────────────────────────
+        // Canvas angles: 0=right(3 o'clock), 90=bottom(6), 180=left(9), 270=top(12)
+        // Clockwise arc = anticlockwise:false = increasing angle
+        var cx=325, cy=210, r=148;
+
+        // Arc: from 48° (lower-right, ~4 o'clock) clockwise to 316° (upper-right, ~1 o'clock)
+        // That's 268° of arc — almost ¾ of the circle
+        var arcStart = deg(48), arcEnd = deg(316);
+
+        // ── Main flywheel arc ────────────────────────────────
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, arcStart, arcEnd, false);
+        ctx.strokeStyle = C.amber;
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.setLineDash([]);
+        ctx.stroke();
+
+        // Subtle glow halo on the arc
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, arcStart, arcEnd, false);
+        ctx.strokeStyle = C.amberGlow;
+        ctx.lineWidth = 9;
+        ctx.stroke();
+        // Redraw crisp line on top
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, arcStart, arcEnd, false);
+        ctx.strokeStyle = C.amber;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Arrow head at arcEnd (316°)
+        // At angle θ, clockwise tangent direction = (sin θ, -cos θ)
+        var ea = arcEnd;
+        var ex = cx + r * Math.cos(ea), ey = cy + r * Math.sin(ea);
+        var tx = Math.sin(ea), ty = -Math.cos(ea);
+        var as = 11;
+        ctx.beginPath();
+        ctx.moveTo(ex, ey);
+        ctx.lineTo(ex - as*tx + as*0.42*ty, ey - as*ty - as*0.42*tx);
+        ctx.lineTo(ex - as*tx - as*0.42*ty, ey - as*ty + as*0.42*tx);
+        ctx.closePath();
+        ctx.fillStyle = C.amber;
+        ctx.fill();
+
+        // ── Stages ──────────────────────────────────────────
+        // θ=90° = bottom, 180° = left, 270° = top, 0°/360° = right
+        var stages = [
+          { a:75,  l1:'AUTOMATE',      l2:'THE ADMIN',       color:C.amber, align:'left'  },
+          { a:128, l1:'QUOTE AT',      l2:'MARKET RATE',     color:C.green, align:'right' },
+          { a:183, l1:'GET PAID',      l2:'SAME DAY',        color:C.green, align:'right' },
+          { a:236, l1:'CAPTURE EVERY', l2:'IMPRESSION',      color:C.blue,  align:'right' },
+          { a:288, l1:'LEADS',         l2:'RETURNED',        color:C.blue,  align:'left'  },
+        ];
+
+        stages.forEach(function(s){
+          var a = deg(s.a);
+          var px = cx + r * Math.cos(a);
+          var py = cy + r * Math.sin(a);
+
+          // Dot on arc
+          ctx.beginPath();
+          ctx.arc(px, py, 4, 0, Math.PI*2);
+          ctx.fillStyle = s.color;
+          ctx.fill();
+
+          // Short spoke outward
+          var spokeR = 16;
+          var spx = cx + (r + spokeR) * Math.cos(a);
+          var spy = cy + (r + spokeR) * Math.sin(a);
+          ctx.beginPath();
+          ctx.moveTo(px + Math.cos(a)*4, py + Math.sin(a)*4);
+          ctx.lineTo(spx, spy);
+          ctx.strokeStyle = s.color;
+          ctx.lineWidth = 1;
+          ctx.globalAlpha = 0.6;
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+
+          // Two-line label
+          var lx = cx + (r + 26) * Math.cos(a);
+          var ly = cy + (r + 26) * Math.sin(a);
+
+          ctx.font = '700 9px ui-sans-serif,system-ui,sans-serif';
+          ctx.fillStyle = s.color;
+          ctx.textAlign = s.align;
+          ctx.fillText(s.l1, lx, ly - 1);
+          ctx.fillText(s.l2, lx, ly + 12);
+        });
+
+        // ── Center label ─────────────────────────────────────
+        ctx.font = '500 10px ui-sans-serif,system-ui,sans-serif';
+        ctx.fillStyle = C.muted;
+        ctx.textAlign = 'center';
+        ctx.letterSpacing = '3px';
+        ctx.fillText('FLYWHEEL', cx, cy + 4);
+        ctx.letterSpacing = '0px';
+
+        // ── BUILD UP baseline ────────────────────────────────
+        var baseY = H - 82;
+        ctx.beginPath();
+        ctx.moveTo(52, baseY);
+        ctx.lineTo(510, baseY);
+        ctx.strokeStyle = C.text;
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'square';
+        ctx.setLineDash([]);
+        ctx.stroke();
+
+        // Arrow at right end of baseline
+        ctx.beginPath();
+        ctx.moveTo(502, baseY - 7);
+        ctx.lineTo(516, baseY);
+        ctx.lineTo(502, baseY + 7);
+        ctx.fillStyle = C.text;
+        ctx.fill();
+
+        // "BUILD UP..." label
+        ctx.font = '600 9px ui-sans-serif,system-ui,sans-serif';
+        ctx.fillStyle = C.muted;
+        ctx.textAlign = 'left';
+        ctx.fillText('BUILD UP...', 56, baseY - 9);
+
+        // ── BREAKTHROUGH arrow ───────────────────────────────
+        var bsx = 520, bsy = baseY + 2;
+        var bex = 790, bey = 38;
+
+        // Shadow
+        ctx.beginPath();
+        ctx.moveTo(bsx, bsy);
+        ctx.lineTo(bex, bey);
+        ctx.strokeStyle = C.amberGlow;
+        ctx.lineWidth = 10;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+        // Main line
+        ctx.beginPath();
+        ctx.moveTo(bsx, bsy);
+        ctx.lineTo(bex, bey);
+        ctx.strokeStyle = C.amber;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Arrow head
+        var bang = Math.atan2(bey-bsy, bex-bsx);
+        ctx.beginPath();
+        ctx.moveTo(bex, bey);
+        ctx.lineTo(bex - 16*Math.cos(bang-0.38), bey - 16*Math.sin(bang-0.38));
+        ctx.lineTo(bex - 16*Math.cos(bang+0.38), bey - 16*Math.sin(bang+0.38));
+        ctx.closePath();
+        ctx.fillStyle = C.amber;
+        ctx.fill();
+
+        // BREAKTHROUGH! text — rotated along arrow
+        ctx.save();
+        ctx.translate((bsx+bex)/2 - 8, (bsy+bey)/2 + 2);
+        ctx.rotate(bang);
+        ctx.font = '800 13px ui-sans-serif,system-ui,sans-serif';
+        ctx.fillStyle = C.amber;
+        ctx.textAlign = 'center';
+        ctx.letterSpacing = '1px';
+        ctx.fillText('BREAKTHROUGH!', 0, -11);
+        ctx.restore();
+
+        // ── Category strips ──────────────────────────────────
+        var sy = H - 46, sh = 34;
+        var strips = [
+          { label:'AUTOFLOW',  color:C.amber, bg:C.sa, x:52,  w:218 },
+          { label:'FIELDBOOK', color:C.green, bg:C.sg, x:278, w:218 },
+          { label:'LEADFLOW',  color:C.blue,  bg:C.sb, x:504, w:218 },
+        ];
+        strips.forEach(function(s){
+          ctx.fillStyle = s.bg;
+          ctx.fillRect(s.x, sy, s.w, sh);
+          ctx.fillStyle = s.color;
+          ctx.fillRect(s.x, sy, s.w, 2);
+          ctx.font = '700 9px ui-sans-serif,system-ui,sans-serif';
+          ctx.fillStyle = s.color;
+          ctx.textAlign = 'center';
+          ctx.letterSpacing = '2px';
+          ctx.fillText(s.label, s.x + s.w/2, sy + 22);
+          ctx.letterSpacing = '0px';
+        });
+      }
+
+      // Theme observer
+      var obs = new MutationObserver(draw);
+      obs.observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
+      window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', draw);
+
+      if(document.readyState === 'loading'){
+        document.addEventListener('DOMContentLoaded', draw);
+      } else {
+        draw();
+      }
+    })();
+    </script>
+  </div>
+</section>
+
+<!-- PRODUCTS -->
+<section class="products-section">
+
+  <!-- FieldBook -->
+  <div class="product-row" id="fieldbook">
+    <div class="product-left">
+      <span class="product-tag green">Platform</span>
+      <div class="product-name">Field<br>Book</div>
+      <p class="product-one-line">Quoting, pricing intelligence, and instant client approvals — built for trade professionals.</p>
+      <a class="product-cta" href="#pricing">Learn more <span class="arrow">→</span></a>
+    </div>
+    <div class="product-right">
+      <h3 class="product-headline">You're quoting from memory. Memory is costing you $1,300 a job.</h3>
+      <p class="product-body">FieldBook pulls live pricing benchmarks from 50,000+ jobs across your market. You quote confidently at what the market actually pays — not what you guessed in 2019. Send a branded <code style="font-size:12px;color:var(--amber)">/q/[token]</code> link to your client. They approve in minutes. You invoice the same day.</p>
+      <div class="product-features">
+        <div class="feature-item">
+          <div class="feature-title">Market Benchmarks</div>
+          <div class="feature-desc">Labor rates by zip code. 50,000+ jobs across HVAC, landscaping, plumbing, and more.</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-title">Instant Approval Links</div>
+          <div class="feature-desc">Send <code style="font-size:11px">/q/[token]</code> — clients approve on their phone. No back-and-forth.</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-title">Profit Leak Analysis</div>
+          <div class="feature-desc">Free at onboarding. Shows exactly where your margin is bleeding — by job type.</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-title">Same-Day Billing</div>
+          <div class="feature-desc">19-day payment cycles drop to same-week. Invoice the moment the job closes.</div>
+        </div>
+      </div>
+      <div class="product-stat-row">
+        <div class="p-stat">
+          <div class="p-stat-n" style="color:var(--green)">19 → 1</div>
+          <div class="p-stat-l">days to payment</div>
+        </div>
+        <div class="p-stat">
+          <div class="p-stat-n" style="color:var(--green)">$1,300</div>
+          <div class="p-stat-l">avg margin recovered per job</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AutoFlow -->
+  <div class="product-row" id="autoflow">
+    <div class="product-left">
+      <span class="product-tag amber">Automation</span>
+      <div class="product-name">Auto<br>Flow</div>
+      <p class="product-one-line">12 pre-built AI workflows that handle the admin so you can do the work.</p>
+      <a class="product-cta" href="https://gumroad.com/l/prbymh">Get for $49 <span class="arrow">→</span></a>
+    </div>
+    <div class="product-right">
+      <h3 class="product-headline">10–20 hours of admin every week. A robot should be doing all of it.</h3>
+      <p class="product-body">AutoFlow is a library of 12 production-ready n8n workflows — import in one click, configure in an afternoon. They capture and score your leads, chase your overdue invoices, triage your support inbox, write a week of social content, and deliver a plain-English performance report every Friday. No coding. No developer. No per-month subscription to us.</p>
+      <div class="product-features">
+        <div class="feature-item">
+          <div class="feature-title">Lead Capture → CRM</div>
+          <div class="feature-desc">AI scores every lead 0–100. Hot leads get a personalized reply and a Slack ping within seconds.</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-title">Invoice Reminder Bot</div>
+          <div class="feature-desc">Runs every morning. Escalates tone as invoices age. 30+ days overdue triggers a human flag.</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-title">Support Triage</div>
+          <div class="feature-desc">Reads every support email, classifies it, drafts a reply, routes it. You see only what needs you.</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-title">Social Calendar Generator</div>
+          <div class="feature-desc">Monday morning: a full week of posts based on your brand. Delivered to your inbox for one-click approval.</div>
+        </div>
+      </div>
+      <div class="product-stat-row">
+        <div class="p-stat">
+          <div class="p-stat-n" style="color:var(--amber)">11</div>
+          <div class="p-stat-l">production workflows</div>
+        </div>
+        <div class="p-stat">
+          <div class="p-stat-n" style="color:var(--amber)">20+</div>
+          <div class="p-stat-l">hrs/week recovered</div>
+        </div>
+        <div class="p-stat">
+          <div class="p-stat-n" style="color:var(--amber)">$49</div>
+          <div class="p-stat-l">one time, yours forever</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LeadFlow -->
+  <div class="product-row" id="leadflow">
+    <div class="product-left">
+      <span class="product-tag blue">Network</span>
+      <div class="product-name">Lead<br>Flow</div>
+      <p class="product-one-line">Demand generated by the vendors on the platform — returned to the vendors as leads.</p>
+      <a class="product-cta" href="#pricing">Learn more <span class="arrow">→</span></a>
+    </div>
+    <div class="product-right">
+      <h3 class="product-headline">Every quote you send is an impression. Those impressions become your next job.</h3>
+      <p class="product-body">Every FieldBook quote sent to a homeowner carries a "Powered by FieldBook" signal. That homeowner demand flows into the LeadFlow network. The network scores it, matches it to vendors by service area and trade, and delivers it as a pre-qualified lead. The more vendors on the platform, the more demand in the network — and the higher quality leads each vendor receives. The flywheel feeds itself.</p>
+      <div class="product-features">
+        <div class="feature-item">
+          <div class="feature-title">Organic Lead Supply</div>
+          <div class="feature-desc">Leads generated by platform activity — not paid ads. Cost drops as the network grows.</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-title">Pre-Qualified Matches</div>
+          <div class="feature-desc">Homeowners who've already interacted with a FieldBook quote. Intent is established before you call.</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-title">AutoFlow Routing</div>
+          <div class="feature-desc">LeadFlow leads flow directly into AutoFlow WF-01 — scored and replied to before you touch them.</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-title">Network Effect</div>
+          <div class="feature-desc">Each vendor who joins increases lead supply for every other vendor. Growth compounds.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<!-- PRICING -->
+<section class="pricing-section" id="pricing">
+  <div class="pricing-inner">
+    <div class="section-label">Pricing</div>
+    <h2 class="pricing-title">Start with AutoFlow. Build from there.</h2>
+    <p class="pricing-sub">AutoFlow is the entry point — it works as a standalone product and connects to FieldBook as your business grows.</p>
+    <div class="pricing-cards">
+      <div class="pricing-card">
+        <div class="pricing-tier">AutoFlow Starter</div>
+        <div class="pricing-price"><sup>$</sup>49</div>
+        <div class="pricing-cadence">one-time · yours forever</div>
+        <div class="pricing-divider"></div>
+        <ul class="pricing-features">
+          <li class="hi">5 core workflows + bonus</li>
+          <li>Lead capture, invoice bot, support triage</li>
+          <li>Social calendar generator</li>
+          <li>25 AI prompts library</li>
+          <li>60-page setup guide (PDF)</li>
+          <li>7-day money-back guarantee</li>
+        </ul>
+        <a class="pricing-btn filled" href="https://gumroad.com/l/prbymh">Get the Starter Kit</a>
+      </div>
+      <div class="pricing-card featured">
+        <div class="pricing-tier">AutoFlow Growth</div>
+        <div class="pricing-price"><sup>$</sup>149</div>
+        <div class="pricing-cadence">per month · FieldBook integrated</div>
+        <div class="pricing-divider"></div>
+        <ul class="pricing-features">
+          <li class="hi">All 11 workflows</li>
+          <li class="hi">LeadFlow lead routing</li>
+          <li>Sales pipeline on open quotes</li>
+          <li>Customer onboarding on approval</li>
+          <li>Monthly performance reporting</li>
+          <li>2 new workflows / month</li>
+          <li>Priority support</li>
+        </ul>
+        <a class="pricing-btn filled" href="#pricing">Coming Soon</a>
+      </div>
+      <div class="pricing-card">
+        <div class="pricing-tier">AutoFlow Agency</div>
+        <div class="pricing-price"><sup>$</sup>299</div>
+        <div class="pricing-cadence">per month · multi-vendor</div>
+        <div class="pricing-divider"></div>
+        <ul class="pricing-features">
+          <li class="hi">Multi-vendor management</li>
+          <li class="hi">White-label option</li>
+          <li>Agency onboarding flows</li>
+          <li>Per-client workspace setup</li>
+          <li>Custom workflow builds (1/mo)</li>
+          <li>Dedicated account support</li>
+        </ul>
+        <a class="pricing-btn outlined" href="mailto:support@uzimaamka.com">Contact Us</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo"><span>Uzima</span> Amka <span style="font-weight:400;color:var(--muted);letter-spacing:0.04em">Trades</span></div>
+  <ul class="footer-links">
+    <li><a href="#fieldbook">FieldBook</a></li>
+    <li><a href="#autoflow">AutoFlow</a></li>
+    <li><a href="#leadflow">LeadFlow</a></li>
+    <li><a href="mailto:support@uzimaamka.com">support@uzimaamka.com</a></li>
+    <li><a href="https://uzimaamka.com">uzimaamka.com</a></li>
+  </ul>
+  <div class="footer-copy">© 2026 Uzima Amka LLC · <a href="https://uzimaamka.com" style="color:var(--dim);text-decoration:none">A product of Uzima Amka</a></div>
+</footer>
