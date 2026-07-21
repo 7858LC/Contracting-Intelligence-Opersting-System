@@ -1,5 +1,6 @@
 """Celery task workers for async processing."""
 from celery import Celery
+
 from cios.config import settings
 
 celery_app = Celery(
@@ -19,6 +20,7 @@ celery_app = Celery(
         "cios.tasks.email",
         "cios.tasks.onboarding",
         "cios.tasks.pir",
+        "cios.tasks.winning_profile",
     ],
 )
 

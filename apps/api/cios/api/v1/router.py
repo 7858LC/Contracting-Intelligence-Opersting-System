@@ -2,22 +2,23 @@
 from fastapi import APIRouter
 
 from .endpoints import (
+    admin,
+    agent_runs,
     auth,
-    opportunities,
-    bid_decisions,
     award_simulations,
+    bid_decisions,
     capabilities,
-    past_performance,
-    teaming,
     competitors,
     knowledge_vault,
-    agent_runs,
-    tenants,
-    subscriptions,
     onboarding,
-    webhooks,
-    admin,
+    opportunities,
+    past_performance,
     pir,
+    subscriptions,
+    teaming,
+    tenants,
+    webhooks,
+    winning_profile,
 )
 
 api_router = APIRouter()
@@ -69,3 +70,8 @@ api_router.include_router(admin.router, prefix="/admin", tags=["Admin"])
 
 # Module PIR — Procurement Intelligence Radar™
 api_router.include_router(pir.router, prefix="/radar", tags=["Procurement Intelligence Radar"])
+
+# Module WPH — Winning Profile Hypothesis™ (pre-award intelligence)
+api_router.include_router(
+    winning_profile.router, prefix="/winning-profile", tags=["Winning Profile Hypothesis"]
+)

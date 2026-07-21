@@ -10,6 +10,7 @@ export type SubscriptionTier = (typeof SubscriptionTier)[keyof typeof Subscripti
 export const Feature = {
   ProcurementIntelligenceRadar: "pir",
   ProcurementIntelligenceDiagnostics: "diagnostics",
+  WinningProfileHypothesis: "winning_profile",
   PursuitDecisionQuality: "pdq",
   KnowledgeVault: "knowledge_vault",
   Opportunities: "opportunities",
@@ -28,6 +29,7 @@ const TIER_FEATURES: Record<SubscriptionTier, Feature[]> = {
   professional: [
     Feature.ProcurementIntelligenceRadar,
     Feature.ProcurementIntelligenceDiagnostics,
+    Feature.WinningProfileHypothesis,
     Feature.PursuitDecisionQuality,
     Feature.KnowledgeVault,
     Feature.Opportunities,
@@ -36,6 +38,7 @@ const TIER_FEATURES: Record<SubscriptionTier, Feature[]> = {
   growth: [
     Feature.ProcurementIntelligenceRadar,
     Feature.ProcurementIntelligenceDiagnostics,
+    Feature.WinningProfileHypothesis,
     Feature.PursuitDecisionQuality,
     Feature.KnowledgeVault,
     Feature.Opportunities,
@@ -48,6 +51,7 @@ const TIER_FEATURES: Record<SubscriptionTier, Feature[]> = {
   enterprise: [
     Feature.ProcurementIntelligenceRadar,
     Feature.ProcurementIntelligenceDiagnostics,
+    Feature.WinningProfileHypothesis,
     Feature.PursuitDecisionQuality,
     Feature.KnowledgeVault,
     Feature.Opportunities,
