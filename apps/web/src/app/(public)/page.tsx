@@ -1,86 +1,65 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BarChart3, BookOpen, Brain, Radio, Shield, Target } from "lucide-react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { buildPageMetadata } from "@/lib/metadata";
-import { organizationSchema, softwareApplicationSchema } from "@/lib/jsonld";
+import { organizationSchema } from "@/lib/jsonld";
 
 export const metadata: Metadata = buildPageMetadata({
-  title: "Procurement Intelligence™ — Executive Decision Support for Public Sector Growth",
+  title: "Uzima Amka — Intelligence Infrastructure for High-Stakes Decisions",
   description:
-    "Uzima Amka Ventures delivers the analytical infrastructure and decision frameworks that transform public sector contracting into a managed intelligence discipline.",
+    "Uzima Amka builds precision intelligence tools for government contractors, trade professionals, and ministry leaders. Founded by a 40-year aerospace program management veteran.",
   path: "/",
 });
 
-const MODULES = [
+const PILLARS = [
   {
-    label: "Module 00",
-    name: "Procurement Intelligence Radar™",
-    desc: "Market surveillance and company intelligence. Detect procurement signals before solicitations publish.",
-    href: "/radar",
-    icon: Radio,
-  },
-  {
-    label: "Module 01",
-    name: "Procurement Intelligence Diagnostics™",
-    desc: "Systemic assessment of competitive position. Identify structural weaknesses before they surface in source selection.",
-    href: "/diagnostics",
-    icon: BarChart3,
-  },
-  {
-    label: "Module 02",
-    name: "Pursuit Decision Quality™",
-    desc: "Bid/no-bid analysis with institutional rigor. Eight-dimension scoring across strategic alignment and execution risk.",
-    href: "/pdq",
-    icon: Target,
-  },
-  {
-    label: "Module 03",
-    name: "Award Simulation™",
-    desc: "Probabilistic award modeling before resource commitment. FAR 15.305-aligned source selection emulation.",
-    href: "/simulation",
-    icon: Shield,
-  },
-  {
-    label: "Module 04",
-    name: "Knowledge Vault™",
-    desc: "Institutional intelligence and past performance management. Structured retrieval for capture teams.",
-    href: "/research",
-    icon: BookOpen,
-  },
-  {
-    label: "Module 05",
-    name: "Executive Dashboard™",
-    desc: "Portfolio-level procurement analytics for executive leadership. Pipeline health, win rates, and resource allocation.",
+    category: "Government Contracting",
+    name: "CIOS™",
+    full: "Contract Intelligence Operating System",
+    desc: "The analytical infrastructure that transforms federal contracting from a pursuit exercise into a managed intelligence discipline. Competitive intelligence, bid/no-bid analysis, award simulation — before the solicitation drops.",
     href: "/platform",
-    icon: Brain,
+    cta: "Explore the platform",
+    internal: true,
+    status: "live" as const,
+  },
+  {
+    category: "Trades Operating System",
+    name: "Fieldbook · AutoFlow · Leadflow",
+    full: "The trade business that runs itself",
+    desc: "Three interlocking tools for trade professionals. Quote at market rate. Automate the admin. Capture every lead the platform generates and return it as pre-qualified work.",
+    href: "https://trades.uzimaamka.com",
+    cta: "See the trades platform",
+    internal: false,
+    status: "soon" as const,
+  },
+  {
+    category: "Ministerial Intelligence",
+    name: "Unseen Layer™",
+    full: "Textual intelligence for preachers",
+    desc: "Nine narrative agents purpose-built for the craft of preaching. Pauline structure. Epistolary analysis. Literary framing. A research and writing intelligence system built by a preacher, for preachers.",
+    href: "https://unseenlayer.uzimaamka.com",
+    cta: "Learn more",
+    internal: false,
+    status: "live" as const,
   },
 ];
 
 const PRINCIPLES = [
   {
     n: "01",
-    title: "Intelligence Before Intent",
-    body: "Know which buyers are building programs before solicitations publish. Market sensing, not calendar management.",
+    title: "Built by practitioners, not observers",
+    body: "Every tool Uzima Amka ships is built from the inside of the problem. CIOS was designed by a program manager with 40 years of federal acquisition experience. Unseen Layer was built by a preacher. The trades platform was built by someone who has operated a trades business. We do not build for markets. We build from experience.",
   },
   {
     n: "02",
-    title: "Portfolio Discipline",
-    body: "Pursue what you can win, not what appears on the calendar. Bid decisions as resource allocation, not opportunity reaction.",
+    title: "Evidence over instinct",
+    body: "The dominant mode of decision-making in government contracting, trades operations, and ministry practice is instinct and tribal knowledge. We build for the alternative — structured analysis, documented reasoning, reproducible decisions. Every recommendation carries its evidence chain.",
   },
   {
     n: "03",
-    title: "Evidence-Based Commitment",
-    body: "Allocate capture resources based on scored opportunity quality. Every recommendation carries a confidence score and evidence trail.",
+    title: "Institutional rigor at individual scale",
+    body: "The analytical infrastructure that primes and large enterprises use internally has never been accessible to the mid-market. Our entire purpose is to close that gap — delivering the same discipline that governs a $750M program portfolio to a 50-person firm making a $200K pursuit decision.",
   },
-];
-
-const COUNCIL_BENEFITS = [
-  "Quarterly Procurement Intelligence™ market report",
-  "Pre-release access to new CIOS™ modules",
-  "Direct input on the platform research agenda",
-  "Executive roundtable access — four sessions per year",
-  "Benchmark data from peer organizations",
-  "Preferred pricing on enterprise contracts",
 ];
 
 export default function HomePage() {
@@ -90,99 +69,193 @@ export default function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
       />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplicationSchema) }}
-      />
 
       {/* Hero */}
-      <section className="border-b border-border py-20 sm:py-28">
+      <section className="border-b border-border py-24 sm:py-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="max-w-3xl">
+          <div className="max-w-4xl">
             <p className="text-[11px] font-mono uppercase tracking-[0.18em] text-primary mb-6">
-              Procurement Intelligence™ Platform
+              Uzima Amka
             </p>
-            <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight leading-[1.04] mb-5">
-              Procurement<br />Intelligence™
+            <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight leading-[1.04] mb-7">
+              Intelligence infrastructure<br />
+              for decisions that cannot<br />
+              <span className="text-muted-foreground font-normal">afford to be wrong.</span>
             </h1>
-            <p className="text-xl sm:text-2xl font-medium text-muted-foreground mb-5">
-              Executive Decision Support for Public Sector Growth
-            </p>
-            <p className="text-base text-muted-foreground mb-10 max-w-2xl leading-relaxed">
-              The systematic application of competitive intelligence, financial analysis, and regulatory expertise
-              to public sector contracting decisions. Not proposal software. Not a CRM.
-              An analytical discipline — delivered through CIOS™.
+            <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed max-w-2xl mb-10">
+              Founded by a 40-year aerospace program management veteran who spent three decades
+              ensuring NASA and DoD programs met their objectives. Now building the analytical
+              tools that bring the same discipline to government contracting, trades operations,
+              and ministerial practice.
             </p>
             <div className="flex flex-wrap gap-4">
               <Link
-                href="/auth/register"
+                href="/platform"
                 className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-md font-semibold hover:bg-primary/90 transition-colors text-sm"
               >
-                Request Early Access <ArrowRight className="w-4 h-4" />
+                Explore CIOS™ <ArrowRight className="w-4 h-4" />
               </Link>
               <Link
-                href="/platform"
+                href="/about"
                 className="inline-flex items-center gap-2 border border-border px-6 py-3 rounded-md font-semibold text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors text-sm"
               >
-                Explore the Platform
+                About the founder
               </Link>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Data bar */}
-      <section className="border-b border-border bg-card">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 text-center divide-x divide-border">
+      {/* Founder */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-28">
+        <div className="grid lg:grid-cols-2 gap-14 items-start">
+          <div>
+            <p className="text-[11px] font-mono uppercase tracking-[0.18em] text-muted-foreground mb-5">
+              Why This Exists
+            </p>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-6">
+              Programs that cannot afford to fail require a different kind of discipline.
+            </h2>
+            <div className="space-y-5 text-muted-foreground leading-relaxed">
+              <p>
+                For 32 years at Raytheon, Larry Chase managed programs that operated at zero
+                tolerance for failure — Space Shuttle, International Space Station, Artemis.
+                Full P&L responsibility across NASA and DoD portfolios averaging $25M annually,
+                consistently rated CPARS Excellent. Later, Senior Risk Manager for NASA&apos;s
+                next-generation astronaut spacesuit program.
+              </p>
+              <p>
+                The discipline that governed those programs — competitive analysis before
+                commitment, structured risk identification, evidence-based decision frameworks,
+                institutional knowledge that survives personnel changes — was simply not available
+                to mid-market government contractors making the same category of decision at a
+                fraction of the scale.
+              </p>
+              <p>
+                Uzima Amka was founded to close that gap. Not with generic AI tools or rebranded
+                CRMs — with the specific analytical infrastructure that has governed mission-critical
+                program management for four decades, rebuilt for the firms that need it most.
+              </p>
+            </div>
+          </div>
+
+          {/* Career stats */}
+          <div className="space-y-px">
             {[
-              { value: "$762B", label: "Federal Contract Market (FY2024)" },
-              { value: "47+", label: "Integrated Data Sources" },
-              { value: "6", label: "Intelligence Dimensions" },
-              { value: "<72h", label: "Signal Detection Latency" },
-            ].map((stat) => (
-              <div key={stat.label} className="py-2 px-4">
-                <div className="font-mono text-2xl sm:text-3xl font-bold text-primary mb-1">
-                  {stat.value}
+              { value: "40+", label: "Years in aerospace program management", sub: "NASA, DoD, and commercial program leadership" },
+              { value: "$750M+", label: "Program portfolio under management", sub: "P&L responsibility across five concurrent NASA/DoD contracts" },
+              { value: "32 yrs", label: "Career at Raytheon Integrated Intelligence Systems", sub: "Houston Operations Business Area Executive" },
+              { value: "4", label: "Human spaceflight programs", sub: "Space Shuttle · ISS · Artemis · xEVAS spacesuit development" },
+              { value: "PMP", label: "Project Management Professional", sub: "PMI · Six Sigma · DAU Program and Cost Management certified" },
+            ].map((s) => (
+              <div key={s.label} className="border border-border bg-card rounded-lg p-5 flex gap-6 items-start">
+                <div className="font-mono text-2xl font-bold text-primary shrink-0 w-20 tabular-nums leading-tight pt-0.5">
+                  {s.value}
                 </div>
-                <div className="text-xs text-muted-foreground leading-snug">{stat.label}</div>
+                <div>
+                  <div className="font-semibold text-sm mb-1">{s.label}</div>
+                  <div className="text-xs text-muted-foreground">{s.sub}</div>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Category definition */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-24">
+      {/* What we build */}
+      <section className="border-t border-b border-border bg-card">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-24">
+          <div className="max-w-2xl mb-14">
+            <p className="text-[11px] font-mono uppercase tracking-[0.18em] text-muted-foreground mb-5">
+              The Portfolio
+            </p>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-5">
+              Three domains. One discipline.
+            </h2>
+            <p className="text-muted-foreground leading-relaxed">
+              Uzima Amka builds precision intelligence tools for professional domains where the
+              cost of a wrong decision is measured in contracts lost, margins eroded, or
+              opportunities permanently closed.
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-3 gap-6">
+            {PILLARS.map((p) => (
+              <div
+                key={p.name}
+                className="border border-border rounded-xl p-8 bg-background flex flex-col"
+              >
+                <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-5">
+                  {p.category}
+                </div>
+                <div className="font-bold text-xl mb-1">{p.name}</div>
+                <div className="text-sm text-muted-foreground mb-5 italic">{p.full}</div>
+                <p className="text-sm text-muted-foreground leading-relaxed flex-1 mb-8">
+                  {p.desc}
+                </p>
+                <div className="flex items-center justify-between">
+                  {p.status === "live" ? (
+                    p.internal ? (
+                      <Link
+                        href={p.href}
+                        className="inline-flex items-center gap-1.5 text-sm text-primary font-medium hover:text-primary/80 transition-colors"
+                      >
+                        {p.cta} <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    ) : (
+                      <a
+                        href={p.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-sm text-primary font-medium hover:text-primary/80 transition-colors"
+                      >
+                        {p.cta} <ArrowUpRight className="w-3.5 h-3.5" />
+                      </a>
+                    )
+                  ) : (
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground border border-border rounded px-2 py-1">
+                      Coming soon
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Philosophy */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-28">
         <div className="grid lg:grid-cols-2 gap-14 items-start">
           <div>
             <p className="text-[11px] font-mono uppercase tracking-[0.18em] text-muted-foreground mb-5">
-              A New Executive Discipline
+              The Name
             </p>
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-6">
-              What is<br />Procurement Intelligence™?
+              Uzima Amka
             </h2>
             <p className="text-muted-foreground leading-relaxed mb-5">
-              The systematic acquisition, analysis, and application of competitive intelligence to public sector
-              contracting decisions. It extends the rigor applied to commercial competitive analysis — market sizing,
-              win probability modeling, relationship mapping — into a domain where most organizations still rely on
-              bid calendars and BD pipelines.
+              In Swahili, <em>uzima amka</em> means &ldquo;wake to life.&rdquo; It is the belief
+              that every professional domain contains a latent capacity for transformation —
+              waiting for the right tools, the right framework, and the right discipline to
+              wake it up.
             </p>
             <p className="text-muted-foreground leading-relaxed">
-              The average federal contractor pursues 40% more opportunities than their win rate justifies.
-              The result is diluted execution, inflated bid costs, and predictable loss rates that compound over time.
-              Procurement Intelligence™ is the analytical framework that corrects this — positioning contracting as
-              a portfolio management problem where intelligence, timing, and competitive positioning determine outcomes
-              before the solicitation drops.
+              Government contractors who have accepted a 22% win rate as inevitable. Trade
+              professionals who have absorbed the cost of under-priced jobs as a cost of doing
+              business. Ministry leaders who carry the full research burden of weekly preaching
+              alone. None of these are fixed conditions. They are the result of operating without
+              the right intelligence infrastructure.
             </p>
           </div>
-          <div className="space-y-3">
+
+          <div className="space-y-4">
             {PRINCIPLES.map((p) => (
-              <div key={p.n} className="border border-border rounded-lg p-5 bg-card">
-                <div className="font-mono text-[10px] text-muted-foreground mb-2 uppercase tracking-widest">
+              <div key={p.n} className="border border-border rounded-lg p-6 bg-card">
+                <div className="font-mono text-[10px] text-muted-foreground mb-3 uppercase tracking-widest">
                   {p.n}
                 </div>
-                <div className="font-semibold mb-2 text-sm">{p.title}</div>
+                <div className="font-semibold mb-3 text-sm">{p.title}</div>
                 <div className="text-sm text-muted-foreground leading-relaxed">{p.body}</div>
               </div>
             ))}
@@ -190,214 +263,56 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Platform section */}
-      <section className="border-t border-b border-border bg-card">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-24">
-          <div className="max-w-2xl mb-14">
-            <p className="text-[11px] font-mono uppercase tracking-[0.18em] text-muted-foreground mb-5">
-              The Operating System
-            </p>
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-5">
-              CIOS™{" "}
-              <span className="text-muted-foreground font-normal text-2xl sm:text-3xl">
-                Contract Intelligence Operating System
-              </span>
-            </h2>
-            <p className="text-muted-foreground leading-relaxed">
-              Six analytical modules. One integrated platform. CIOS aggregates signals from 47 federal data sources,
-              applies structured analysis across six intelligence dimensions, and delivers decision-ready briefs
-              to executive capture teams.
-            </p>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {MODULES.map((mod) => (
-              <Link
-                key={mod.name}
-                href={mod.href}
-                className="group border border-border rounded-lg p-5 bg-background hover:border-primary/40 transition-colors"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center">
-                    <mod.icon className="w-4 h-4 text-primary" />
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground/30 group-hover:text-primary transition-colors" />
-                </div>
-                <div className="font-mono text-[10px] text-muted-foreground mb-2 uppercase tracking-widest">
-                  {mod.label}
-                </div>
-                <div className="font-semibold text-sm mb-2">{mod.name}</div>
-                <div className="text-xs text-muted-foreground leading-relaxed">{mod.desc}</div>
-              </Link>
-            ))}
-          </div>
-          <div className="mt-8">
-            <Link
-              href="/platform"
-              className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 font-medium transition-colors"
-            >
-              Explore the CIOS™ platform <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ICP Qualification */}
-      <section className="border-t border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-24">
-          <div className="mb-14">
-            <p className="text-[11px] font-mono uppercase tracking-[0.18em] text-muted-foreground mb-5">
-              Who This Platform Serves
-            </p>
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight max-w-2xl">
-              Built for organizations where losing is not an option.
-            </h2>
-          </div>
-
-          {/* Outcome proof */}
-          <div className="grid sm:grid-cols-3 gap-px bg-border rounded-xl overflow-hidden mb-14">
-            {[
-              {
-                value: "22% → 35%+",
-                label: "Win rate lift",
-                sub: "From industry average to structured-intelligence baseline",
-              },
-              {
-                value: "30–40%",
-                label: "Reduction in wasted bid cost",
-                sub: "Through evidence-backed bid/no-bid discipline",
-              },
-              {
-                value: "4 weeks → days",
-                label: "Capture ramp compression",
-                sub: "Institutional knowledge made instantly retrievable",
-              },
-            ].map((s) => (
-              <div key={s.label} className="bg-background p-8 sm:p-10">
-                <div className="font-mono text-3xl sm:text-4xl font-bold text-primary mb-2 tracking-tight tabular-nums">
-                  {s.value}
-                </div>
-                <div className="font-semibold text-sm mb-2">{s.label}</div>
-                <div className="text-xs text-muted-foreground leading-relaxed">{s.sub}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Qualifier columns */}
-          <div className="grid lg:grid-cols-2 gap-6">
-            <div className="border border-primary/25 rounded-xl p-8 bg-primary/[0.02]">
-              <div className="text-[10px] font-mono uppercase tracking-widest text-primary mb-7">
-                CIOS is designed for
-              </div>
-              <ul className="space-y-4">
-                {[
-                  "50–500 person government contracting firm",
-                  "$10M–$500M in annual contract revenue",
-                  "Active capture pipeline with 10 or more live pursuits",
-                  "Dedicated BD or capture management staff",
-                  "Win rate below 35% — or above 35% but unsure why",
-                  "Readiness to replace instinct-based decisions with structured analysis",
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-3 text-sm">
-                    <span className="text-primary mt-0.5 shrink-0 font-mono text-xs">→</span>
-                    <span className="text-muted-foreground leading-snug">{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="border border-border rounded-xl p-8 bg-card">
-              <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-7">
-                CIOS is not designed for
-              </div>
-              <ul className="space-y-4">
-                {[
-                  "Organizations without dedicated capture or BD staff",
-                  "Single-opportunity or first-contract bidders",
-                  "Teams looking for a proposal writing tool",
-                  "CRM or document management replacement",
-                  "Contractors below $5M in annual contract revenue",
-                  "Commercial-only firms not pursuing federal or state awards",
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-3 text-sm">
-                    <span className="text-muted-foreground/35 mt-0.5 shrink-0 font-mono text-xs">—</span>
-                    <span className="text-muted-foreground/55 leading-snug">{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Executive Council */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-24">
-        <div className="grid lg:grid-cols-2 gap-14 items-start">
-          <div>
-            <p className="text-[11px] font-mono uppercase tracking-[0.18em] text-muted-foreground mb-5">
-              Advisory Community
-            </p>
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-5">
-              Procurement Intelligence™ Executive Council
-            </h2>
-            <p className="text-muted-foreground leading-relaxed mb-5">
-              A closed community of senior procurement executives defining Procurement Intelligence™ as a management
-              discipline. Members shape the research agenda, advise on platform development, and access intelligence
-              reports before public release.
-            </p>
-            <p className="text-muted-foreground leading-relaxed mb-8">
-              Membership is by invitation. Current members represent organizations with cumulative federal contract
-              portfolios exceeding $2.4B annually.
-            </p>
-            <Link
-              href="/executive-council"
-              className="inline-flex items-center gap-2 text-sm text-primary font-medium hover:text-primary/80 transition-colors"
-            >
-              Learn about the Executive Council <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-          <div className="border border-border rounded-xl p-8 bg-card">
-            <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-6">
-              Council Member Benefits
-            </div>
-            <ul className="space-y-4">
-              {COUNCIL_BENEFITS.map((b) => (
-                <li key={b} className="flex items-start gap-3 text-sm">
-                  <div className="w-px h-4 bg-primary rounded-full mt-0.5 shrink-0" />
-                  <span className="text-muted-foreground">{b}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </section>
-
       {/* CTA */}
       <section className="border-t border-border bg-card">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-24">
-          <div className="max-w-2xl">
-            <p className="text-[11px] font-mono uppercase tracking-[0.18em] text-muted-foreground mb-5">
-              Early Access Program
-            </p>
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-5">
-              Request Early Access
-            </h2>
-            <p className="text-muted-foreground leading-relaxed mb-8">
-              CIOS is in active pilot with select government contractors. Early access participants work directly
-              with our intelligence team to configure the platform for their specific capture portfolio.
-              No credit card required during the pilot period.
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <Link
-                href="/auth/register"
-                className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-md font-semibold hover:bg-primary/90 transition-colors text-sm"
-              >
-                Request Early Access <ArrowRight className="w-4 h-4" />
-              </Link>
-              <Link
-                href="/pricing"
-                className="inline-flex items-center gap-2 border border-border px-6 py-3 rounded-md font-semibold text-muted-foreground hover:text-foreground transition-colors text-sm"
-              >
-                View Pricing
-              </Link>
+          <div className="grid lg:grid-cols-2 gap-14 items-center">
+            <div>
+              <p className="text-[11px] font-mono uppercase tracking-[0.18em] text-muted-foreground mb-5">
+                Start with CIOS™
+              </p>
+              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-5">
+                The flagship platform is in active pilot.
+              </h2>
+              <p className="text-muted-foreground leading-relaxed mb-8">
+                CIOS is currently in structured pilot with select government contracting organizations.
+                Early access participants work directly with our intelligence team to configure
+                the platform for their specific capture portfolio.
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <Link
+                  href="/auth/register"
+                  className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-md font-semibold hover:bg-primary/90 transition-colors text-sm"
+                >
+                  Request Early Access <ArrowRight className="w-4 h-4" />
+                </Link>
+                <Link
+                  href="/pricing"
+                  className="inline-flex items-center gap-2 border border-border px-6 py-3 rounded-md font-semibold text-muted-foreground hover:text-foreground transition-colors text-sm"
+                >
+                  View Pricing
+                </Link>
+              </div>
+            </div>
+            <div className="border border-border rounded-xl p-8 bg-background">
+              <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-6">
+                What early access includes
+              </div>
+              <ul className="space-y-4">
+                {[
+                  "Direct configuration support from the intelligence team",
+                  "Custom integration with your existing capture pipeline",
+                  "Dedicated onboarding across all six CIOS™ modules",
+                  "Priority access to new module releases during pilot",
+                  "No credit card required during the pilot period",
+                  "Founding member pricing locked at close of pilot",
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-3 text-sm">
+                    <div className="w-px h-4 bg-primary rounded-full mt-0.5 shrink-0" />
+                    <span className="text-muted-foreground">{item}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>
