@@ -115,7 +115,13 @@ jobs:
         working-directory: apps/api
         run: |
           pip install pip-audit
-          pip-audit .
+          # PYSEC-2026-1325 (ecdsa, via python-jose): Minerva timing side-channel on
+          # ECDSA signing. Upstream ecdsa maintainers have explicitly declared timing
+          # side-channel attacks out of scope for the project and have no planned fix.
+          # Exploit requires precise timing measurement access to the signing operation
+          # (very low practical exploit probability). No fixed version exists to upgrade
+          # to. Re-evaluate if a fix is published or if python-jose is replaced.
+          pip-audit . --ignore-vuln PYSEC-2026-1325
 
   # ── Docker Build ─────────────────────────────────────────────────────────
   docker-build:
