@@ -29,7 +29,7 @@ class KnowledgeDocument(Base, UUIDMixin, TimestampMixin, TenantMixin):
 
     # Parsed content
     extracted_text: Mapped[str | None] = mapped_column(Text)
-    metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    extra_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
 
     description: Mapped[str | None] = mapped_column(Text)
 
@@ -63,6 +63,6 @@ class KnowledgeChunk(Base, UUIDMixin, TimestampMixin, TenantMixin):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     token_count: Mapped[int | None] = mapped_column(Integer)
     qdrant_point_id: Mapped[str | None] = mapped_column(String(64), index=True)
-    metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    extra_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
 
     document: Mapped["KnowledgeDocument"] = relationship(back_populates="chunks")

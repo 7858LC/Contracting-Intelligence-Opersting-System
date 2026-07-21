@@ -35,6 +35,10 @@ dependencies = [
     # Security
     "python-jose[cryptography]>=3.3.0",
     "passlib[bcrypt]>=1.7.4",
+    # passlib 1.7.4 (unmaintained since 2020) crashes against bcrypt>=4.1 — its
+    # backend self-test passes a >72-byte dummy secret to bcrypt.hashpw(), which
+    # 4.1+ correctly rejects instead of silently truncating. Pin below that line.
+    "bcrypt>=4.0.1,<4.1",
     "cryptography>=43.0.0",
     "python-multipart>=0.0.9",
 

@@ -61,6 +61,7 @@ class CIOSApiClient {
   async register(payload: {
     email: string;
     password: string;
+    full_name: string;
     company_name: string;
     naics_codes?: string[];
   }) {

@@ -92,7 +92,7 @@ class AuditLog(Base, UUIDMixin):
     resource_type: Mapped[str] = mapped_column(String(64), nullable=False)
     resource_id: Mapped[str | None] = mapped_column(String(64))
     changes: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
-    metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    extra_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     ip_address: Mapped[str | None] = mapped_column(String(45))
     user_agent: Mapped[str | None] = mapped_column(String(512))
     created_at: Mapped[datetime] = mapped_column(
