@@ -5,7 +5,17 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, Float, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -169,7 +179,12 @@ class PIRSignal(Base, UUIDMixin, TimestampMixin, TenantMixin):
         Index("idx_pir_signal_source", "source"),
     )
 
-    company_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False, index=True)
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("pir_companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     signal_type: Mapped[str] = mapped_column(String(64), nullable=False)
     source: Mapped[str] = mapped_column(String(32), nullable=False)
     source_url: Mapped[str | None] = mapped_column(String(2048))
@@ -229,7 +244,12 @@ class PIRAIAnalysis(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin)
         Index("idx_pir_analysis_tenant_status", "tenant_id", "status"),
     )
 
-    company_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False, index=True)
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("pir_companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     executive_summary: Mapped[str | None] = mapped_column(Text)
     pain_points: Mapped[list] = mapped_column(JSONB, default=list)
     recommended_outreach: Mapped[str | None] = mapped_column(Text)

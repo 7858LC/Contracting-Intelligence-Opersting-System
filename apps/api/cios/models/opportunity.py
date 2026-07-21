@@ -5,7 +5,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, Float, Index, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -101,7 +101,9 @@ class OpportunityWatch(Base, UUIDMixin, TimestampMixin, TenantMixin):
     __tablename__ = "opportunity_watches"
     __table_args__ = (Index("uq_watch", "tenant_id", "opportunity_id", "user_id", unique=True),)
 
-    opportunity_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
+    opportunity_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("opportunities.id", ondelete="CASCADE"), nullable=False
+    )
     user_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
     notify_on_change: Mapped[bool] = mapped_column(Boolean, default=True)
 
@@ -111,7 +113,9 @@ class OpportunityWatch(Base, UUIDMixin, TimestampMixin, TenantMixin):
 class OpportunityNote(Base, UUIDMixin, TimestampMixin, TenantMixin):
     __tablename__ = "opportunity_notes"
 
-    opportunity_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
+    opportunity_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("opportunities.id", ondelete="CASCADE"), nullable=False
+    )
     user_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     note_type: Mapped[str] = mapped_column(String(32), default="general")

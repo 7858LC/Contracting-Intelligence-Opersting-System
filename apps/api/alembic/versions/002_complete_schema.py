@@ -336,7 +336,7 @@ def upgrade() -> None:
         sa.Column("text", sa.Text(), nullable=False),
         sa.Column("qdrant_point_id", sa.String(64)),
         sa.Column("token_count", sa.Integer()),
-        sa.Column("metadata", JSONB(), default={}),
+        sa.Column("extra_metadata", JSONB(), default={}),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("NOW()")),
     )
     op.create_index("idx_kc_document", "knowledge_chunks", ["document_id"])

@@ -88,7 +88,7 @@ def upgrade() -> None:
         sa.Column("resource_type", sa.String(64), nullable=False),
         sa.Column("resource_id", sa.String(64)),
         sa.Column("changes", JSONB()),
-        sa.Column("metadata", JSONB()),
+        sa.Column("extra_metadata", JSONB()),
         sa.Column("ip_address", sa.String(45)),
         sa.Column("user_agent", sa.String(512)),
         sa.Column(
@@ -158,6 +158,8 @@ def upgrade() -> None:
     op.create_index("idx_opp_search", "opportunities", ["search_vector"], postgresql_using="gin")
 
     # Full-text search trigger
+    # asyncpg's extended query protocol rejects multiple commands in one
+    # execute() call, so the function and trigger must be separate statements.
     op.execute("""
         CREATE OR REPLACE FUNCTION update_opportunity_search_vector()
         RETURNS TRIGGER AS $$
@@ -171,7 +173,8 @@ def upgrade() -> None:
             RETURN NEW;
         END;
         $$ LANGUAGE plpgsql;
-
+    """)
+    op.execute("""
         CREATE TRIGGER opportunity_search_vector_update
         BEFORE INSERT OR UPDATE ON opportunities
         FOR EACH ROW EXECUTE FUNCTION update_opportunity_search_vector();
@@ -252,7 +255,7 @@ def upgrade() -> None:
         sa.Column("page_count", sa.Integer()),
         sa.Column("description", sa.Text()),
         sa.Column("extracted_text", sa.Text()),
-        sa.Column("metadata", JSONB(), default={}),
+        sa.Column("extra_metadata", JSONB(), default={}),
         sa.Column("vectorization_status", sa.String(32), default="pending"),
         sa.Column("is_vectorized", sa.Boolean(), default=False),
         sa.Column("chunk_count", sa.Integer(), default=0),

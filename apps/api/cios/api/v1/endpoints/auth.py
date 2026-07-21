@@ -48,7 +48,7 @@ class RefreshRequest(BaseModel):
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(body: RegisterRequest, db: DB) -> TokenResponse:
-    from python_slugify import slugify
+    from slugify import slugify
 
     slug = body.company_slug or slugify(body.company_name)
 
