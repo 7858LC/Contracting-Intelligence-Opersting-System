@@ -4,7 +4,7 @@ import { ArrowRight, Check, Minus } from "lucide-react";
 import { buildPageMetadata } from "@/lib/metadata";
 import { breadcrumbSchema } from "@/lib/jsonld";
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://uzimaamka.com";
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 export const metadata: Metadata = buildPageMetadata({
   title: "Pricing — Procurement Intelligence™ by Uzima Amka Ventures",
