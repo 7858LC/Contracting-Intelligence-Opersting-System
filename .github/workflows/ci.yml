@@ -54,6 +54,9 @@ jobs:
         working-directory: apps/api
         env:
           DATABASE_URL: postgresql+asyncpg://cios_user:cios_pass@localhost:5432/cios_test
+          JWT_SECRET: test_secret_for_ci_only_32chars__
+          ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+          ANTHROPIC_API_KEY: test_key
         run: alembic upgrade head
 
       - name: Run tests
