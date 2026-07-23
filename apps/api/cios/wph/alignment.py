@@ -77,6 +77,14 @@ class AlignmentScorer:
         if attr.key == "set_aside_eligibility":
             tokens = {t.lower() for t in (profile.set_asides + profile.certifications)}
             return 95.0 if tokens & _SET_ASIDE_TOKENS else 5.0
+        if attr.key == "small_business_subcontracting_plan":
+            # FAR 19.702: small businesses are not required to submit a subcontracting plan —
+            # only large-business primes carry this compliance obligation.
+            size = (profile.business_size or "").lower()
+            set_aside_tokens = {t.lower() for t in (profile.set_asides + profile.certifications)}
+            if "small" in size or set_aside_tokens & _SET_ASIDE_TOKENS:
+                return 95.0
+            return _keyword_level(profile, attr.key)
         if attr.key == "security_posture":
             tokens = {t.lower() for t in (profile.clearances + profile.certifications)}
             has_clear = any(any(ct in t for ct in _CLEARANCE_TOKENS) for t in tokens)
@@ -264,6 +272,15 @@ class GapCloser:
             cost="$$",
             template="Pursue through a qualifying JV/mentor-protégé or as a subcontractor, since "
             "the set-aside gates prime eligibility.",
+        ),
+        "subcontracting": dict(
+            action_type="certify",
+            base_months=3,
+            feasibility="high",
+            cost="$",
+            template="Develop a FAR 52.219-9-compliant Small Business Subcontracting Plan with "
+            "committed small-business/SDVOSB/HUBZone/WOSB subcontractors and a credible "
+            "participation percentage to satisfy the requirement.",
         ),
         "compliance": dict(
             action_type="certify",

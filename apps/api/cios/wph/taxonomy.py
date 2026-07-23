@@ -243,19 +243,45 @@ SIGNAL_LEXICON: tuple[SignalPattern, ...] = (
     SignalPattern(
         SignalCategory.SMALL_BUSINESS_PREFERENCE,
         (
-            "small business",
+            "small business set-aside",
+            "set-aside",
+            "set aside",
+            "sole source small business",
+            "8(a) set-aside",
+            "8(a) sole source",
+            "sdvosb set-aside",
+            "hubzone set-aside",
+            "wosb set-aside",
+            "total small business set-aside",
+            "restricted to small business",
+            "reserved exclusively for small business",
+        ),
+        78.0,
+        "The procurement itself is set aside for a socioeconomic category — this gates who "
+        "may serve as prime; only qualifying firms may compete (others must team as a sub).",
+    ),
+    SignalPattern(
+        SignalCategory.SMALL_BUSINESS_SUBCONTRACTING,
+        (
+            "small business participation",
+            "small business subcontracting",
+            "subcontracting plan",
+            "subcontracting goal",
+            "small business utilization",
+            "participation commitment",
+            "small disadvantaged business",
             "8(a)",
             "8a",
             "sdvosb",
             "hubzone",
             "wosb",
-            "set-aside",
-            "set aside",
+            "small business",
             "socioeconomic",
-            "disadvantaged business",
         ),
-        75.0,
-        "A set-aside or small-business preference gates eligibility to qualifying firms.",
+        50.0,
+        "A small-business subcontracting participation plan or goal is expected — this is a "
+        "compliance obligation typically placed on large-business primes, not a gate on who "
+        "may bid as prime.",
     ),
     SignalPattern(
         SignalCategory.SCHEDULE_PRESSURE,
@@ -471,6 +497,23 @@ ATTRIBUTE_LIBRARY: tuple[AttributeDef, ...] = (
         12.0,
         (SignalCategory.SMALL_BUSINESS_PREFERENCE,),
         ("8(a)", "8a", "sdvosb", "hubzone", "wosb", "small business", "set-aside"),
+    ),
+    AttributeDef(
+        "small_business_subcontracting_plan",
+        "Small Business Subcontracting Plan Compliance",
+        "subcontracting",
+        "A FAR 52.219-9-compliant plan (or demonstrated track record) for meeting small-business "
+        "subcontracting participation goals — a compliance obligation for large-business primes "
+        "on full-and-open awards, not an eligibility gate on who may bid.",
+        9.0,
+        (SignalCategory.SMALL_BUSINESS_SUBCONTRACTING,),
+        (
+            "subcontracting plan",
+            "small business utilization",
+            "subcontracting goal",
+            "far 52.219-9",
+            "small business participation",
+        ),
     ),
     AttributeDef(
         "compliance_readiness",

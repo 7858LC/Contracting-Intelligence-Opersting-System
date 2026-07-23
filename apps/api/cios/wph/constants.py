@@ -47,6 +47,7 @@ class SignalCategory(StrEnum):
     PAST_PERFORMANCE_EMPHASIS = "past_performance_emphasis"
     PRICE_SENSITIVITY = "price_sensitivity"
     SMALL_BUSINESS_PREFERENCE = "small_business_preference"
+    SMALL_BUSINESS_SUBCONTRACTING = "small_business_subcontracting"
     STAFFING_REQUIREMENT = "staffing_requirement"
     KEY_PERSONNEL = "key_personnel"
     SCHEDULE_PRESSURE = "schedule_pressure"
