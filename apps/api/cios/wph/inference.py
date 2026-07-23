@@ -17,7 +17,13 @@ from __future__ import annotations
 from collections import defaultdict
 
 from .constants import ConfidenceLevel, SignalCategory
-from .schemas import ExtractedSignal, InferredAttribute, ShapingRiskFlag, WinningProfile
+from .schemas import (
+    ExtractedSignal,
+    InferredAttribute,
+    ShapingRiskFlag,
+    VehicleContestabilityFlag,
+    WinningProfile,
+)
 from .taxonomy import ATTRIBUTE_LIBRARY, DOCUMENT_EVIDENCE_VALUE, AttributeDef
 
 # Document types whose presence materially raises overall evidence strength.
@@ -120,6 +126,7 @@ class AttributeInferenceEngine:
         summary = self._summary(attributes, evidence_strength)
         unknowns = self._package_unknowns(signals, attributes)
         shaping_risk = self._shaping_risk(signals)
+        vehicle_contestability = self._vehicle_contestability(signals)
         return WinningProfile(
             summary=summary,
             overall_confidence=overall_conf,
@@ -127,6 +134,7 @@ class AttributeInferenceEngine:
             attributes=attributes,
             unknown_factors=unknowns,
             shaping_risk=shaping_risk,
+            vehicle_contestability=vehicle_contestability,
         )
 
     # ── Component computations ───────────────────────────────────────────────────
@@ -288,6 +296,91 @@ class AttributeInferenceEngine:
             risk_level=level,
             signal_count=n,
             supporting_evidence=supporting,
+            source_refs=source_refs,
+            narrative=narrative,
+        )
+
+    @staticmethod
+    def _vehicle_contestability(signals: list[ExtractedSignal]) -> VehicleContestabilityFlag:
+        """Base-vehicle-level read: is this a genuinely open, on-ramping multi-award
+        pool, or a narrow/closed/single-award/bridge vehicle?
+
+        Never folded into the weighted attribute average — see
+        ``VehicleContestabilityFlag`` docstring for why that matters.
+        """
+        open_cat = SignalCategory.VEHICLE_OPEN_COMPETITION.value
+        narrow_cat = SignalCategory.VEHICLE_NARROWING.value
+        open_hits = [s for s in signals if s.category == open_cat]
+        narrow_hits = [s for s in signals if s.category == narrow_cat]
+
+        if not open_hits and not narrow_hits:
+            return VehicleContestabilityFlag(
+                contestability="unknown",
+                narrative=(
+                    "No language addressing the contract vehicle's own openness to new "
+                    "awardees was found in the evidence reviewed. This does not mean the "
+                    "vehicle is open or closed — only that the written record contains no "
+                    "textual signal either way. If this evidence package concerns a task "
+                    "order rather than the base vehicle itself, this read does not apply."
+                ),
+            )
+
+        top_open = sorted(open_hits, key=lambda s: (s.strength, s.confidence), reverse=True)
+        top_narrow = sorted(narrow_hits, key=lambda s: (s.strength, s.confidence), reverse=True)
+        n_open, n_narrow = len(top_open), len(top_narrow)
+
+        if n_narrow and not n_open:
+            contestability = "narrow"
+        elif n_open and not n_narrow:
+            contestability = "open"
+        elif n_narrow > n_open:
+            contestability = "narrow" if n_narrow >= n_open * 2 else "limited"
+        elif n_open > n_narrow:
+            contestability = "open" if n_open >= n_narrow * 2 else "limited"
+        else:
+            contestability = "limited"
+
+        open_evidence = [
+            {"text": s.evidence_text, "source": s.source_ref or s.source_document_type}
+            for s in top_open[:4]
+        ]
+        narrow_evidence = [
+            {"text": s.evidence_text, "source": s.source_ref or s.source_document_type}
+            for s in top_narrow[:4]
+        ]
+        source_refs = sorted({s.source_document_type for s in open_hits + narrow_hits})
+
+        if contestability == "open":
+            narrative = (
+                f"{n_open} passage(s) describe a genuinely open, multi-award vehicle that "
+                f'periodically admits new awardees (e.g., "{top_open[0].evidence_text[:120]}"). '
+                "New-entrant B&P investment aimed at winning a seat on this vehicle has a "
+                "plausible path to an award, subject to the stated on-ramp criteria."
+            )
+        elif contestability == "narrow":
+            narrative = (
+                f"{n_narrow} passage(s) describe a narrow, closed, or single-award vehicle "
+                f'(e.g., "{top_narrow[0].evidence_text[:120]}"). New-entrant B&P investment '
+                "aimed at winning a new seat on this vehicle is unlikely to pay off — the "
+                "awardee pool reads as fixed. If pursuing this program, value more likely "
+                "concentrates on task orders under vehicles already held, or teaming with an "
+                "existing awardee."
+            )
+        else:
+            narrative = (
+                f"Evidence is mixed: {n_open} passage(s) suggest an open, on-ramping pool "
+                f"and {n_narrow} passage(s) suggest a narrow or closing pool. The written "
+                "record does not resolve cleanly in either direction — confirm directly "
+                "(e.g., via the contracting office or a sources-sought response) before "
+                "committing new-entrant B&P."
+            )
+
+        return VehicleContestabilityFlag(
+            contestability=contestability,
+            open_signal_count=n_open,
+            narrow_signal_count=n_narrow,
+            open_evidence=open_evidence,
+            narrow_evidence=narrow_evidence,
             source_refs=source_refs,
             narrative=narrative,
         )

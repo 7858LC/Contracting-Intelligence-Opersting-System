@@ -191,6 +191,7 @@ class WPHProfile(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin):
     attribute_count: Mapped[int] = mapped_column(Integer, default=0)
     unknown_factors: Mapped[list] = mapped_column(JSONB, default=list)
     shaping_risk: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    vehicle_contestability: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
 
     status: Mapped[str] = mapped_column(String(32), default="generated")
     model_used: Mapped[str | None] = mapped_column(String(64))

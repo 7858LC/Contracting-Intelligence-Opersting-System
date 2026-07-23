@@ -155,6 +155,13 @@ class PDQEngine:
                     f"required {a.required_level:.0f}/100",
                 }
             )
+        if profile.vehicle_contestability.contestability != "unknown":
+            factors.append(
+                {
+                    "factor": "Vehicle contestability",
+                    "value": profile.vehicle_contestability.contestability,
+                }
+            )
         return factors
 
     @staticmethod
@@ -199,6 +206,25 @@ class PDQEngine:
                     "risk": f"Unclosable critical gap: {g.attribute_name}",
                     "severity": "high",
                     "mitigation": "Reposition as subcontractor/teaming member, or no-bid.",
+                }
+            )
+        if profile.vehicle_contestability.contestability == "narrow":
+            risks.append(
+                {
+                    "risk": "This reads as a narrow/closed/single-award contract vehicle — "
+                    "a strong proposal may not translate into a new award seat.",
+                    "severity": "high",
+                    "mitigation": "Redirect B&P toward task orders under vehicles already "
+                    "held, or pursue this seat only via teaming with an existing awardee.",
+                }
+            )
+        elif profile.vehicle_contestability.contestability == "limited":
+            risks.append(
+                {
+                    "risk": "Evidence on this vehicle's openness to new awardees is mixed.",
+                    "severity": "medium",
+                    "mitigation": "Confirm on-ramp status directly with the contracting "
+                    "office before committing new-entrant B&P.",
                 }
             )
         if profile.evidence_strength < 50.0:

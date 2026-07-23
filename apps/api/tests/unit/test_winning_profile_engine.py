@@ -176,6 +176,99 @@ def test_no_shaping_language_yields_none_risk_level():
     assert profile.shaping_risk.narrative
 
 
+# ── Vehicle contestability (IDIQ/GWAC/MAC base-vehicle read) ─────────────────────
+
+
+def test_extraction_classifies_vehicle_open_competition_signal():
+    doc = EvidenceDoc(
+        document_type="contract_vehicle",
+        title="Vehicle Announcement",
+        content="This multiple-award IDIQ conducts periodic on-ramping to admit new awardees.",
+    )
+    signals = SignalExtractor().extract_from_document(doc)
+    categories = {s.category for s in signals}
+    assert SignalCategory.VEHICLE_OPEN_COMPETITION.value in categories
+
+
+def test_extraction_classifies_vehicle_narrowing_signal():
+    doc = EvidenceDoc(
+        document_type="contract_vehicle",
+        title="Vehicle Announcement",
+        content="This is a single-award IDIQ that is closed to new entrants.",
+    )
+    signals = SignalExtractor().extract_from_document(doc)
+    categories = {s.category for s in signals}
+    assert SignalCategory.VEHICLE_NARROWING.value in categories
+
+
+def test_narrow_vehicle_language_flags_narrow_and_not_diluted_into_attributes():
+    docs = [
+        EvidenceDoc(
+            document_type="contract_vehicle",
+            title="Vehicle Announcement",
+            content=(
+                "This is a single-award IDIQ. The vehicle is closed to new entrants and "
+                "limited to current awardees; no additional on-ramp is planned. Past "
+                "performance and technical approach will also be evaluated for task orders."
+            ),
+        )
+    ]
+    signals = SignalExtractor().extract(docs)
+    profile = AttributeInferenceEngine().build_profile(signals)
+
+    assert profile.vehicle_contestability.contestability == "narrow"
+    assert profile.vehicle_contestability.narrow_signal_count >= 2
+    assert profile.vehicle_contestability.narrow_evidence
+    assert profile.vehicle_contestability.source_refs == ["contract_vehicle"]
+
+    # Vehicle-contestability language must not affect the weighted attribute average.
+    for attr in profile.attributes:
+        assert SignalCategory.VEHICLE_NARROWING.value not in attr.signal_categories
+        assert SignalCategory.VEHICLE_OPEN_COMPETITION.value not in attr.signal_categories
+
+
+def test_open_vehicle_language_flags_open():
+    docs = [
+        EvidenceDoc(
+            document_type="contract_vehicle",
+            title="Vehicle Announcement",
+            content=(
+                "This multiple-award IDIQ is a GWAC that conducts periodic on-ramping and "
+                "welcomes new entrants; additional awardees may be added each open season."
+            ),
+        )
+    ]
+    signals = SignalExtractor().extract(docs)
+    profile = AttributeInferenceEngine().build_profile(signals)
+    assert profile.vehicle_contestability.contestability == "open"
+    assert profile.vehicle_contestability.open_signal_count >= 1
+    assert profile.vehicle_contestability.open_evidence
+
+
+def test_no_vehicle_language_yields_unknown_contestability():
+    signals = SignalExtractor().extract(SAMPLE_DOCUMENTS)
+    profile = AttributeInferenceEngine().build_profile(signals)
+    assert profile.vehicle_contestability.contestability == "unknown"
+    assert profile.vehicle_contestability.narrative
+
+
+def test_narrow_vehicle_surfaces_as_high_severity_risk_in_assessment(
+    engine: WinningProfileEngine,
+):
+    narrow_doc = EvidenceDoc(
+        document_type="contract_vehicle",
+        title="Vehicle Announcement",
+        content="This is a single-award IDIQ, closed to new entrants, limited to current awardees.",
+    )
+    docs = list(SAMPLE_DOCUMENTS) + [narrow_doc]
+    result = engine.run(docs, SAMPLE_CONTRACTORS, target_name="Meridian Federal Solutions")
+    assert result.assessment is not None
+    assert any(
+        r["risk"].startswith("This reads as a narrow/closed/single-award")
+        for r in result.assessment.risks
+    )
+
+
 # ── Alignment, ranking, gaps, closures ───────────────────────────────────────────
 
 
@@ -295,3 +388,4 @@ def test_result_serialization_is_json_safe(engine: WinningProfileEngine):
     reloaded = json.loads(json.dumps(payload))
     assert reloaded["assessment"]["recommendation"]
     assert "shaping_risk" in reloaded["profile"]
+    assert "vehicle_contestability" in reloaded["profile"]

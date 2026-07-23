@@ -108,6 +108,44 @@ class ShapingRiskFlag:
 
 
 @dataclass
+class VehicleContestabilityFlag:
+    """Base-vehicle-level read of whether an IDIQ/GWAC/MAC seat is genuinely
+    contestable — a periodically on-ramping multi-award pool new entrants can
+    still win — versus a narrow, closed, single-award, or bridge vehicle where
+    the awardee pool is effectively fixed.
+
+    Deliberately kept separate from ``WinningProfile.attributes``, mirroring
+    ``ShapingRiskFlag``: this describes the *vehicle*, not a proposal-evaluation
+    factor, and folding it into the weighted attribute average would bury a
+    "this pursuit may not be winnable regardless of proposal quality" read
+    inside ordinary evaluation-factor math. Only meaningful when the evidence
+    package concerns a contract vehicle itself (e.g. an IDIQ/GWAC/MAC
+    solicitation or on-ramp announcement) rather than a task order under one
+    already held — task-order-level fair-opportunity/logical-follow-on signals
+    are a separate, not-yet-built read.
+    """
+
+    contestability: str = "unknown"  # open | limited | narrow | unknown
+    open_signal_count: int = 0
+    narrow_signal_count: int = 0
+    open_evidence: list[dict] = field(default_factory=list)  # [{text, source}]
+    narrow_evidence: list[dict] = field(default_factory=list)  # [{text, source}]
+    source_refs: list[str] = field(default_factory=list)
+    narrative: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "contestability": self.contestability,
+            "open_signal_count": self.open_signal_count,
+            "narrow_signal_count": self.narrow_signal_count,
+            "open_evidence": self.open_evidence,
+            "narrow_evidence": self.narrow_evidence,
+            "source_refs": self.source_refs,
+            "narrative": self.narrative,
+        }
+
+
+@dataclass
 class WinningProfile:
     summary: str
     overall_confidence: float  # 0–100
@@ -115,6 +153,9 @@ class WinningProfile:
     attributes: list[InferredAttribute] = field(default_factory=list)
     unknown_factors: list[str] = field(default_factory=list)
     shaping_risk: ShapingRiskFlag = field(default_factory=ShapingRiskFlag)
+    vehicle_contestability: VehicleContestabilityFlag = field(
+        default_factory=VehicleContestabilityFlag
+    )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -125,6 +166,7 @@ class WinningProfile:
             "attributes": [a.to_dict() for a in self.attributes],
             "unknown_factors": self.unknown_factors,
             "shaping_risk": self.shaping_risk.to_dict(),
+            "vehicle_contestability": self.vehicle_contestability.to_dict(),
         }
 
 

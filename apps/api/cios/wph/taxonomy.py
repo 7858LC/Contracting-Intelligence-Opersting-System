@@ -380,6 +380,54 @@ SIGNAL_LEXICON: tuple[SignalPattern, ...] = (
         "hypothesis as a description of the written record, not confirmation the "
         "competition is open.",
     ),
+    SignalPattern(
+        SignalCategory.VEHICLE_OPEN_COMPETITION,
+        (
+            "multiple-award idiq",
+            "multiple award idiq",
+            "multiple-award contract",
+            "on-ramping",
+            "periodic on-ramping",
+            "open season",
+            "rolling admission",
+            "gwac",
+            "multi-agency contract",
+            "unrestricted pool",
+            "additional awardees may be added",
+            "unlimited number of awards",
+            "welcomes new entrants",
+            "open to new entrants",
+        ),
+        75.0,
+        "Language associated with a genuinely open, multi-award contract vehicle is "
+        "present — one that periodically admits new awardees rather than closing the "
+        "pool at initial award. This is a base-vehicle-level read (is the seat itself "
+        "contestable), separate from whether any given task order under it is "
+        "competed.",
+    ),
+    SignalPattern(
+        SignalCategory.VEHICLE_NARROWING,
+        (
+            "single-award idiq",
+            "single award idiq",
+            "closed to new entrants",
+            "no additional on-ramp",
+            "bridge contract",
+            "interim contract vehicle",
+            "sole-source vehicle",
+            "limited to current awardees",
+            "limited to incumbent awardees",
+            "existing awardee pool only",
+            "closed pool",
+            "no further awardees will be added",
+        ),
+        75.0,
+        "Language associated with a narrow, closed, or single-award contract vehicle "
+        "is present — one where the awardee pool is fixed and not open to new "
+        "entrants. A base-vehicle-level read: B&P investment aimed at winning a new "
+        "seat on this vehicle is unlikely to pay off; value would instead concentrate "
+        "on task orders under vehicles already held.",
+    ),
 )
 
 

@@ -59,6 +59,8 @@ class SignalCategory(StrEnum):
     REQUIREMENT_AMBIGUITY = "requirement_ambiguity"
     AGENCY_PRIORITY = "agency_priority"
     SHAPING_RISK = "shaping_risk"
+    VEHICLE_OPEN_COMPETITION = "vehicle_open_competition"
+    VEHICLE_NARROWING = "vehicle_narrowing"
 
 
 class ConfidenceLevel(StrEnum):

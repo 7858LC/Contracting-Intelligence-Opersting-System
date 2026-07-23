@@ -209,6 +209,7 @@ class WPHService:
             attribute_count=len(profile.attributes),
             unknown_factors=profile.unknown_factors,
             shaping_risk=profile.shaping_risk.to_dict(),
+            vehicle_contestability=profile.vehicle_contestability.to_dict(),
             status="generated",
             model_used=model_used,
             confidence_score=profile.overall_confidence / 100.0,
@@ -245,7 +246,7 @@ class WPHService:
     async def load_profile_dataclass(
         self, profile_row: WPHProfile, tenant_id: uuid.UUID
     ) -> WinningProfile:
-        from .schemas import InferredAttribute, ShapingRiskFlag
+        from .schemas import InferredAttribute, ShapingRiskFlag, VehicleContestabilityFlag
 
         attr_rows = (
             (
@@ -286,6 +287,7 @@ class WPHService:
         for a in attributes:
             a.key = by_name.get(a.name, a.name.lower().replace(" ", "_"))
         shaping_risk_data = profile_row.shaping_risk or {}
+        vehicle_data = profile_row.vehicle_contestability or {}
         return WinningProfile(
             summary=profile_row.summary or "",
             overall_confidence=profile_row.overall_confidence,
@@ -298,6 +300,15 @@ class WPHService:
                 supporting_evidence=list(shaping_risk_data.get("supporting_evidence", [])),
                 source_refs=list(shaping_risk_data.get("source_refs", [])),
                 narrative=shaping_risk_data.get("narrative", ""),
+            ),
+            vehicle_contestability=VehicleContestabilityFlag(
+                contestability=vehicle_data.get("contestability", "unknown"),
+                open_signal_count=vehicle_data.get("open_signal_count", 0),
+                narrow_signal_count=vehicle_data.get("narrow_signal_count", 0),
+                open_evidence=list(vehicle_data.get("open_evidence", [])),
+                narrow_evidence=list(vehicle_data.get("narrow_evidence", [])),
+                source_refs=list(vehicle_data.get("source_refs", [])),
+                narrative=vehicle_data.get("narrative", ""),
             ),
         )
 
