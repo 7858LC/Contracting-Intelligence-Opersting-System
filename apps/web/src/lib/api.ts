@@ -78,7 +78,7 @@ class CIOSApiClient {
 
   async getOpportunities(params?: Record<string, unknown>) {
     const { data } = await this.client.get("/opportunities", { params });
-    return data.opportunities ?? data;
+    return data.items ?? data;
   }
 
   async createOpportunity(payload: Record<string, unknown>) {
