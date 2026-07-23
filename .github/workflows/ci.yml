@@ -59,21 +59,27 @@ jobs:
           ANTHROPIC_API_KEY: test_key
         run: alembic upgrade head
 
-      - name: Harden DB role to match production
-        # POSTGRES_USER becomes a real Postgres superuser in this container, which
-        # bypasses RLS unconditionally regardless of FORCE ROW LEVEL SECURITY —
-        # unlike RDS, where the master user is rds_superuser, not a true superuser.
-        # Without this, test_tenant_isolation.py's RLS backstop tests pass for the
-        # wrong reason (superuser can see everything) rather than proving the
-        # policy itself works.
+      - name: Create least-privilege app role
+        # POSTGRES_USER (cios_user) becomes a real Postgres superuser in this
+        # container, which bypasses RLS unconditionally regardless of FORCE ROW
+        # LEVEL SECURITY — unlike RDS, where the master user is rds_superuser,
+        # not a true superuser. Postgres also refuses to let the bootstrap
+        # superuser strip its own SUPERUSER attribute via ALTER ROLE, so
+        # cios_user can't be fixed in place: create a separate non-superuser
+        # role for the app's runtime queries (below) instead. Tables already
+        # exist at this point (migrations ran above), so grant on them
+        # directly rather than via default privileges.
         env:
           PGPASSWORD: cios_pass
-        run: psql -h localhost -U cios_user -d cios_test -c "ALTER ROLE cios_user NOSUPERUSER;"
+        run: |
+          psql -h localhost -U cios_user -d cios_test -c "CREATE ROLE cios_app LOGIN PASSWORD 'cios_app_pass';"
+          psql -h localhost -U cios_user -d cios_test -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO cios_app;"
+          psql -h localhost -U cios_user -d cios_test -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO cios_app;"
 
       - name: Run tests
         working-directory: apps/api
         env:
-          DATABASE_URL: postgresql+asyncpg://cios_user:cios_pass@localhost:5432/cios_test
+          DATABASE_URL: postgresql+asyncpg://cios_app:cios_app_pass@localhost:5432/cios_test
           REDIS_URL: redis://localhost:6379/0
           JWT_SECRET: test_secret_for_ci_only_32chars__
           ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
