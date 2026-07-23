@@ -59,6 +59,17 @@ jobs:
           ANTHROPIC_API_KEY: test_key
         run: alembic upgrade head
 
+      - name: Harden DB role to match production
+        # POSTGRES_USER becomes a real Postgres superuser in this container, which
+        # bypasses RLS unconditionally regardless of FORCE ROW LEVEL SECURITY —
+        # unlike RDS, where the master user is rds_superuser, not a true superuser.
+        # Without this, test_tenant_isolation.py's RLS backstop tests pass for the
+        # wrong reason (superuser can see everything) rather than proving the
+        # policy itself works.
+        env:
+          PGPASSWORD: cios_pass
+        run: psql -h localhost -U cios_user -d cios_test -c "ALTER ROLE cios_user NOSUPERUSER;"
+
       - name: Run tests
         working-directory: apps/api
         env:
