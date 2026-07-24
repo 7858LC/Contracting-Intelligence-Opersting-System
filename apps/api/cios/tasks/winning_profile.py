@@ -76,7 +76,7 @@ async def _async_run_pipeline(
             if enrich:
                 from cios.agents.winning_profile_agent import enrich_profile_narrative
 
-                pdc = await service.load_profile_dataclass(profile, tenant_id)
+                pdc = await service.load_profile_dataclass(profile, tenant_id, sol.rule_pack)
                 narrative = await enrich_profile_narrative(
                     pdc, tenant_id, {"title": sol.title, "agency": sol.agency}
                 )
