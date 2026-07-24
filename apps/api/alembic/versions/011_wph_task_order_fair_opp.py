@@ -18,7 +18,7 @@ Adds:
   into the weighted attribute average" treatment as shaping_risk and
   vehicle_contestability.
 
-Revision ID: 011_wph_task_order_fair_opportunity
+Revision ID: 011_wph_task_order_fair_opp
 Revises: 010_platform_admin
 Create Date: 2026-07-24
 """
@@ -30,7 +30,7 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "011_wph_task_order_fair_opportunity"
+revision = "011_wph_task_order_fair_opp"
 down_revision = "010_platform_admin"
 branch_labels = None
 depends_on = None
