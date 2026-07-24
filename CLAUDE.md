@@ -51,6 +51,7 @@ Copy `.env.example` to `.env` and populate. Required:
 - **Per-tenant vector isolation** — each tenant gets a private Qdrant collection. Zero cross-contamination.
 - **Hierarchical agent orchestration** — CEO Agent → Directors → Analysts. Users see only recommendations, never agent internals.
 - **Row-level security** — PostgreSQL RLS on every tenant-scoped table. Enforce via `app.current_tenant` session variable.
+- **Commercial SaaS, not a federal system of record** — CIOS serves government contractors, not government agencies. It derives decision intelligence from public procurement data and customer-owned inputs only; it never stores or processes CUI, classified information, or export-controlled technical data. Customer strategy belongs to the customer, government data stays with the government.
 
 ## Testing
 
