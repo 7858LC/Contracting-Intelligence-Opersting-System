@@ -77,7 +77,13 @@ def _to_contractor_profile(c: WPHContractor) -> ContractorProfile:
 class WPHService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
-        self.engine = WinningProfileEngine()
+
+    @staticmethod
+    def _engine_for(solicitation: WPHSolicitation) -> WinningProfileEngine:
+        """Build the engine bound to this solicitation's rule pack. Cheap (just
+        resolves a registry entry), so built per call rather than cached — every
+        solicitation may carry a different jurisdiction's rules."""
+        return WinningProfileEngine(solicitation.rule_pack)
 
     # ── Signal extraction ────────────────────────────────────────────────────────
 
@@ -106,7 +112,7 @@ class WPHService:
         )
 
         docs = [_to_evidence_doc(d) for d in docs_rows]
-        extracted = self.engine.extract_signals(docs)
+        extracted = self._engine_for(solicitation).extract_signals(docs)
 
         rows: list[WPHSignal] = []
         for sig in extracted:
@@ -172,7 +178,7 @@ class WPHService:
             )
             for s in signal_rows
         ]
-        profile = self.engine.build_profile(eng_signals)
+        profile = self._engine_for(solicitation).build_profile(eng_signals)
 
         # Supersede any prior current profile; bump version.
         await self.db.execute(
@@ -244,7 +250,7 @@ class WPHService:
         return row
 
     async def load_profile_dataclass(
-        self, profile_row: WPHProfile, tenant_id: uuid.UUID
+        self, profile_row: WPHProfile, tenant_id: uuid.UUID, rule_pack: str
     ) -> WinningProfile:
         from .schemas import InferredAttribute, ShapingRiskFlag, VehicleContestabilityFlag
 
@@ -280,10 +286,10 @@ class WPHService:
             )
             for a in attr_rows
         ]
-        # Re-map attribute keys from the library by name for contractor matching.
-        from .taxonomy import ATTRIBUTE_LIBRARY
+        # Re-map attribute keys from this rule pack's library by name for contractor matching.
+        from .taxonomy import get_taxonomy
 
-        by_name = {x.name: x.key for x in ATTRIBUTE_LIBRARY}
+        by_name = {x.name: x.key for x in get_taxonomy(rule_pack).attribute_library}
         for a in attributes:
             a.key = by_name.get(a.name, a.name.lower().replace(" ", "_"))
         shaping_risk_data = profile_row.shaping_risk or {}
@@ -328,10 +334,10 @@ class WPHService:
         if not contractor_rows:
             return []
 
-        profile = await self.load_profile_dataclass(profile_row, tenant_id)
+        profile = await self.load_profile_dataclass(profile_row, tenant_id, solicitation.rule_pack)
         id_by_name = {c.name: c.id for c in contractor_rows}
         contractors = [_to_contractor_profile(c) for c in contractor_rows]
-        ranked = self.engine.align_and_rank(profile, contractors)
+        ranked = self._engine_for(solicitation).align_and_rank(profile, contractors)
 
         # Replace prior alignments for this profile.
         await self.db.execute(
@@ -377,7 +383,7 @@ class WPHService:
         model_used: str | None = None,
         narrative: str | None = None,
     ) -> WPHAssessment | None:
-        profile = await self.load_profile_dataclass(profile_row, tenant_id)
+        profile = await self.load_profile_dataclass(profile_row, tenant_id, solicitation.rule_pack)
 
         align_rows = (
             (
@@ -446,7 +452,7 @@ class WPHService:
             target = ranked[0]
             target_name = target.contractor_name
 
-        assessment = self.engine.assess(profile, target, ranked)
+        assessment = self._engine_for(solicitation).assess(profile, target, ranked)
 
         # Resolve target contractor id.
         tid = target_contractor_id

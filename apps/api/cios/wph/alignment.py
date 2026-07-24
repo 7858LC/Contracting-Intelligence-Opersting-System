@@ -17,9 +17,7 @@ from .schemas import (
     InferredAttribute,
     WinningProfile,
 )
-from .taxonomy import ATTRIBUTE_LIBRARY
-
-_ATTR_BY_KEY = {a.key: a for a in ATTRIBUTE_LIBRARY}
+from .taxonomy import RulePackTaxonomy
 
 # Eligibility-style attributes where the socioeconomic status is binary.
 _SET_ASIDE_TOKENS = {"8(a)", "8a", "sdvosb", "hubzone", "wosb", "vosb", "small business", "wbe"}
@@ -35,9 +33,9 @@ def _default_baseline(profile: ContractorProfile) -> float:
     return base
 
 
-def _keyword_level(profile: ContractorProfile, attr_key: str) -> float:
+def _keyword_level(profile: ContractorProfile, attr_key: str, taxonomy: RulePackTaxonomy) -> float:
     """Estimate capability level from free-text scanning when no explicit level is given."""
-    attr = _ATTR_BY_KEY.get(attr_key)
+    attr = taxonomy.attr_by_key.get(attr_key)
     if not attr or not attr.capability_keywords:
         return _default_baseline(profile)
     text = " ".join(
@@ -59,12 +57,16 @@ def _keyword_level(profile: ContractorProfile, attr_key: str) -> float:
 
 
 class AlignmentScorer:
-    """Scores one contractor against the winning profile and derives gaps."""
+    """Scores one contractor against the winning profile and derives gaps,
+    against one rule pack's taxonomy."""
 
     # Severity thresholds on the "weighted gap" = importance_weight * (gap/100).
     _CRITICAL = 6.0
     _MAJOR = 3.0
     _MODERATE = 1.0
+
+    def __init__(self, taxonomy: RulePackTaxonomy) -> None:
+        self._taxonomy = taxonomy
 
     def contractor_level(self, profile: ContractorProfile, attr: InferredAttribute) -> float:
         # 1) explicit level by attribute key or name wins.
@@ -84,7 +86,7 @@ class AlignmentScorer:
             set_aside_tokens = {t.lower() for t in (profile.set_asides + profile.certifications)}
             if "small" in size or set_aside_tokens & _SET_ASIDE_TOKENS:
                 return 95.0
-            return _keyword_level(profile, attr.key)
+            return _keyword_level(profile, attr.key, self._taxonomy)
         if attr.key == "security_posture":
             tokens = {t.lower() for t in (profile.clearances + profile.certifications)}
             has_clear = any(any(ct in t for ct in _CLEARANCE_TOKENS) for t in tokens)
@@ -97,7 +99,7 @@ class AlignmentScorer:
             return min(95.0, level)
 
         # 3) fall back to free-text keyword estimation.
-        return _keyword_level(profile, attr.key)
+        return _keyword_level(profile, attr.key, self._taxonomy)
 
     def score(self, profile: WinningProfile, contractor: ContractorProfile) -> ContractorAlignment:
         alignments: list[AttributeAlignment] = []

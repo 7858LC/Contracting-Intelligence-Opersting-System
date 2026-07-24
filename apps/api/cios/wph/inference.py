@@ -24,7 +24,7 @@ from .schemas import (
     VehicleContestabilityFlag,
     WinningProfile,
 )
-from .taxonomy import ATTRIBUTE_LIBRARY, DOCUMENT_EVIDENCE_VALUE, AttributeDef
+from .taxonomy import AttributeDef, RulePackTaxonomy
 
 # Document types whose presence materially raises overall evidence strength.
 _HIGH_VALUE_DOCS = {
@@ -48,14 +48,18 @@ def _confidence_level(score: float) -> str:
 
 
 class AttributeInferenceEngine:
-    """Turns extracted signals into a ranked, weighted, explainable attribute set."""
+    """Turns extracted signals into a ranked, weighted, explainable attribute set,
+    against one rule pack's taxonomy."""
+
+    def __init__(self, taxonomy: RulePackTaxonomy) -> None:
+        self._taxonomy = taxonomy
 
     def infer(self, signals: list[ExtractedSignal]) -> list[InferredAttribute]:
         # Group signals under every attribute they drive.
         by_attr: dict[str, list[ExtractedSignal]] = defaultdict(list)
         attr_defs: dict[str, AttributeDef] = {}
 
-        for attr in ATTRIBUTE_LIBRARY:
+        for attr in self._taxonomy.attribute_library:
             driving = {s.value for s in attr.driving_signals}
             matched = [sig for sig in signals if sig.category in driving]
             if matched:
@@ -70,7 +74,8 @@ class AttributeInferenceEngine:
         for key, sigs in by_attr.items():
             attr = attr_defs[key]
             pressure = sum(
-                (sig.strength / 100.0) * DOCUMENT_EVIDENCE_VALUE.get(sig.source_document_type, 1.0)
+                (sig.strength / 100.0)
+                * self._taxonomy.document_evidence_value.get(sig.source_document_type, 1.0)
                 for sig in sigs
             )
             # Diminishing returns on repeated signals for the same attribute.

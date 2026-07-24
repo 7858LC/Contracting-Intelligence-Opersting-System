@@ -1,7 +1,7 @@
 """Procurement Evidence Extraction + Signal Classification services.
 
 Deterministic, explainable extraction: each sentence of each evidence document is
-scanned against the ``SIGNAL_LEXICON``. Every match yields an ``ExtractedSignal``
+scanned against the bound rule pack's signal lexicon. Every match yields an ``ExtractedSignal``
 that preserves the verbatim sentence and its source, so downstream inference is
 fully traceable. No LLM is required — evidence (the document text) is the source
 of truth. An optional LLM enrichment layer may add interpretation later, but it
@@ -13,7 +13,7 @@ from __future__ import annotations
 import re
 
 from .schemas import EvidenceDoc, ExtractedSignal
-from .taxonomy import DOCUMENT_EVIDENCE_VALUE, SIGNAL_LEXICON
+from .taxonomy import RulePackTaxonomy
 
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?;:])\s+|\n+")
 _WS = re.compile(r"\s+")
@@ -34,15 +34,19 @@ def _snippet(sentence: str, limit: int = 400) -> str:
 
 
 class SignalExtractor:
-    """Extracts and classifies acquisition signals from an evidence package."""
+    """Extracts and classifies acquisition signals from an evidence package,
+    against one rule pack's taxonomy."""
+
+    def __init__(self, taxonomy: RulePackTaxonomy) -> None:
+        self._taxonomy = taxonomy
 
     def extract_from_document(self, doc: EvidenceDoc) -> list[ExtractedSignal]:
-        doc_value = DOCUMENT_EVIDENCE_VALUE.get(doc.document_type, 1.0)
+        doc_value = self._taxonomy.document_evidence_value.get(doc.document_type, 1.0)
         signals: list[ExtractedSignal] = []
 
         for sentence in _sentences(doc.content):
             lowered = sentence.lower()
-            for pattern in SIGNAL_LEXICON:
+            for pattern in self._taxonomy.signal_lexicon:
                 matched = [kw for kw in pattern.keywords if kw in lowered]
                 if not matched:
                     continue

@@ -1,16 +1,22 @@
 """Winning Profile Hypothesis™ taxonomy — the explainable knowledge base.
 
-This module is the *only* place domain knowledge is encoded. Two structures:
+This module is the *only* place domain knowledge is encoded, organized per
+jurisdiction-specific procurement rule pack (CLAUDE.md: "procurement-framework
+driven — not government-specific"). Each ``RulePackTaxonomy`` bundles two
+structures for one rule pack:
 
-1. ``SIGNAL_LEXICON`` — how raw evidence text maps to classified acquisition
+1. ``signal_lexicon`` — how raw evidence text maps to classified acquisition
    signals (deterministic, keyword/phrase driven, source of truth = the words in
    the document).
-2. ``ATTRIBUTE_LIBRARY`` — how classified signals fuse into candidate winning-
+2. ``attribute_library`` — how classified signals fuse into candidate winning-
    profile attributes, and how a contractor's capabilities map onto those same
    attributes for alignment scoring.
 
 Keeping this declarative makes the engine auditable: a reviewer can trace exactly
 which phrases produced which signal, and which signals produced which attribute.
+
+Adding a new rule pack (e.g. an EU or state/local pack) means adding a new
+``RulePackTaxonomy`` entry to ``TAXONOMY_REGISTRY`` — not rewriting the engine.
 """
 
 from __future__ import annotations
@@ -19,9 +25,21 @@ from dataclasses import dataclass, field
 
 from .constants import SignalCategory
 
+
+class UnknownRulePackError(ValueError):
+    """Raised when a rule pack has no registered taxonomy — fail fast rather than
+    silently falling back to a different jurisdiction's rules."""
+
+    def __init__(self, rule_pack: str) -> None:
+        self.rule_pack = rule_pack
+        super().__init__(
+            f"Unknown rule pack '{rule_pack}'. Registered rule packs: "
+            f"{', '.join(sorted(TAXONOMY_REGISTRY)) or '(none)'}."
+        )
+
 # High-value document types carry more evidentiary weight (per CIOS: Q&A responses
 # and Section M reveal true evaluation emphasis).
-DOCUMENT_EVIDENCE_VALUE: dict[str, float] = {
+_US_FEDERAL_FAR_DOCUMENT_EVIDENCE_VALUE: dict[str, float] = {
     "section_m": 1.5,
     "evaluation_criteria": 1.4,
     "qa_response": 1.4,
@@ -57,7 +75,7 @@ class SignalPattern:
 
 
 # Ordered: the lexicon is scanned per sentence; every matching pattern fires.
-SIGNAL_LEXICON: tuple[SignalPattern, ...] = (
+_US_FEDERAL_FAR_SIGNAL_LEXICON: tuple[SignalPattern, ...] = (
     SignalPattern(
         SignalCategory.TRANSITION_RISK,
         (
@@ -447,7 +465,7 @@ class AttributeDef:
 
 # The universe of attributes the engine can infer. Only attributes with at least
 # one supporting signal are emitted into a Winning Profile Hypothesis.
-ATTRIBUTE_LIBRARY: tuple[AttributeDef, ...] = (
+_US_FEDERAL_FAR_ATTRIBUTE_LIBRARY: tuple[AttributeDef, ...] = (
     AttributeDef(
         "transition_capability",
         "Low-Risk Transition Capability",
@@ -592,18 +610,54 @@ ATTRIBUTE_LIBRARY: tuple[AttributeDef, ...] = (
     ),
 )
 
-# Fast lookup by driving signal category → attributes it contributes to.
-_ATTR_BY_SIGNAL: dict[SignalCategory, list[AttributeDef]] = {}
-for _attr in ATTRIBUTE_LIBRARY:
-    for _sig in _attr.driving_signals:
-        _ATTR_BY_SIGNAL.setdefault(_sig, []).append(_attr)
+@dataclass(frozen=True)
+class RulePackTaxonomy:
+    """The complete domain knowledge base for one procurement rule pack.
+
+    Lookup indexes (``attr_by_key`` / ``attr_by_signal``) are built once at
+    construction so extraction/inference/alignment never re-derive them per call.
+    """
+
+    rule_pack: str
+    document_evidence_value: dict[str, float]
+    signal_lexicon: tuple[SignalPattern, ...]
+    attribute_library: tuple[AttributeDef, ...]
+    attr_by_key: dict[str, AttributeDef] = field(init=False, repr=False)
+    attr_by_signal: dict[SignalCategory, list[AttributeDef]] = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        by_key = {attr.key: attr for attr in self.attribute_library}
+        by_signal: dict[SignalCategory, list[AttributeDef]] = {}
+        for attr in self.attribute_library:
+            for sig in attr.driving_signals:
+                by_signal.setdefault(sig, []).append(attr)
+        object.__setattr__(self, "attr_by_key", by_key)
+        object.__setattr__(self, "attr_by_signal", by_signal)
+
+    def attributes_for_signal(self, category: SignalCategory | str) -> list[AttributeDef]:
+        """Return attribute definitions driven by a given signal category."""
+        if isinstance(category, str):
+            try:
+                category = SignalCategory(category)
+            except ValueError:
+                return []
+        return self.attr_by_signal.get(category, [])
 
 
-def attributes_for_signal(category: SignalCategory | str) -> list[AttributeDef]:
-    """Return attribute definitions driven by a given signal category."""
-    if isinstance(category, str):
-        try:
-            category = SignalCategory(category)
-        except ValueError:
-            return []
-    return _ATTR_BY_SIGNAL.get(category, [])
+TAXONOMY_REGISTRY: dict[str, RulePackTaxonomy] = {
+    "us_federal_far": RulePackTaxonomy(
+        rule_pack="us_federal_far",
+        document_evidence_value=_US_FEDERAL_FAR_DOCUMENT_EVIDENCE_VALUE,
+        signal_lexicon=_US_FEDERAL_FAR_SIGNAL_LEXICON,
+        attribute_library=_US_FEDERAL_FAR_ATTRIBUTE_LIBRARY,
+    ),
+}
+
+
+def get_taxonomy(rule_pack: str) -> RulePackTaxonomy:
+    """Resolve a rule pack name to its taxonomy. Fails fast on an unregistered pack
+    rather than silently falling back to a different jurisdiction's rules."""
+    try:
+        return TAXONOMY_REGISTRY[rule_pack]
+    except KeyError:
+        raise UnknownRulePackError(rule_pack) from None

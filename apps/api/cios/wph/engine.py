@@ -24,6 +24,7 @@ from .schemas import (
     ExtractedSignal,
     WinningProfile,
 )
+from .taxonomy import get_taxonomy
 
 
 @dataclass
@@ -46,12 +47,19 @@ class IntelligenceResult:
 
 
 class WinningProfileEngine:
-    """Facade over the four fusion stages. Stateless and deterministic."""
+    """Facade over the four fusion stages. Stateless and deterministic.
 
-    def __init__(self) -> None:
-        self._extractor = SignalExtractor()
-        self._inference = AttributeInferenceEngine()
-        self._scorer = AlignmentScorer()
+    Bound to a single procurement rule pack at construction — resolving the
+    taxonomy once and threading it into every sub-component, since the domain
+    knowledge (signal lexicon, attribute library) is jurisdiction-specific.
+    """
+
+    def __init__(self, rule_pack: str = "us_federal_far") -> None:
+        self.rule_pack = rule_pack
+        taxonomy = get_taxonomy(rule_pack)
+        self._extractor = SignalExtractor(taxonomy)
+        self._inference = AttributeInferenceEngine(taxonomy)
+        self._scorer = AlignmentScorer(taxonomy)
         self._closer = GapCloser()
         self._pdq = PDQEngine()
 

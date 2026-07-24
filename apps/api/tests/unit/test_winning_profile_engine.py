@@ -17,6 +17,9 @@ from cios.wph.constants import PursuitRecommendation, SignalCategory
 from cios.wph.extraction import SignalExtractor
 from cios.wph.inference import AttributeInferenceEngine
 from cios.wph.sample_data import SAMPLE_CONTRACTORS, SAMPLE_DOCUMENTS
+from cios.wph.taxonomy import get_taxonomy
+
+_TAXONOMY = get_taxonomy("us_federal_far")
 
 
 @pytest.fixture
@@ -33,7 +36,7 @@ def test_extraction_classifies_security_signal():
         title="PWS",
         content="All personnel must hold an active Secret clearance and maintain CMMC Level 2.",
     )
-    signals = SignalExtractor().extract_from_document(doc)
+    signals = SignalExtractor(_TAXONOMY).extract_from_document(doc)
     categories = {s.category for s in signals}
     assert SignalCategory.SECURITY_REQUIREMENT.value in categories
     sec = next(s for s in signals if s.category == SignalCategory.SECURITY_REQUIREMENT.value)
@@ -44,7 +47,7 @@ def test_extraction_classifies_security_signal():
 
 
 def test_extraction_is_deterministic():
-    ext = SignalExtractor()
+    ext = SignalExtractor(_TAXONOMY)
     first = ext.extract(SAMPLE_DOCUMENTS)
     second = ext.extract(SAMPLE_DOCUMENTS)
     assert [s.category for s in first] == [s.category for s in second]
@@ -53,10 +56,10 @@ def test_extraction_is_deterministic():
 
 def test_high_value_documents_carry_more_weight():
     text = "Past performance is significantly more important than price."
-    section_m = SignalExtractor().extract_from_document(
+    section_m = SignalExtractor(_TAXONOMY).extract_from_document(
         EvidenceDoc(document_type="section_m", title="M", content=text)
     )
-    attachment = SignalExtractor().extract_from_document(
+    attachment = SignalExtractor(_TAXONOMY).extract_from_document(
         EvidenceDoc(document_type="attachment", title="A", content=text)
     )
     pp = SignalCategory.PAST_PERFORMANCE_EMPHASIS.value
@@ -67,7 +70,7 @@ def test_high_value_documents_carry_more_weight():
 
 def test_empty_document_yields_no_signals():
     assert (
-        SignalExtractor().extract_from_document(
+        SignalExtractor(_TAXONOMY).extract_from_document(
             EvidenceDoc(document_type="other", title="x", content="")
         )
         == []
@@ -78,23 +81,23 @@ def test_empty_document_yields_no_signals():
 
 
 def test_importance_weights_normalize_to_100():
-    signals = SignalExtractor().extract(SAMPLE_DOCUMENTS)
-    profile = AttributeInferenceEngine().build_profile(signals)
+    signals = SignalExtractor(_TAXONOMY).extract(SAMPLE_DOCUMENTS)
+    profile = AttributeInferenceEngine(_TAXONOMY).build_profile(signals)
     total = sum(a.importance_weight for a in profile.attributes)
     assert profile.attributes, "expected inferred attributes"
     assert total == pytest.approx(100.0, abs=0.5)
 
 
 def test_attributes_sorted_by_importance_descending():
-    signals = SignalExtractor().extract(SAMPLE_DOCUMENTS)
-    profile = AttributeInferenceEngine().build_profile(signals)
+    signals = SignalExtractor(_TAXONOMY).extract(SAMPLE_DOCUMENTS)
+    profile = AttributeInferenceEngine(_TAXONOMY).build_profile(signals)
     weights = [a.importance_weight for a in profile.attributes]
     assert weights == sorted(weights, reverse=True)
 
 
 def test_every_attribute_is_traceable_to_evidence():
-    signals = SignalExtractor().extract(SAMPLE_DOCUMENTS)
-    profile = AttributeInferenceEngine().build_profile(signals)
+    signals = SignalExtractor(_TAXONOMY).extract(SAMPLE_DOCUMENTS)
+    profile = AttributeInferenceEngine(_TAXONOMY).build_profile(signals)
     for attr in profile.attributes:
         assert attr.supporting_evidence, f"{attr.name} has no supporting evidence"
         assert attr.evidence_source_refs
@@ -106,15 +109,15 @@ def test_every_attribute_is_traceable_to_evidence():
 def test_transition_and_past_performance_are_top_drivers():
     """Section M ranks past performance highly and Q&A calls transition a 'dominant
     discriminator' — both should surface as leading attributes."""
-    signals = SignalExtractor().extract(SAMPLE_DOCUMENTS)
-    profile = AttributeInferenceEngine().build_profile(signals)
+    signals = SignalExtractor(_TAXONOMY).extract(SAMPLE_DOCUMENTS)
+    profile = AttributeInferenceEngine(_TAXONOMY).build_profile(signals)
     top_names = [a.name for a in profile.attributes[:4]]
     assert any("Past Performance" in n for n in top_names)
     assert any("Transition" in n for n in top_names)
 
 
 def test_no_signals_yields_empty_profile_with_guidance():
-    profile = AttributeInferenceEngine().build_profile([])
+    profile = AttributeInferenceEngine(_TAXONOMY).build_profile([])
     assert profile.attributes == []
     assert profile.overall_confidence == 0.0
     assert "Insufficient evidence" in profile.summary
@@ -132,7 +135,7 @@ def test_extraction_classifies_shaping_risk_signal():
             "competition; salient characteristics require a brand name or equal match."
         ),
     )
-    signals = SignalExtractor().extract_from_document(doc)
+    signals = SignalExtractor(_TAXONOMY).extract_from_document(doc)
     categories = {s.category for s in signals}
     assert SignalCategory.SHAPING_RISK.value in categories
 
@@ -154,8 +157,8 @@ def test_shaping_risk_is_surfaced_but_not_diluted_into_attributes():
             ),
         )
     ]
-    signals = SignalExtractor().extract(docs)
-    profile = AttributeInferenceEngine().build_profile(signals)
+    signals = SignalExtractor(_TAXONOMY).extract(docs)
+    profile = AttributeInferenceEngine(_TAXONOMY).build_profile(signals)
 
     assert profile.shaping_risk.risk_level == "high"
     assert profile.shaping_risk.signal_count >= 3
@@ -169,8 +172,8 @@ def test_shaping_risk_is_surfaced_but_not_diluted_into_attributes():
 
 
 def test_no_shaping_language_yields_none_risk_level():
-    signals = SignalExtractor().extract(SAMPLE_DOCUMENTS)
-    profile = AttributeInferenceEngine().build_profile(signals)
+    signals = SignalExtractor(_TAXONOMY).extract(SAMPLE_DOCUMENTS)
+    profile = AttributeInferenceEngine(_TAXONOMY).build_profile(signals)
     assert profile.shaping_risk.risk_level == "none"
     assert profile.shaping_risk.signal_count == 0
     assert profile.shaping_risk.narrative
@@ -185,7 +188,7 @@ def test_extraction_classifies_vehicle_open_competition_signal():
         title="Vehicle Announcement",
         content="This multiple-award IDIQ conducts periodic on-ramping to admit new awardees.",
     )
-    signals = SignalExtractor().extract_from_document(doc)
+    signals = SignalExtractor(_TAXONOMY).extract_from_document(doc)
     categories = {s.category for s in signals}
     assert SignalCategory.VEHICLE_OPEN_COMPETITION.value in categories
 
@@ -196,7 +199,7 @@ def test_extraction_classifies_vehicle_narrowing_signal():
         title="Vehicle Announcement",
         content="This is a single-award IDIQ that is closed to new entrants.",
     )
-    signals = SignalExtractor().extract_from_document(doc)
+    signals = SignalExtractor(_TAXONOMY).extract_from_document(doc)
     categories = {s.category for s in signals}
     assert SignalCategory.VEHICLE_NARROWING.value in categories
 
@@ -213,8 +216,8 @@ def test_narrow_vehicle_language_flags_narrow_and_not_diluted_into_attributes():
             ),
         )
     ]
-    signals = SignalExtractor().extract(docs)
-    profile = AttributeInferenceEngine().build_profile(signals)
+    signals = SignalExtractor(_TAXONOMY).extract(docs)
+    profile = AttributeInferenceEngine(_TAXONOMY).build_profile(signals)
 
     assert profile.vehicle_contestability.contestability == "narrow"
     assert profile.vehicle_contestability.narrow_signal_count >= 2
@@ -238,16 +241,16 @@ def test_open_vehicle_language_flags_open():
             ),
         )
     ]
-    signals = SignalExtractor().extract(docs)
-    profile = AttributeInferenceEngine().build_profile(signals)
+    signals = SignalExtractor(_TAXONOMY).extract(docs)
+    profile = AttributeInferenceEngine(_TAXONOMY).build_profile(signals)
     assert profile.vehicle_contestability.contestability == "open"
     assert profile.vehicle_contestability.open_signal_count >= 1
     assert profile.vehicle_contestability.open_evidence
 
 
 def test_no_vehicle_language_yields_unknown_contestability():
-    signals = SignalExtractor().extract(SAMPLE_DOCUMENTS)
-    profile = AttributeInferenceEngine().build_profile(signals)
+    signals = SignalExtractor(_TAXONOMY).extract(SAMPLE_DOCUMENTS)
+    profile = AttributeInferenceEngine(_TAXONOMY).build_profile(signals)
     assert profile.vehicle_contestability.contestability == "unknown"
     assert profile.vehicle_contestability.narrative
 

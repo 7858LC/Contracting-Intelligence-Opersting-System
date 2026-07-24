@@ -16,7 +16,7 @@ from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 
 from cios.core.dependencies import DB, Auth, Pages
@@ -32,6 +32,7 @@ from cios.models.winning_profile import (
 )
 from cios.wph.constants import EvidenceDocumentType, PipelineStatus
 from cios.wph.service import WPHService
+from cios.wph.taxonomy import TAXONOMY_REGISTRY
 
 router = APIRouter()
 
@@ -52,6 +53,16 @@ class SolicitationCreate(BaseModel):
     incumbent: str | None = None
     rule_pack: str = "us_federal_far"
     opportunity_id: uuid.UUID | None = None
+
+    @field_validator("rule_pack")
+    @classmethod
+    def _known_rule_pack(cls, v: str) -> str:
+        if v not in TAXONOMY_REGISTRY:
+            raise ValueError(
+                f"Unknown rule pack '{v}'. Registered rule packs: "
+                f"{', '.join(sorted(TAXONOMY_REGISTRY))}."
+            )
+        return v
 
 
 class SolicitationResponse(BaseModel):
@@ -444,7 +455,7 @@ async def generate_profile(
     if enrich:
         from cios.agents.winning_profile_agent import enrich_profile_narrative
 
-        pdc = await service.load_profile_dataclass(profile, user.tenant_id)
+        pdc = await service.load_profile_dataclass(profile, user.tenant_id, sol.rule_pack)
         narrative = await enrich_profile_narrative(
             pdc,
             user.tenant_id,
@@ -634,7 +645,7 @@ async def run_pipeline(
     if enrich:
         from cios.agents.winning_profile_agent import enrich_profile_narrative
 
-        pdc = await service.load_profile_dataclass(profile, user.tenant_id)
+        pdc = await service.load_profile_dataclass(profile, user.tenant_id, sol.rule_pack)
         narrative = await enrich_profile_narrative(
             pdc, user.tenant_id, {"title": sol.title, "agency": sol.agency}
         )
