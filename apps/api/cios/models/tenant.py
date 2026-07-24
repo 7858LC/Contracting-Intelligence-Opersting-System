@@ -60,7 +60,9 @@ class TenantMember(Base, UUIDMixin, TimestampMixin):
 class TenantInvite(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "tenant_invites"
 
-    tenant_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
     email: Mapped[str] = mapped_column(String(256), nullable=False)
     role: Mapped[str] = mapped_column(String(32), default="member")
     token: Mapped[str] = mapped_column(String(256), unique=True, nullable=False)
