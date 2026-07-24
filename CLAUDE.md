@@ -54,7 +54,9 @@ Copy `.env.example` to `.env` and populate. Required:
 - **Commercial SaaS, not a federal system of record** — CIOS serves government contractors, not government agencies. It derives decision intelligence from public procurement data and customer-owned inputs only; it never stores or processes CUI, classified information, or export-controlled technical data. Customer strategy belongs to the customer, government data stays with the government.
 - **Landlord/tenant separation** — platform operators (`PlatformAdmin`) are a distinct identity space from tenant users, never tenant-scoped and never RLS-subject. Landlord JWTs carry a `scope: platform_admin` claim that tenant tokens never have (and vice versa for `tenant_id`), so the two audiences are never interchangeable. No self-service signup for landlord accounts — provision via `apps/api/scripts/create_platform_admin.py`. Landlord API lives under `/api/v1/admin`, console UI under `apps/web/src/app/admin`; every tenant-ops action (suspend/activate) writes an `AuditLog` row attributed to the acting admin.
 
-## Testing
+## Testing Discipline
+
+This project runs on the Damascus Protocol — schema drift, wiring bugs, and cross-module breakage get caught automatically as the codebase evolves, instead of accumulating silently until one big pre-launch sweep finds them all at once (which is exactly what happened here once: a dependency-order bug, a response-type mismatch, and 14 drifted tables all shipped clean through review and sat live until the first real end-to-end test pass hit them). Four mechanisms carry that going forward: the `alembic check` CI gate below, the module checklist's step 8, the shared fixtures in `tests/integration/conftest.py`, and a weekly automated regression sweep against a real Postgres + Redis. None of these are ceremony. Don't skip or bypass one because a change feels too small to bother — that exact reasoning is how each of the three bugs above shipped in the first place.
 
 ```bash
 cd apps/api
