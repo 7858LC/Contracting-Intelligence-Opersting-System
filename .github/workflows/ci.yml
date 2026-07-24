@@ -182,13 +182,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set lowercase image repository name
+        # OCI/GHCR tags must be lowercase; github.repository preserves the
+        # org/repo's actual case (7858LC/Contracting-Intelligence-...), which
+        # buildx rejects outright ("repository name must be lowercase").
+        run: echo "IMAGE_REPO=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+
       - name: Build and push API
         uses: docker/build-push-action@v5
         with:
           context: apps/api
           file: infra/docker/Dockerfile.api
           push: true
-          tags: ghcr.io/${{ github.repository }}/cios-api:${{ github.sha }},ghcr.io/${{ github.repository }}/cios-api:latest
+          tags: ghcr.io/${{ env.IMAGE_REPO }}/cios-api:${{ github.sha }},ghcr.io/${{ env.IMAGE_REPO }}/cios-api:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -198,6 +204,6 @@ jobs:
           context: apps/web
           file: infra/docker/Dockerfile.web
           push: true
-          tags: ghcr.io/${{ github.repository }}/cios-web:${{ github.sha }},ghcr.io/${{ github.repository }}/cios-web:latest
+          tags: ghcr.io/${{ env.IMAGE_REPO }}/cios-web:${{ github.sha }},ghcr.io/${{ env.IMAGE_REPO }}/cios-web:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
