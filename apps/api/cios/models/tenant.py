@@ -46,6 +46,10 @@ class TenantMember(Base, UUIDMixin, TimestampMixin):
     user_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False, index=True)
     email: Mapped[str] = mapped_column(String(256), nullable=False)
     full_name: Mapped[str | None] = mapped_column(String(256))
+    # Nullable: a member row with no hash set has no usable password yet (e.g. an
+    # invited-but-not-yet-accepted seat) and must be rejected at login, not treated
+    # as "no password required."
+    password_hash: Mapped[str | None] = mapped_column(String(256))
     role: Mapped[str] = mapped_column(String(32), default="member")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -99,3 +103,24 @@ class AuditLog(Base, UUIDMixin):
     )
 
     tenant: Mapped["Tenant"] = relationship(back_populates="audit_logs")
+
+
+class PlatformAdmin(Base, UUIDMixin, TimestampMixin):
+    """A landlord/platform-operator identity — deliberately separate from
+    ``TenantMember``. Not scoped to any tenant, carries no ``tenant_id``, and is
+    never subject to tenant RLS. Distinct from the tenant-auth JWT audience (see
+    ``core/security.py``'s ``scope`` claim) so a stolen tenant token can never be
+    replayed as landlord access, or vice versa. There is no self-service signup —
+    accounts are provisioned via ``scripts/create_platform_admin.py``.
+    """
+
+    __tablename__ = "platform_admins"
+
+    email: Mapped[str] = mapped_column(String(256), unique=True, nullable=False, index=True)
+    password_hash: Mapped[str] = mapped_column(String(256), nullable=False)
+    full_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    # "support" — read-only tenant visibility for troubleshooting.
+    # "admin" — read-only plus tenant ops actions (suspend/activate).
+    role: Mapped[str] = mapped_column(String(32), default="support")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

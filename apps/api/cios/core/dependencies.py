@@ -59,6 +59,56 @@ async def require_admin(user: Annotated[CurrentUser, Depends(get_current_user)])
     return user
 
 
+class CurrentPlatformAdmin:
+    """A landlord/platform-operator identity — never a tenant, never RLS-scoped
+    by default. Distinct from ``CurrentUser`` on purpose: the two must never be
+    interchangeable, so a leaked tenant token can't be replayed as landlord
+    access or vice versa."""
+
+    def __init__(self, admin_id: UUID, email: str, full_name: str, role: str):
+        self.admin_id = admin_id
+        self.email = email
+        self.full_name = full_name
+        self.role = role
+
+    @property
+    def can_operate(self) -> bool:
+        """Read-only "support" role vs. "admin" role, which can also take tenant
+        ops actions (suspend/activate)."""
+        return self.role == "admin"
+
+
+async def get_current_platform_admin(
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer)],
+) -> CurrentPlatformAdmin:
+    try:
+        payload = decode_token(credentials.credentials)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+
+    # The claim that separates this audience from tenant-user tokens — a tenant
+    # token never carries it, and a landlord token never carries tenant_id.
+    if payload.get("scope") != "platform_admin":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not a landlord token")
+
+    return CurrentPlatformAdmin(
+        admin_id=UUID(payload["sub"]),
+        email=payload.get("email", ""),
+        full_name=payload.get("full_name", ""),
+        role=payload.get("role", "support"),
+    )
+
+
+async def require_platform_operator(
+    admin: Annotated[CurrentPlatformAdmin, Depends(get_current_platform_admin)],
+) -> CurrentPlatformAdmin:
+    if not admin.can_operate:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Landlord operator role required"
+        )
+    return admin
+
+
 class Pagination:
     def __init__(self, page: int = 1, page_size: int = 25) -> None:
         if page < 1:
@@ -79,3 +129,7 @@ DB = Annotated[AsyncSession, Depends(get_db)]
 Auth = Annotated[CurrentUser, Depends(get_current_user)]
 AdminAuth = Annotated[CurrentUser, Depends(require_admin)]
 Pages = Annotated[Pagination, Depends()]
+
+# Landlord/platform-operator auth — separate audience from tenant Auth/AdminAuth above.
+PlatformAuth = Annotated[CurrentPlatformAdmin, Depends(get_current_platform_admin)]
+PlatformOperatorAuth = Annotated[CurrentPlatformAdmin, Depends(require_platform_operator)]

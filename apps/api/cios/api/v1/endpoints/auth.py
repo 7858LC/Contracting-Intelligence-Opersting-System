@@ -13,6 +13,8 @@ from cios.core.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
+    hash_password,
+    verify_password,
 )
 from cios.models.tenant import Tenant, TenantMember
 
@@ -77,6 +79,7 @@ async def register(body: RegisterRequest, db: DB) -> TokenResponse:
         user_id=user_id,
         email=body.email,
         full_name=body.full_name,
+        password_hash=hash_password(body.password),
         role="owner",
     )
     db.add(member)
@@ -108,7 +111,10 @@ async def login(body: LoginRequest, db: DB) -> TokenResponse:
     )
     member = result.scalar_one_or_none()
 
-    if not member:
+    valid_password = member and member.password_hash and verify_password(
+        body.password, member.password_hash
+    )
+    if not valid_password:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     tenant_result = await db.execute(select(Tenant).where(Tenant.id == member.tenant_id))
