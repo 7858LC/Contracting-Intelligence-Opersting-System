@@ -1,31 +1,6 @@
 """Integration tests for CIOS API health endpoints."""
 
-import os
-
 import pytest
-from httpx import ASGITransport, AsyncClient
-
-os.environ.setdefault(
-    "DATABASE_URL", "postgresql+asyncpg://cios_user:cios_pass@localhost:5432/cios_test"
-)
-os.environ.setdefault("JWT_SECRET", "test_secret_minimum_32_characters_long")
-os.environ.setdefault("ENCRYPTION_KEY", "0" * 64)
-os.environ.setdefault("ANTHROPIC_API_KEY", "test_key")
-os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
-os.environ.setdefault("TENANT_KEY_DERIVATION_SALT", "test_salt")
-
-
-@pytest.fixture
-def anyio_backend():
-    return "asyncio"
-
-
-@pytest.fixture
-async def client():
-    from cios.main import app
-
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-        yield c
 
 
 @pytest.mark.anyio

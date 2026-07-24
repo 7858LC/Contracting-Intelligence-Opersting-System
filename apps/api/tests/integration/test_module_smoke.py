@@ -14,52 +14,15 @@ for why these tests can't run against a mocked DB.
 
 from __future__ import annotations
 
-import os
+import random
 import uuid
 
-os.environ.setdefault(
-    "DATABASE_URL", "postgresql+asyncpg://cios_user:cios_pass@localhost:5432/cios_test"
-)
-os.environ.setdefault("JWT_SECRET", "test_secret_minimum_32_characters_long")
-os.environ.setdefault("ENCRYPTION_KEY", "0" * 64)
-os.environ.setdefault("ANTHROPIC_API_KEY", "test_key")
-os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
-os.environ.setdefault("TENANT_KEY_DERIVATION_SALT", "test_salt")
-
-import random
-
 import pytest
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
 
-
-@pytest.fixture
-def anyio_backend():
-    return "asyncio"
-
-
-@pytest.fixture(autouse=True)
-async def _fresh_connections_per_test():
-    """The DB engine's and Redis client's pooled connections are bound to
-    whichever event loop first used them; pytest-asyncio gives each test its
-    own loop, so both must be reset before and after every test here (same
-    reasoning as test_tenant_isolation.py's engine-only version — this file
-    also touches Redis via the rate limiter)."""
-    from cios.core.database import engine
-    from cios.core.redis import redis_client
-
-    await engine.dispose()
-    await redis_client.aclose()
-    yield
-    await engine.dispose()
-    await redis_client.aclose()
-
-
-@pytest.fixture
-async def client():
-    from cios.main import app
-
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-        yield c
+# anyio_backend, _fresh_connections_per_test, and client fixtures all come
+# from tests/integration/conftest.py — every test file in this directory
+# shares them.
 
 
 def _fake_client_ip() -> str:

@@ -14,34 +14,17 @@ would pass regardless of whether RLS itself works.
 
 from __future__ import annotations
 
-import os
 import uuid
-
-os.environ.setdefault(
-    "DATABASE_URL", "postgresql+asyncpg://cios_user:cios_pass@localhost:5432/cios_test"
-)
-os.environ.setdefault("JWT_SECRET", "test_secret_minimum_32_characters_long")
-os.environ.setdefault("ENCRYPTION_KEY", "0" * 64)
-os.environ.setdefault("ANTHROPIC_API_KEY", "test_key")
-os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
 
 import pytest
 from sqlalchemy import select, text
 
-from cios.core.database import async_session_factory, engine
+from cios.core.database import async_session_factory
 from cios.models.tenant import Tenant
 from cios.models.winning_profile import WPHSolicitation
 
-
-@pytest.fixture(autouse=True)
-async def _fresh_engine_connections_per_test():
-    """The engine's pooled connections are bound to whichever event loop first
-    used them; pytest-asyncio gives each test (and each test file) its own
-    loop, so the pool must be disposed both before (in case an earlier test
-    file already bound it to a now-closed loop) and after every test here."""
-    await engine.dispose()
-    yield
-    await engine.dispose()
+# _fresh_connections_per_test (conftest.py) resets the engine's pooled
+# connections between tests — required here for the same reason noted there.
 
 
 async def _set_tenant(db, tenant_id: uuid.UUID) -> None:

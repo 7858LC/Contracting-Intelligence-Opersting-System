@@ -61,6 +61,10 @@ cd apps/api
 pytest tests/ -v --cov=cios
 ```
 
+`tests/integration/` requires a real, migrated Postgres + Redis — `docker compose -f infra/docker/docker-compose.yml up postgres redis` locally, same setup CI uses. These can't run against a mock; that's the point (see `tests/integration/conftest.py`). Two things that bite new integration tests:
+- Anything hitting `/auth/register` or `/auth/login` needs a distinct `X-Forwarded-For` header per call, or the shared-IP test harness trips the endpoint's own rate limiter (`core/rate_limit.py`).
+- After changing a model, run `alembic check` (also gates CI) before writing a migration by hand — it tells you exactly what's out of sync instead of finding out from a 500 later.
+
 ## AI Models
 
 - CEO Agent: `claude-opus-4-8`
@@ -77,6 +81,7 @@ pytest tests/ -v --cov=cios
 5. Create agent in `apps/api/cios/agents/`
 6. Create Celery task in `apps/api/cios/tasks/`
 7. Add frontend page in `apps/web/src/app/dashboard/`
+8. Add at least one smoke test in `apps/api/tests/integration/` exercising the new endpoint(s) through the real HTTP/DB/Redis stack (see `test_module_smoke.py`) — this is the tier that catches wiring bugs (broken imports, missing router registration, model/migration drift) that unit tests and manual testing both miss.
 
 ## Security Rules
 
