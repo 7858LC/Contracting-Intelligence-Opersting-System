@@ -56,8 +56,10 @@ async def test_tenant_token_rejected_as_platform_admin():
 
 @pytest.mark.asyncio
 async def test_platform_admin_token_rejected_as_tenant_auth():
+    # No tenant_id claim on a landlord token, so get_current_user rejects it
+    # before ever touching the db session — db=None is fine here.
     with pytest.raises(HTTPException) as exc:
-        await get_current_user(_bearer(_ADMIN_TOKEN))
+        await get_current_user(_bearer(_ADMIN_TOKEN), db=None)
     assert exc.value.status_code == 401
 
 

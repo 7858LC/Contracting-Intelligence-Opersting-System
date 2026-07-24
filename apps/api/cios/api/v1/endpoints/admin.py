@@ -103,7 +103,13 @@ async def admin_me(admin: PlatformAuth) -> dict:
 async def _scope_to_tenant(db: AsyncSession, tenant_id: uuid.UUID) -> None:
     """Set the RLS session GUC for one query. tenant_members/subscriptions/
     audit_logs carry no RLS policy (see 007_force_rls) so they're readable
-    platform-wide without this; opportunities/wph_* etc. do require it."""
+    platform-wide without this; opportunities/wph_* etc. do require it.
+
+    ``false`` (session-level, not SET LOCAL) — see the identical tradeoff
+    note on get_current_user in core/dependencies.py: SET LOCAL clears on
+    every commit, which breaks handlers here that commit mid-request
+    (suspend/activate). Safe because every landlord request re-sets this
+    before touching an RLS-scoped table."""
     await db.execute(
         text("SELECT set_config('app.current_tenant', :tenant_id, false)"),
         {"tenant_id": str(tenant_id)},
