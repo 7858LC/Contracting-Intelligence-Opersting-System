@@ -1,22 +1,27 @@
 """Authentication endpoints."""
+
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 
 from cios.core.dependencies import DB, Auth
+from cios.core.rate_limit import rate_limiter
 from cios.core.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
-    hash_password,
-    verify_password,
 )
 from cios.models.tenant import Tenant, TenantMember
 
 router = APIRouter()
+
+# Unauthenticated endpoints — rate-limited per client IP since there's no
+# tenant/user context yet to key off of.
+_register_rate_limit = Depends(rate_limiter("register", max_requests=5, window_seconds=300))
+_login_rate_limit = Depends(rate_limiter("login", max_requests=10, window_seconds=300))
 
 
 class RegisterRequest(BaseModel):
@@ -47,9 +52,14 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=TokenResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[_register_rate_limit],
+)
 async def register(body: RegisterRequest, db: DB) -> TokenResponse:
-    from python_slugify import slugify
+    from slugify import slugify
 
     slug = body.company_slug or slugify(body.company_name)
 
@@ -91,7 +101,7 @@ async def register(body: RegisterRequest, db: DB) -> TokenResponse:
     )
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=TokenResponse, dependencies=[_login_rate_limit])
 async def login(body: LoginRequest, db: DB) -> TokenResponse:
     result = await db.execute(
         select(TenantMember).where(TenantMember.email == body.email, TenantMember.is_active == True)  # noqa: E712

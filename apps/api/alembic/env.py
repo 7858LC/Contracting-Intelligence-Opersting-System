@@ -1,9 +1,11 @@
 """Alembic migration environment."""
+
 import asyncio
 import os
 from logging.config import fileConfig
 
 from sqlalchemy.ext.asyncio import create_async_engine
+
 from alembic import context
 
 config = context.config
@@ -11,14 +13,17 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-from cios.core.database import Base
-import cios.models  # noqa: F401 — triggers all model imports
+import cios.models  # noqa: E402,F401 — triggers all model imports
+from cios.core.database import Base  # noqa: E402
 
 target_metadata = Base.metadata
 
 
 def get_url() -> str:
-    return os.environ.get("DATABASE_URL", config.get_main_option("sqlalchemy.url", ""))
+    url = os.environ.get("DATABASE_URL")
+    if url:
+        return url
+    return config.get_main_option("sqlalchemy.url", "")
 
 
 def run_migrations_offline() -> None:

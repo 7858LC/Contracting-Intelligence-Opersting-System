@@ -5,3 +5,8 @@ CVE-2026-44578
 GHSA-8h8q-6873-q5fj
 GHSA-h25m-26qc-wcjf
 GHSA-q4gf-8mx6-v5v3
+# Newly disclosed (2026-07-23), same story: fixed only in next@15.5.21 / 16.2.11, no 14.x
+# backport exists (confirmed against npm registry — 14.2.35 is the latest 14.x release).
+CVE-2026-64641
+CVE-2026-64645
+CVE-2026-64649

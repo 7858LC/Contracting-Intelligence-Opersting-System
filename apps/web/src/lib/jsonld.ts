@@ -1,5 +1,5 @@
 const BASE_URL =
-  process.env.NEXT_PUBLIC_APP_URL || "https://uzimaamka.com";
+  process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 export const organizationSchema = {
   "@context": "https://schema.org",

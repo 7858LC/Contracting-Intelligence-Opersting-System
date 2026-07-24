@@ -1,9 +1,10 @@
 """Capability & Gap Analysis API — Modules 5 & 15."""
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 
-from cios.core.dependencies import Auth, DB
+from cios.core.dependencies import DB, Auth
 from cios.models.capability import Capability, CapabilityGap
 
 router = APIRouter()
@@ -65,6 +66,7 @@ async def analyze_capability_gaps(body: dict, db: DB, user: Auth) -> dict:
     if not opportunity_id:
         raise HTTPException(status_code=400, detail="opportunity_id required")
     from cios.tasks.gap_analysis import run_capability_gap_analysis
+
     task = run_capability_gap_analysis.delay(
         str(user.tenant_id), str(user.user_id), str(opportunity_id)
     )
@@ -74,7 +76,8 @@ async def analyze_capability_gaps(body: dict, db: DB, user: Auth) -> dict:
 @router.get("/gaps")
 async def list_gaps(db: DB, user: Auth) -> dict:
     result = await db.execute(
-        select(CapabilityGap).where(CapabilityGap.tenant_id == user.tenant_id)
+        select(CapabilityGap)
+        .where(CapabilityGap.tenant_id == user.tenant_id)
         .order_by(CapabilityGap.severity, CapabilityGap.created_at.desc())
     )
     return {"gaps": [i.to_dict() for i in result.scalars().all()]}

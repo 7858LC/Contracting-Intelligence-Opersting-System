@@ -1,4 +1,5 @@
 """PIR Signal Scoring Engine — computes company-level scores from detected signals."""
+
 from __future__ import annotations
 
 import math
@@ -52,61 +53,79 @@ SIGNAL_WEIGHTS: dict[str, int] = {
 }
 
 # Signal types that directly contribute to government readiness
-_GOVREADY_SIGNALS: frozenset[str] = frozenset({
-    SignalType.SAM_REGISTRATION,
-    SignalType.CMMC_CERTIFICATION,
-    SignalType.CMMI_CERTIFICATION,
-    SignalType.CERTIFICATION_8A,
-    SignalType.CERTIFICATION_SDVOSB,
-    SignalType.CERTIFICATION_HUBZONE,
-    SignalType.CERTIFICATION_WOSB,
-    SignalType.CERTIFICATION_VETERAN,
-    SignalType.CERTIFICATION_MINORITY,
-    SignalType.FEDERAL_CONTRACT_AWARD,
-    SignalType.IDIQ_AWARD,
-    SignalType.GWAC_AWARD,
-    SignalType.SBIR_STTR_AWARD,
-    SignalType.CONTRACT_RECOMPETE,
-})
+_GOVREADY_SIGNALS: frozenset[str] = frozenset(
+    {
+        SignalType.SAM_REGISTRATION,
+        SignalType.CMMC_CERTIFICATION,
+        SignalType.CMMI_CERTIFICATION,
+        SignalType.CERTIFICATION_8A,
+        SignalType.CERTIFICATION_SDVOSB,
+        SignalType.CERTIFICATION_HUBZONE,
+        SignalType.CERTIFICATION_WOSB,
+        SignalType.CERTIFICATION_VETERAN,
+        SignalType.CERTIFICATION_MINORITY,
+        SignalType.FEDERAL_CONTRACT_AWARD,
+        SignalType.IDIQ_AWARD,
+        SignalType.GWAC_AWARD,
+        SignalType.SBIR_STTR_AWARD,
+        SignalType.CONTRACT_RECOMPETE,
+    }
+)
 
 # Decay half-lives (days) — older signals matter less
 _HALF_LIFE_DAYS: dict[str, float] = {
-    "hiring": 45.0,   # Job posts stale quickly
-    "award": 180.0,   # Awards remain relevant longer
+    "hiring": 45.0,  # Job posts stale quickly
+    "award": 180.0,  # Awards remain relevant longer
     "growth": 90.0,
     "certification": 365.0,  # Certs don't expire quickly
 }
 
 _SIGNAL_CATEGORY: dict[str, str] = {}
 for _st in [
-    SignalType.HIRING_CAPTURE_MANAGER, SignalType.HIRING_PROPOSAL_MANAGER,
-    SignalType.HIRING_BD_DIRECTOR, SignalType.HIRING_CONTRACTS_MANAGER,
-    SignalType.HIRING_PRICING_MANAGER, SignalType.HIRING_COMPLIANCE_MANAGER,
-    SignalType.HIRING_GOVERNMENT_SALES, SignalType.HIRING_PROGRAM_MANAGER,
+    SignalType.HIRING_CAPTURE_MANAGER,
+    SignalType.HIRING_PROPOSAL_MANAGER,
+    SignalType.HIRING_BD_DIRECTOR,
+    SignalType.HIRING_CONTRACTS_MANAGER,
+    SignalType.HIRING_PRICING_MANAGER,
+    SignalType.HIRING_COMPLIANCE_MANAGER,
+    SignalType.HIRING_GOVERNMENT_SALES,
+    SignalType.HIRING_PROGRAM_MANAGER,
     SignalType.HIRING_CLEARED_PERSONNEL,
 ]:
     _SIGNAL_CATEGORY[_st] = "hiring"
 
 for _st in [
-    SignalType.FEDERAL_CONTRACT_AWARD, SignalType.STATE_CONTRACT_AWARD,
-    SignalType.IDIQ_AWARD, SignalType.GWAC_AWARD, SignalType.SBIR_STTR_AWARD,
-    SignalType.CONTRACT_RECOMPETE, SignalType.MENTOR_PROTEGE,
-    SignalType.JOINT_VENTURE, SignalType.TEAMING_ANNOUNCEMENT,
+    SignalType.FEDERAL_CONTRACT_AWARD,
+    SignalType.STATE_CONTRACT_AWARD,
+    SignalType.IDIQ_AWARD,
+    SignalType.GWAC_AWARD,
+    SignalType.SBIR_STTR_AWARD,
+    SignalType.CONTRACT_RECOMPETE,
+    SignalType.MENTOR_PROTEGE,
+    SignalType.JOINT_VENTURE,
+    SignalType.TEAMING_ANNOUNCEMENT,
 ]:
     _SIGNAL_CATEGORY[_st] = "award"
 
 for _st in [
-    SignalType.NEW_OFFICE, SignalType.EXECUTIVE_HIRE,
-    SignalType.MERGER_ACQUISITION, SignalType.EXPANSION_ANNOUNCEMENT,
+    SignalType.NEW_OFFICE,
+    SignalType.EXECUTIVE_HIRE,
+    SignalType.MERGER_ACQUISITION,
+    SignalType.EXPANSION_ANNOUNCEMENT,
 ]:
     _SIGNAL_CATEGORY[_st] = "growth"
 
 for _st in [
-    SignalType.SAM_REGISTRATION, SignalType.CMMC_CERTIFICATION,
-    SignalType.ISO_CERTIFICATION, SignalType.SOC2_CERTIFICATION,
-    SignalType.CMMI_CERTIFICATION, SignalType.CERTIFICATION_8A,
-    SignalType.CERTIFICATION_SDVOSB, SignalType.CERTIFICATION_HUBZONE,
-    SignalType.CERTIFICATION_WOSB, SignalType.CERTIFICATION_VETERAN,
+    SignalType.SAM_REGISTRATION,
+    SignalType.CMMC_CERTIFICATION,
+    SignalType.ISO_CERTIFICATION,
+    SignalType.SOC2_CERTIFICATION,
+    SignalType.CMMI_CERTIFICATION,
+    SignalType.CERTIFICATION_8A,
+    SignalType.CERTIFICATION_SDVOSB,
+    SignalType.CERTIFICATION_HUBZONE,
+    SignalType.CERTIFICATION_WOSB,
+    SignalType.CERTIFICATION_VETERAN,
     SignalType.CERTIFICATION_MINORITY,
 ]:
     _SIGNAL_CATEGORY[_st] = "certification"
@@ -128,7 +147,7 @@ class SignalScorer:
     Designed to be called after signals are upserted into the database.
     """
 
-    def compute(self, signals: list["PIRSignal"]) -> dict:
+    def compute(self, signals: list[PIRSignal]) -> dict:
         """
         Returns a dict with keys:
             overall_signal_score, confidence_score, growth_momentum_score,

@@ -1,4 +1,5 @@
 """PIR Celery tasks — scanning, scoring, and AI analysis."""
+
 from __future__ import annotations
 
 import asyncio
@@ -7,8 +8,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import structlog
-from celery import shared_task
-from sqlalchemy import select, update
+from sqlalchemy import select
 
 from cios.tasks import celery_app
 
@@ -17,6 +17,7 @@ log = structlog.get_logger(__name__)
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
+
 def _run(coro: Any) -> Any:
     """Run an async coroutine from a sync Celery task."""
     return asyncio.get_event_loop().run_until_complete(coro)
@@ -24,11 +25,13 @@ def _run(coro: Any) -> Any:
 
 async def _get_db():
     from cios.core.database import AsyncSessionLocal
+
     async with AsyncSessionLocal() as session:
         return session
 
 
 # ── Scan tasks ─────────────────────────────────────────────────────────────────
+
 
 @celery_app.task(
     name="cios.tasks.pir.scan_company",
@@ -40,11 +43,13 @@ async def _get_db():
 def scan_company(self, company_id: str, tenant_id: str, scan_config: dict | None = None) -> dict:
     """Scan a single company across all signal sources and upsert signals."""
     try:
-        return _run(_async_scan_company(
-            uuid.UUID(company_id),
-            uuid.UUID(tenant_id),
-            scan_config or {},
-        ))
+        return _run(
+            _async_scan_company(
+                uuid.UUID(company_id),
+                uuid.UUID(tenant_id),
+                scan_config or {},
+            )
+        )
     except Exception as exc:
         log.error("scan_company_failed", company_id=company_id, error=str(exc))
         raise self.retry(exc=exc)
@@ -56,9 +61,8 @@ async def _async_scan_company(
     scan_config: dict,
 ) -> dict:
     from cios.core.database import AsyncSessionLocal
-    from cios.models.pir import PIRCompany, PIRSignal
+    from cios.models.pir import PIRCompany
     from cios.scanners import JobBoardScanner, SAMGovScanner, USASpendingScanner
-    from cios.scoring import SignalScorer
 
     async with AsyncSessionLocal() as db:
         company = await db.get(PIRCompany, company_id)
@@ -209,6 +213,7 @@ async def _async_bulk_scan(
 
 # ── Scoring tasks ──────────────────────────────────────────────────────────────
 
+
 @celery_app.task(
     name="cios.tasks.pir.score_company",
     queue="pir_scan",
@@ -265,6 +270,7 @@ async def _async_score_company(company_id: uuid.UUID, tenant_id: uuid.UUID) -> d
 
 # ── AI analysis tasks ──────────────────────────────────────────────────────────
 
+
 @celery_app.task(
     name="cios.tasks.pir.analyze_company_ai",
     queue="analysis",
@@ -281,12 +287,14 @@ def analyze_company_ai(
 ) -> dict:
     """Run Claude AI analysis for a company and store results."""
     try:
-        return _run(_async_analyze_company(
-            uuid.UUID(company_id),
-            uuid.UUID(tenant_id),
-            uuid.UUID(analysis_id),
-            uuid.UUID(user_id) if user_id else None,
-        ))
+        return _run(
+            _async_analyze_company(
+                uuid.UUID(company_id),
+                uuid.UUID(tenant_id),
+                uuid.UUID(analysis_id),
+                uuid.UUID(user_id) if user_id else None,
+            )
+        )
     except Exception as exc:
         log.error("analyze_company_failed", company_id=company_id, error=str(exc))
         raise self.retry(exc=exc)
@@ -298,9 +306,9 @@ async def _async_analyze_company(
     analysis_id: uuid.UUID,
     user_id: uuid.UUID | None,
 ) -> dict:
+    from cios.agents.pir_analyst_agent import run_pir_analysis
     from cios.core.database import AsyncSessionLocal
     from cios.models.pir import PIRAIAnalysis, PIRCompany, PIRSignal
-    from cios.agents.pir_analyst_agent import run_pir_analysis
 
     async with AsyncSessionLocal() as db:
         analysis = await db.get(PIRAIAnalysis, analysis_id)
@@ -318,10 +326,13 @@ async def _async_analyze_company(
             return {"error": "Company not found"}
 
         signals_result = await db.execute(
-            select(PIRSignal).where(
+            select(PIRSignal)
+            .where(
                 PIRSignal.company_id == company_id,
                 PIRSignal.tenant_id == tenant_id,
-            ).order_by(PIRSignal.detected_at.desc()).limit(50)
+            )
+            .order_by(PIRSignal.detected_at.desc())
+            .limit(50)
         )
         signals = list(signals_result.scalars().all())
 
@@ -353,6 +364,7 @@ async def _async_analyze_company(
 
 # ── Scheduled tasks ────────────────────────────────────────────────────────────
 
+
 @celery_app.task(name="cios.tasks.pir.daily_radar_scan", queue="pir_scan")
 def daily_radar_scan() -> dict:
     """Celery Beat task: scan all active tenants' watched companies daily."""
@@ -360,9 +372,10 @@ def daily_radar_scan() -> dict:
 
 
 async def _async_daily_scan() -> dict:
+    from sqlalchemy import distinct
+
     from cios.core.database import AsyncSessionLocal
     from cios.models.pir import PIRCompany
-    from sqlalchemy import distinct
 
     async with AsyncSessionLocal() as db:
         result = await db.execute(

@@ -9,6 +9,7 @@ import {
   BookOpen,
   Brain,
   Building2,
+  Crosshair,
   Home,
   LogOut,
   Radio,
@@ -41,6 +42,7 @@ interface NavItem {
 const ALL_NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Executive Dashboard", icon: Home, feature: Feature.ExecutiveDashboard },
   { href: "/dashboard/radar", label: "Procurement Radar™", icon: Radio, feature: Feature.ProcurementIntelligenceRadar },
+  { href: "/dashboard/winning-profile", label: "Winning Profile™", icon: Crosshair, feature: Feature.WinningProfileHypothesis },
   { href: "/dashboard/opportunities", label: "Opportunities", icon: Target, feature: Feature.Opportunities },
   { href: "/dashboard/bid-decisions", label: "Pursuit Decision Quality™", icon: BarChart3, feature: Feature.BidDecisions },
   { href: "/dashboard/award-simulator", label: "Award Simulation™", icon: Award, feature: Feature.AwardSimulation },

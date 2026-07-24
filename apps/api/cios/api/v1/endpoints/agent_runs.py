@@ -1,9 +1,11 @@
 """Agent Runs audit trail API — immutable evidence trail."""
+
 import uuid
+
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import select
 
-from cios.core.dependencies import Auth, DB
+from cios.core.dependencies import DB, Auth
 from cios.models.agent_run import AgentRun, AgentRunStep
 
 router = APIRouter()

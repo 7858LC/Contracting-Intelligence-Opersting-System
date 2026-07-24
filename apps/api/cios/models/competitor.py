@@ -1,18 +1,20 @@
 """Competitive Intelligence models — Module 8."""
+
 import uuid
-from sqlalchemy import Boolean, Float, Index, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
+
+from sqlalchemy import Boolean, Float, Index, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from cios.core.database import Base
-from .base import UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin
+
+from .base import EvidenceMixin, TenantMixin, TimestampMixin, UUIDMixin
 
 
 class Competitor(Base, UUIDMixin, TimestampMixin, TenantMixin):
     __tablename__ = "competitors"
-    __table_args__ = (
-        Index("idx_comp_tenant", "tenant_id"),
-    )
+    __table_args__ = (Index("idx_comp_tenant", "tenant_id"),)
 
     company_name: Mapped[str] = mapped_column(String(256), nullable=False)
     cage_code: Mapped[str | None] = mapped_column(String(8))

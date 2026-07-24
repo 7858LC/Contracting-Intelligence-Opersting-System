@@ -5,6 +5,7 @@ Design: each tenant gets their own Qdrant collection prefixed with
 their tenant_id. Documents are NEVER cross-contaminated between tenants.
 Embeddings are generated using Anthropic or OpenAI compatible models.
 """
+
 import hashlib
 from typing import Any
 
@@ -102,7 +103,11 @@ class TenantVectorStore:
                 "chunk_index": r.payload.get("chunk_index"),
                 "text": r.payload.get("text"),
                 "score": r.score,
-                "metadata": {k: v for k, v in r.payload.items() if k not in ("text", "doc_id", "chunk_index", "tenant_id")},
+                "metadata": {
+                    k: v
+                    for k, v in r.payload.items()
+                    if k not in ("text", "doc_id", "chunk_index", "tenant_id")
+                },
             }
             for r in results
         ]
@@ -123,8 +128,11 @@ class TenantVectorStore:
     async def _embed(self, text: str) -> list[float]:
         """Generate embedding via Voyage AI (voyage-3, 1024-dim → padded to EMBEDDING_DIM)."""
         import voyageai
+
         client = voyageai.AsyncClient(api_key=settings.voyage_api_key)
-        result = await client.embed([text[:8000]], model=settings.embedding_model, input_type="document")
+        result = await client.embed(
+            [text[:8000]], model=settings.embedding_model, input_type="document"
+        )
         return result.embeddings[0]
 
     def _build_filter(self, filters: dict[str, Any]) -> Filter:

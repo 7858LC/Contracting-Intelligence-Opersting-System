@@ -1,4 +1,5 @@
 """Award simulation Celery task."""
+
 import asyncio
 import json
 import re
@@ -20,9 +21,7 @@ def run_award_simulation(
     simulation_id: str,
     proposal_content: dict,
 ) -> dict:
-    return asyncio.run(
-        _run_simulation_async(tenant_id, user_id, simulation_id, proposal_content)
-    )
+    return asyncio.run(_run_simulation_async(tenant_id, user_id, simulation_id, proposal_content))
 
 
 def _parse_claude_json(raw: str) -> dict:
@@ -51,12 +50,13 @@ async def _run_simulation_async(
     simulation_id: str,
     proposal_content: dict,
 ) -> dict:
-    from cios.core.database import async_session_factory
+    from sqlalchemy import select
+
     from cios.agents.award_simulator_agent import AwardSimulatorAgent
     from cios.agents.base import AgentContext
+    from cios.core.database import async_session_factory
     from cios.models.award_simulation import AwardSimulation
     from cios.vector.tenant_store import TenantVectorStore
-    from sqlalchemy import select
 
     async with async_session_factory() as db:
         result = await db.execute(
@@ -73,6 +73,7 @@ async def _run_simulation_async(
 
         try:
             from cios.models.opportunity import Opportunity
+
             opp_result = await db.execute(
                 select(Opportunity).where(Opportunity.id == sim.opportunity_id)
             )

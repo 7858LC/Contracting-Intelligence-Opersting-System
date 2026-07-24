@@ -1,12 +1,13 @@
 """Opportunity Intelligence API — Module 1."""
+
 import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select, func, or_
+from sqlalchemy import func, or_, select
 
-from cios.core.dependencies import Auth, DB, Pages
+from cios.core.dependencies import DB, Auth, Pages
 from cios.models.opportunity import JurisdictionType, Opportunity, OpportunityNote, OpportunityWatch
 
 router = APIRouter()
@@ -164,8 +165,9 @@ async def trigger_opportunity_analysis(
     opportunity_id: uuid.UUID, db: DB, user: Auth
 ) -> dict[str, str]:
     """Trigger full AI capture assessment for an opportunity."""
-    opp = await _get_opp(db, user.tenant_id, opportunity_id)
+    await _get_opp(db, user.tenant_id, opportunity_id)
     from cios.tasks.analysis import run_opportunity_analysis
+
     task = run_opportunity_analysis.delay(
         str(user.tenant_id), str(user.user_id), str(opportunity_id)
     )
@@ -174,7 +176,7 @@ async def trigger_opportunity_analysis(
 
 @router.post("/{opportunity_id}/watch")
 async def watch_opportunity(opportunity_id: uuid.UUID, db: DB, user: Auth) -> dict:
-    opp = await _get_opp(db, user.tenant_id, opportunity_id)
+    await _get_opp(db, user.tenant_id, opportunity_id)
     watch = OpportunityWatch(
         tenant_id=user.tenant_id,
         opportunity_id=opportunity_id,

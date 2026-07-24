@@ -50,10 +50,36 @@ jobs:
         working-directory: apps/api
         run: mypy cios/ --ignore-missing-imports
 
-      - name: Run tests
+      - name: Run migrations
         working-directory: apps/api
         env:
           DATABASE_URL: postgresql+asyncpg://cios_user:cios_pass@localhost:5432/cios_test
+          JWT_SECRET: test_secret_for_ci_only_32chars__
+          ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+          ANTHROPIC_API_KEY: test_key
+        run: alembic upgrade head
+
+      - name: Create least-privilege app role
+        # POSTGRES_USER (cios_user) becomes a real Postgres superuser in this
+        # container, which bypasses RLS unconditionally regardless of FORCE ROW
+        # LEVEL SECURITY — unlike RDS, where the master user is rds_superuser,
+        # not a true superuser. Postgres also refuses to let the bootstrap
+        # superuser strip its own SUPERUSER attribute via ALTER ROLE, so
+        # cios_user can't be fixed in place: create a separate non-superuser
+        # role for the app's runtime queries (below) instead. Tables already
+        # exist at this point (migrations ran above), so grant on them
+        # directly rather than via default privileges.
+        env:
+          PGPASSWORD: cios_pass
+        run: |
+          psql -h localhost -U cios_user -d cios_test -c "CREATE ROLE cios_app LOGIN PASSWORD 'cios_app_pass';"
+          psql -h localhost -U cios_user -d cios_test -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO cios_app;"
+          psql -h localhost -U cios_user -d cios_test -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO cios_app;"
+
+      - name: Run tests
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql+asyncpg://cios_app:cios_app_pass@localhost:5432/cios_test
           REDIS_URL: redis://localhost:6379/0
           JWT_SECRET: test_secret_for_ci_only_32chars__
           ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
@@ -115,7 +141,13 @@ jobs:
         working-directory: apps/api
         run: |
           pip install pip-audit
-          pip-audit -r pyproject.toml
+          # PYSEC-2026-1325 (ecdsa, via python-jose): Minerva timing side-channel on
+          # ECDSA signing. Upstream ecdsa maintainers have explicitly declared timing
+          # side-channel attacks out of scope for the project and have no planned fix.
+          # Exploit requires precise timing measurement access to the signing operation
+          # (very low practical exploit probability). No fixed version exists to upgrade
+          # to. Re-evaluate if a fix is published or if python-jose is replaced.
+          pip-audit . --ignore-vuln PYSEC-2026-1325
 
   # ── Docker Build ─────────────────────────────────────────────────────────
   docker-build:

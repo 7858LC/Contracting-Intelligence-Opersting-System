@@ -1,13 +1,15 @@
 """Job board scanner — detects GovCon hiring signals via Playwright."""
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import re
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any
 
 from cios.models.pir import SignalSource, SignalType
+
 from .base import BaseScanner, ScannedSignal, ScanResult
 
 logger = logging.getLogger(__name__)
@@ -17,15 +19,33 @@ JOB_SIGNAL_MAP: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\bcapture\s+manager\b", re.I), SignalType.HIRING_CAPTURE_MANAGER),
     (re.compile(r"\bproposal\s+manager\b", re.I), SignalType.HIRING_PROPOSAL_MANAGER),
     (re.compile(r"\bproposals?\s+coordinator\b", re.I), SignalType.HIRING_PROPOSAL_MANAGER),
-    (re.compile(r"\bbd\s+director\b|\bbusiness\s+development\s+director\b", re.I), SignalType.HIRING_BD_DIRECTOR),
+    (
+        re.compile(r"\bbd\s+director\b|\bbusiness\s+development\s+director\b", re.I),
+        SignalType.HIRING_BD_DIRECTOR,
+    ),
     (re.compile(r"\bvp\s+(of\s+)?business\s+development\b", re.I), SignalType.HIRING_BD_DIRECTOR),
-    (re.compile(r"\bcontracts\s+manager\b|\bcontracts\s+specialist\b", re.I), SignalType.HIRING_CONTRACTS_MANAGER),
-    (re.compile(r"\bpricing\s+manager\b|\bpricing\s+analyst\b|\bcost\s+\/\s*price\b", re.I), SignalType.HIRING_PRICING_MANAGER),
-    (re.compile(r"\bcompliance\s+manager\b|\bcmmc\s+compliance\b", re.I), SignalType.HIRING_COMPLIANCE_MANAGER),
-    (re.compile(r"\bgovernment\s+(sales|account)\s+manager\b", re.I), SignalType.HIRING_GOVERNMENT_SALES),
+    (
+        re.compile(r"\bcontracts\s+manager\b|\bcontracts\s+specialist\b", re.I),
+        SignalType.HIRING_CONTRACTS_MANAGER,
+    ),
+    (
+        re.compile(r"\bpricing\s+manager\b|\bpricing\s+analyst\b|\bcost\s+\/\s*price\b", re.I),
+        SignalType.HIRING_PRICING_MANAGER,
+    ),
+    (
+        re.compile(r"\bcompliance\s+manager\b|\bcmmc\s+compliance\b", re.I),
+        SignalType.HIRING_COMPLIANCE_MANAGER,
+    ),
+    (
+        re.compile(r"\bgovernment\s+(sales|account)\s+manager\b", re.I),
+        SignalType.HIRING_GOVERNMENT_SALES,
+    ),
     (re.compile(r"\bfederal\s+sales\b", re.I), SignalType.HIRING_GOVERNMENT_SALES),
     (re.compile(r"\bprogram\s+manager\b", re.I), SignalType.HIRING_PROGRAM_MANAGER),
-    (re.compile(r"\bsecret\b|\bts\/sci\b|\bactive\s+clearance\b|\bsci\s+eligible\b", re.I), SignalType.HIRING_CLEARED_PERSONNEL),
+    (
+        re.compile(r"\bsecret\b|\bts\/sci\b|\bactive\s+clearance\b|\bsci\s+eligible\b", re.I),
+        SignalType.HIRING_CLEARED_PERSONNEL,
+    ),
 ]
 
 
@@ -91,6 +111,7 @@ class JobBoardScanner(BaseScanner):
 
         try:
             from bs4 import BeautifulSoup
+
             soup = BeautifulSoup(resp.text, "html.parser")
         except ImportError:
             result.add_error("Indeed scraping requires beautifulsoup4")
@@ -119,19 +140,26 @@ class JobBoardScanner(BaseScanner):
                 state = _extract_state(location)
                 city = _extract_city(location)
 
-                result.add_signal(ScannedSignal(
-                    signal_type=sig_type,
-                    source=SignalSource.INDEED,
-                    title=f"{company} — Hiring: {title}",
-                    description=f"Active job posting on Indeed: {title} in {location}",
-                    source_url=source_url,
-                    detected_at=datetime.now(UTC),
-                    raw_data={"title": title, "company": company, "location": location, "keyword": keyword},
-                    company_name=company,
-                    company_domain=_extract_company_domain(company),
-                    headquarters_city=city,
-                    headquarters_state=state,
-                ))
+                result.add_signal(
+                    ScannedSignal(
+                        signal_type=sig_type,
+                        source=SignalSource.INDEED,
+                        title=f"{company} — Hiring: {title}",
+                        description=f"Active job posting on Indeed: {title} in {location}",
+                        source_url=source_url,
+                        detected_at=datetime.now(UTC),
+                        raw_data={
+                            "title": title,
+                            "company": company,
+                            "location": location,
+                            "keyword": keyword,
+                        },
+                        company_name=company,
+                        company_domain=_extract_company_domain(company),
+                        headquarters_city=city,
+                        headquarters_state=state,
+                    )
+                )
             except Exception:
                 continue
 
@@ -152,6 +180,7 @@ class JobBoardScanner(BaseScanner):
 
         try:
             from bs4 import BeautifulSoup
+
             soup = BeautifulSoup(resp.text, "html.parser")
         except ImportError:
             return
@@ -171,18 +200,20 @@ class JobBoardScanner(BaseScanner):
 
                 sig_type = _classify_job(title) or SignalType.HIRING_CLEARED_PERSONNEL
 
-                result.add_signal(ScannedSignal(
-                    signal_type=sig_type,
-                    source=SignalSource.CLEARANCEJOBS,
-                    title=f"{company} — Cleared Hire: {title}",
-                    description=f"Cleared position on ClearanceJobs: {title} ({location})",
-                    source_url=f"https://www.clearancejobs.com/jobs?query={keyword}",
-                    detected_at=datetime.now(UTC),
-                    raw_data={"title": title, "company": company, "location": location},
-                    company_name=company,
-                    company_domain=_extract_company_domain(company),
-                    headquarters_state=_extract_state(location),
-                ))
+                result.add_signal(
+                    ScannedSignal(
+                        signal_type=sig_type,
+                        source=SignalSource.CLEARANCEJOBS,
+                        title=f"{company} — Cleared Hire: {title}",
+                        description=f"Cleared position on ClearanceJobs: {title} ({location})",
+                        source_url=f"https://www.clearancejobs.com/jobs?query={keyword}",
+                        detected_at=datetime.now(UTC),
+                        raw_data={"title": title, "company": company, "location": location},
+                        company_name=company,
+                        company_domain=_extract_company_domain(company),
+                        headquarters_state=_extract_state(location),
+                    )
+                )
             except Exception:
                 continue
 
@@ -199,6 +230,7 @@ class JobBoardScanner(BaseScanner):
 
             try:
                 from bs4 import BeautifulSoup
+
                 soup = BeautifulSoup(resp.text, "html.parser")
             except ImportError:
                 break
@@ -206,8 +238,12 @@ class JobBoardScanner(BaseScanner):
             for card in soup.select("article.job_content, div[data-entity-type='job']"):
                 try:
                     title_el = card.select_one("h2 a, a.job_link")
-                    company_el = card.select_one("a[data-testid='company-name'], span.hiring_company_text")
-                    location_el = card.select_one("span[data-testid='job-location'], .location_text")
+                    company_el = card.select_one(
+                        "a[data-testid='company-name'], span.hiring_company_text"
+                    )
+                    location_el = card.select_one(
+                        "span[data-testid='job-location'], .location_text"
+                    )
 
                     if not (title_el and company_el):
                         continue
@@ -221,18 +257,27 @@ class JobBoardScanner(BaseScanner):
                     if not sig_type:
                         continue
 
-                    result.add_signal(ScannedSignal(
-                        signal_type=sig_type,
-                        source=SignalSource.ZIPRECRUITER,
-                        title=f"{company} — Hiring: {title}",
-                        description=f"Job posting on ZipRecruiter: {title} in {location}",
-                        source_url=href if href.startswith("http") else f"https://www.ziprecruiter.com{href}",
-                        detected_at=datetime.now(UTC),
-                        raw_data={"title": title, "company": company, "location": location, "keyword": keyword},
-                        company_name=company,
-                        company_domain=_extract_company_domain(company),
-                        headquarters_state=_extract_state(location),
-                    ))
+                    result.add_signal(
+                        ScannedSignal(
+                            signal_type=sig_type,
+                            source=SignalSource.ZIPRECRUITER,
+                            title=f"{company} — Hiring: {title}",
+                            description=f"Job posting on ZipRecruiter: {title} in {location}",
+                            source_url=href
+                            if href.startswith("http")
+                            else f"https://www.ziprecruiter.com{href}",
+                            detected_at=datetime.now(UTC),
+                            raw_data={
+                                "title": title,
+                                "company": company,
+                                "location": location,
+                                "keyword": keyword,
+                            },
+                            company_name=company,
+                            company_domain=_extract_company_domain(company),
+                            headquarters_state=_extract_state(location),
+                        )
+                    )
                 except Exception:
                     continue
 
@@ -252,11 +297,15 @@ class JobBoardScanner(BaseScanner):
                 "start": 0,
             }
 
-            resp = await self._get(url, params=params, headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                "Accept": "text/html,*/*",
-                "Referer": "https://www.linkedin.com/jobs/search/",
-            })
+            resp = await self._get(
+                url,
+                params=params,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "Accept": "text/html,*/*",
+                    "Referer": "https://www.linkedin.com/jobs/search/",
+                },
+            )
 
             if not resp:
                 result.add_error(f"LinkedIn: no response for '{keyword}'")
@@ -265,6 +314,7 @@ class JobBoardScanner(BaseScanner):
 
             try:
                 from bs4 import BeautifulSoup
+
                 soup = BeautifulSoup(resp.text, "html.parser")
             except ImportError:
                 result.add_error("LinkedIn scraping requires beautifulsoup4")
@@ -273,9 +323,13 @@ class JobBoardScanner(BaseScanner):
             for card in soup.select("li, div.base-card"):
                 try:
                     title_el = card.select_one("h3.base-search-card__title, span.sr-only")
-                    company_el = card.select_one("h4.base-search-card__subtitle a, a.hidden-nested-link")
+                    company_el = card.select_one(
+                        "h4.base-search-card__subtitle a, a.hidden-nested-link"
+                    )
                     location_el = card.select_one("span.job-search-card__location")
-                    link_el = card.select_one("a.base-card__full-link, a[data-tracking-control-name]")
+                    link_el = card.select_one(
+                        "a.base-card__full-link, a[data-tracking-control-name]"
+                    )
 
                     if not (title_el and company_el):
                         continue
@@ -289,18 +343,25 @@ class JobBoardScanner(BaseScanner):
                     if not sig_type:
                         continue
 
-                    result.add_signal(ScannedSignal(
-                        signal_type=sig_type,
-                        source=SignalSource.LINKEDIN,
-                        title=f"{company} — Hiring: {title}",
-                        description=f"Active job posting on LinkedIn: {title} in {location}",
-                        source_url=source_url,
-                        detected_at=datetime.now(UTC),
-                        raw_data={"title": title, "company": company, "location": location, "keyword": keyword},
-                        company_name=company,
-                        company_domain=_extract_company_domain(company),
-                        headquarters_state=_extract_state(location),
-                    ))
+                    result.add_signal(
+                        ScannedSignal(
+                            signal_type=sig_type,
+                            source=SignalSource.LINKEDIN,
+                            title=f"{company} — Hiring: {title}",
+                            description=f"Active job posting on LinkedIn: {title} in {location}",
+                            source_url=source_url,
+                            detected_at=datetime.now(UTC),
+                            raw_data={
+                                "title": title,
+                                "company": company,
+                                "location": location,
+                                "keyword": keyword,
+                            },
+                            company_name=company,
+                            company_domain=_extract_company_domain(company),
+                            headquarters_state=_extract_state(location),
+                        )
+                    )
                 except Exception:
                     continue
 
@@ -310,11 +371,59 @@ class JobBoardScanner(BaseScanner):
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 _US_STATES = {
-    "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
-    "KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
-    "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT",
-    "VA","WA","WV","WI","WY","DC",
+    "AL",
+    "AK",
+    "AZ",
+    "AR",
+    "CA",
+    "CO",
+    "CT",
+    "DE",
+    "FL",
+    "GA",
+    "HI",
+    "ID",
+    "IL",
+    "IN",
+    "IA",
+    "KS",
+    "KY",
+    "LA",
+    "ME",
+    "MD",
+    "MA",
+    "MI",
+    "MN",
+    "MS",
+    "MO",
+    "MT",
+    "NE",
+    "NV",
+    "NH",
+    "NJ",
+    "NM",
+    "NY",
+    "NC",
+    "ND",
+    "OH",
+    "OK",
+    "OR",
+    "PA",
+    "RI",
+    "SC",
+    "SD",
+    "TN",
+    "TX",
+    "UT",
+    "VT",
+    "VA",
+    "WA",
+    "WV",
+    "WI",
+    "WY",
+    "DC",
 }
+
 
 def _extract_state(location: str) -> str | None:
     parts = [p.strip() for p in location.replace(",", " ").split()]
@@ -322,6 +431,7 @@ def _extract_state(location: str) -> str | None:
         if part.upper() in _US_STATES:
             return part.upper()
     return None
+
 
 def _extract_city(location: str) -> str | None:
     parts = [p.strip() for p in location.split(",")]

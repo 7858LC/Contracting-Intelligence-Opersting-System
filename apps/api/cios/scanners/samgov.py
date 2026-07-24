@@ -1,4 +1,5 @@
 """SAM.gov scanner — Entity Management API + Opportunities API."""
+
 from __future__ import annotations
 
 import logging
@@ -7,6 +8,7 @@ from typing import Any
 
 from cios.config import settings
 from cios.models.pir import SignalSource, SignalType
+
 from .base import BaseScanner, ScannedSignal, ScanResult
 
 logger = logging.getLogger(__name__)
@@ -122,40 +124,44 @@ class SAMGovScanner(BaseScanner):
         detected_at = _parse_sam_date(activation) or datetime.now(UTC)
 
         # Base SAM registration signal
-        result.add_signal(ScannedSignal(
-            signal_type=SignalType.SAM_REGISTRATION,
-            source=self.source_name,
-            title=f"{name} — SAM.gov Active Registration",
-            description=f"Entity registered/active in SAM.gov: UEI {uei}, CAGE {cage}",
-            source_url=f"https://sam.gov/entity/{uei}/core",
-            detected_at=detected_at,
-            raw_data={"uei": uei, "cage": cage, "registration": reg},
-            company_name=name,
-            samgov_uei=uei,
-            naics_codes=naics,
-            headquarters_city=city,
-            headquarters_state=state,
-            set_aside_types=setasides,
-        ))
-
-        # Emit a signal per set-aside certification
-        for code in setasides:
-            sig_type = _SETASIDE_SIGNAL.get(code, SignalType.SAM_REGISTRATION)
-            result.add_signal(ScannedSignal(
-                signal_type=sig_type,
+        result.add_signal(
+            ScannedSignal(
+                signal_type=SignalType.SAM_REGISTRATION,
                 source=self.source_name,
-                title=f"{name} — {code} Certification",
-                description=f"Small business certification on SAM.gov: {code}",
+                title=f"{name} — SAM.gov Active Registration",
+                description=f"Entity registered/active in SAM.gov: UEI {uei}, CAGE {cage}",
                 source_url=f"https://sam.gov/entity/{uei}/core",
                 detected_at=detected_at,
-                raw_data={"certification_code": code, "uei": uei},
+                raw_data={"uei": uei, "cage": cage, "registration": reg},
                 company_name=name,
                 samgov_uei=uei,
                 naics_codes=naics,
                 headquarters_city=city,
                 headquarters_state=state,
                 set_aside_types=setasides,
-            ))
+            )
+        )
+
+        # Emit a signal per set-aside certification
+        for code in setasides:
+            sig_type = _SETASIDE_SIGNAL.get(code, SignalType.SAM_REGISTRATION)
+            result.add_signal(
+                ScannedSignal(
+                    signal_type=sig_type,
+                    source=self.source_name,
+                    title=f"{name} — {code} Certification",
+                    description=f"Small business certification on SAM.gov: {code}",
+                    source_url=f"https://sam.gov/entity/{uei}/core",
+                    detected_at=detected_at,
+                    raw_data={"certification_code": code, "uei": uei},
+                    company_name=name,
+                    samgov_uei=uei,
+                    naics_codes=naics,
+                    headquarters_city=city,
+                    headquarters_state=state,
+                    set_aside_types=setasides,
+                )
+            )
 
     async def _scan_awards(self, result: ScanResult, days_back: int) -> None:
         """Pull recent contract awards from SAM.gov opportunities API."""
@@ -210,18 +216,20 @@ class SAMGovScanner(BaseScanner):
         posted = opp.get("postedDate", "")
         detected_at = _parse_sam_date(posted) or datetime.now(UTC)
 
-        result.add_signal(ScannedSignal(
-            signal_type=sig_type,
-            source=self.source_name,
-            title=f"{awardee_name} — Federal Contract Award: {title[:100]}",
-            description=f"Award value: ${amount:,.0f}. Opportunity: {title[:200]}",
-            source_url=f"https://sam.gov/opp/{opp_id}/view",
-            detected_at=detected_at,
-            raw_data={"opportunity": opp, "amount": amount},
-            company_name=awardee_name,
-            samgov_uei=uei,
-            naics_codes=naics,
-        ))
+        result.add_signal(
+            ScannedSignal(
+                signal_type=sig_type,
+                source=self.source_name,
+                title=f"{awardee_name} — Federal Contract Award: {title[:100]}",
+                description=f"Award value: ${amount:,.0f}. Opportunity: {title[:200]}",
+                source_url=f"https://sam.gov/opp/{opp_id}/view",
+                detected_at=detected_at,
+                raw_data={"opportunity": opp, "amount": amount},
+                company_name=awardee_name,
+                samgov_uei=uei,
+                naics_codes=naics,
+            )
+        )
 
 
 def _parse_sam_date(s: str) -> datetime | None:

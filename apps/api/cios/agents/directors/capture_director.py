@@ -2,10 +2,10 @@
 Capture Director — orchestrates bid/no-bid analysis and award probability.
 Manages: BidAnalystAgent, AwardProbabilityAgent, ProposalReadinessAgent
 """
+
 from typing import Any
 
 from cios.agents.base import AgentContext, BaseAgent
-
 
 CAPTURE_SYSTEM_PROMPT = """You are the Capture Director for CIOS, an expert in federal and
 public-sector capture management with deep knowledge of FAR, DFARS, and state procurement codes.
@@ -43,15 +43,15 @@ class CaptureDirector(BaseAgent):
         user_message = f"""
 CAPTURE ASSESSMENT
 ==================
-Opportunity: {opportunity_data.get('title', 'Unknown')}
-Agency: {opportunity_data.get('agency', 'Unknown')}
-Value: ${opportunity_data.get('estimated_value_max', 'Unknown')}
-Solicitation Type: {opportunity_data.get('solicitation_type', 'Unknown')}
-Set-Aside: {opportunity_data.get('set_aside_type', 'None')}
-NAICS: {opportunity_data.get('naics_codes', [])}
-Response Deadline: {opportunity_data.get('response_deadline', 'Unknown')}
-Evaluation Criteria: {opportunity_data.get('evaluation_criteria', [])}
-Incumbent: {opportunity_data.get('incumbent', 'Unknown')}
+Opportunity: {opportunity_data.get("title", "Unknown")}
+Agency: {opportunity_data.get("agency", "Unknown")}
+Value: ${opportunity_data.get("estimated_value_max", "Unknown")}
+Solicitation Type: {opportunity_data.get("solicitation_type", "Unknown")}
+Set-Aside: {opportunity_data.get("set_aside_type", "None")}
+NAICS: {opportunity_data.get("naics_codes", [])}
+Response Deadline: {opportunity_data.get("response_deadline", "Unknown")}
+Evaluation Criteria: {opportunity_data.get("evaluation_criteria", [])}
+Incumbent: {opportunity_data.get("incumbent", "Unknown")}
 
 ORGANIZATIONAL EVIDENCE:
 {evidence_block}

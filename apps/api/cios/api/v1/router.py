@@ -1,23 +1,25 @@
 """API v1 router — all CIOS modules."""
+
 from fastapi import APIRouter
 
 from .endpoints import (
+    admin,
+    agent_runs,
     auth,
-    opportunities,
-    bid_decisions,
     award_simulations,
+    bid_decisions,
     capabilities,
-    past_performance,
-    teaming,
     competitors,
     knowledge_vault,
-    agent_runs,
-    tenants,
-    subscriptions,
     onboarding,
-    webhooks,
-    admin,
+    opportunities,
+    past_performance,
     pir,
+    subscriptions,
+    teaming,
+    tenants,
+    webhooks,
+    winning_profile,
 )
 
 api_router = APIRouter()
@@ -38,7 +40,9 @@ api_router.include_router(bid_decisions.router, prefix="/bid-decisions", tags=["
 api_router.include_router(capabilities.router, prefix="/capabilities", tags=["Capabilities"])
 
 # Module 6 — Past Performance Intelligence
-api_router.include_router(past_performance.router, prefix="/past-performance", tags=["Past Performance"])
+api_router.include_router(
+    past_performance.router, prefix="/past-performance", tags=["Past Performance"]
+)
 
 # Module 7 — Teaming Recommendation Engine
 api_router.include_router(teaming.router, prefix="/teaming", tags=["Teaming"])
@@ -47,10 +51,14 @@ api_router.include_router(teaming.router, prefix="/teaming", tags=["Teaming"])
 api_router.include_router(competitors.router, prefix="/competitors", tags=["Competitors"])
 
 # Module 13 — Award Simulator (flagship)
-api_router.include_router(award_simulations.router, prefix="/award-simulations", tags=["Award Simulator"])
+api_router.include_router(
+    award_simulations.router, prefix="/award-simulations", tags=["Award Simulator"]
+)
 
 # Knowledge Vault
-api_router.include_router(knowledge_vault.router, prefix="/knowledge-vault", tags=["Knowledge Vault"])
+api_router.include_router(
+    knowledge_vault.router, prefix="/knowledge-vault", tags=["Knowledge Vault"]
+)
 
 # Agent Runs (audit trail)
 api_router.include_router(agent_runs.router, prefix="/agent-runs", tags=["Agent Runs"])
@@ -69,3 +77,8 @@ api_router.include_router(admin.router, prefix="/admin", tags=["Admin"])
 
 # Module PIR — Procurement Intelligence Radar™
 api_router.include_router(pir.router, prefix="/radar", tags=["Procurement Intelligence Radar"])
+
+# Module WPH — Winning Profile Hypothesis™ (pre-award intelligence)
+api_router.include_router(
+    winning_profile.router, prefix="/winning-profile", tags=["Winning Profile Hypothesis"]
+)

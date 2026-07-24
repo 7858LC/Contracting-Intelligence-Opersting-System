@@ -61,6 +61,7 @@ class CIOSApiClient {
   async register(payload: {
     email: string;
     password: string;
+    full_name: string;
     company_name: string;
     naics_codes?: string[];
   }) {
@@ -77,7 +78,7 @@ class CIOSApiClient {
 
   async getOpportunities(params?: Record<string, unknown>) {
     const { data } = await this.client.get("/opportunities", { params });
-    return data.opportunities ?? data;
+    return data.items ?? data;
   }
 
   async createOpportunity(payload: Record<string, unknown>) {
@@ -404,6 +405,108 @@ class CIOSApiClient {
 
   async listScanJobs(params?: Record<string, unknown>) {
     const { data } = await this.client.get("/radar/scans", { params });
+    return data;
+  }
+
+  // ── Winning Profile Hypothesis™ (pre-award intelligence) ─────────────────
+
+  async listSolicitations(params?: Record<string, unknown>) {
+    const { data } = await this.client.get("/winning-profile/solicitations", { params });
+    return data;
+  }
+
+  async createSolicitation(payload: Record<string, unknown>) {
+    const { data } = await this.client.post("/winning-profile/solicitations", payload);
+    return data;
+  }
+
+  async getSolicitation(id: string) {
+    const { data } = await this.client.get(`/winning-profile/solicitations/${id}`);
+    return data;
+  }
+
+  async deleteSolicitation(id: string) {
+    await this.client.delete(`/winning-profile/solicitations/${id}`);
+  }
+
+  async addSolicitationDocument(id: string, payload: Record<string, unknown>) {
+    const { data } = await this.client.post(`/winning-profile/solicitations/${id}/documents`, payload);
+    return data;
+  }
+
+  async listSolicitationDocuments(id: string) {
+    const { data } = await this.client.get(`/winning-profile/solicitations/${id}/documents`);
+    return data;
+  }
+
+  async getSolicitationSignals(id: string, category?: string) {
+    const { data } = await this.client.get(`/winning-profile/solicitations/${id}/signals`, {
+      params: category ? { category } : undefined,
+    });
+    return data;
+  }
+
+  async generateWinningProfile(id: string, enrich = false) {
+    const { data } = await this.client.post(
+      `/winning-profile/solicitations/${id}/generate-profile`, null, { params: { enrich } });
+    return data;
+  }
+
+  async getWinningProfile(id: string) {
+    const { data } = await this.client.get(`/winning-profile/solicitations/${id}/profile`);
+    return data;
+  }
+
+  async listWphContractors() {
+    const { data } = await this.client.get("/winning-profile/contractors");
+    return data;
+  }
+
+  async createWphContractor(payload: Record<string, unknown>) {
+    const { data } = await this.client.post("/winning-profile/contractors", payload);
+    return data;
+  }
+
+  async deleteWphContractor(id: string) {
+    await this.client.delete(`/winning-profile/contractors/${id}`);
+  }
+
+  async alignContractors(id: string, contractorIds?: string[]) {
+    const { data } = await this.client.post(
+      `/winning-profile/solicitations/${id}/align`, { contractor_ids: contractorIds ?? null });
+    return data;
+  }
+
+  async getAlignments(id: string) {
+    const { data } = await this.client.get(`/winning-profile/solicitations/${id}/alignments`);
+    return data;
+  }
+
+  async assessPursuit(id: string, targetContractorId?: string) {
+    const { data } = await this.client.post(
+      `/winning-profile/solicitations/${id}/assess`,
+      { target_contractor_id: targetContractorId ?? null });
+    return data;
+  }
+
+  async getPursuitAssessment(id: string) {
+    const { data } = await this.client.get(`/winning-profile/solicitations/${id}/assessment`);
+    return data;
+  }
+
+  async runWphPipeline(id: string, enrich = false) {
+    const { data } = await this.client.post(
+      `/winning-profile/solicitations/${id}/run`, null, { params: { enrich } });
+    return data;
+  }
+
+  async getSolicitationIntelligence(id: string) {
+    const { data } = await this.client.get(`/winning-profile/solicitations/${id}/intelligence`);
+    return data;
+  }
+
+  async seedWphSample(run = true) {
+    const { data } = await this.client.post("/winning-profile/sample", null, { params: { run } });
     return data;
   }
 }

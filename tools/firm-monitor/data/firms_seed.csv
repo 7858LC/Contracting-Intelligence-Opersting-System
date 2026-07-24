@@ -1,0 +1,92 @@
+id,company,industry,website
+1,Asymmetric Technologies,Tactical AI & Edge Systems,asymmetric.us
+2,Charles River Analytics,Human-Centered AI & Robotics,cra.com
+3,SimCentric,Tactical Simulation Software,simct.com
+4,"Aptima, Inc.",Data Analytics & Human Systems,aptima.com
+5,Xona Space Systems,Alternative PNT/Satellite Tech,xonaspace.com
+6,Persistent Systems,MANET Tactical Radios,persistentsystems.com
+7,Tomahawk Robotics,Common Robotic Control Systems,tomahawkrobotics.com
+8,Intelligent Artifacts,Deterministic AI & ML Software,intelligentartifacts.com
+9,Ghost Robotics,Vision-Based Quadrupedal Unmanned Systems,ghostrobotics.io
+10,Shield AI,Tactical Autonomy Software,shield.ai
+11,Rebellion Defense,Enterprise Defense Software,rebelliondefense.com
+12,EpiSci,Autonomous Drone Swarming Systems,episci.com
+13,Epirus,High-Power Microwave Systems,epirusinc.com
+14,Fortem Technologies,Airspace Security & Counter-UAS,fortemtech.com
+15,Dedrone,Drone Detection Platforms,dedrone.com
+16,Skydio,Autonomous Defense Drone Systems,skydio.com
+17,Teal Drones,Military Reconnaissance sUAS,tealdrones.com
+18,Vantage Robotics,Tactical UAVs & ISR Cameras,vantagerobotics.com
+19,Ascent AeroSystems,Coaxial Drone Platforms,ascentaerosystems.com
+20,Inspired Flight,Commercial & Defense UAVs,inspiredflight.com
+21,Auterion,Drone Operating Systems & Tech,auterion.com
+22,ModalAI,Blue UAS Autopilot Software,modalai.com
+23,Red Cat Holdings,Unmanned Aircraft Solutions,redcatholdings.com
+24,Gremsy,Gimbal Systems for Defense UAVs,gremsy.com
+25,Kraus Hamdani Aerospace,Ultra-Long Endurance UAVs,krausha.com
+26,Vanilla Unmanned,Ultra-Endurance Drone Fleets,vanillaunmanned.com
+27,Swift Engineering,Tactical VTOL Drone Solutions,swiftengineering.com
+28,Silent Falcon UAS,Solar-Electric UAVs,silentfalconuas.com
+29,Real-Time Innovations (RTI),Edge Software Concurrency & Connectivity,rti.com
+30,Wind River Systems,Real-Time Defense Operating Systems,windriver.com
+31,Green Hills Software,Cyber-Secure Safety Systems,ghs.com
+32,Lynx Software Technologies,Mission-Critical Safe Hypervisors,lynxsemi.com
+33,DDC-I,Safety-Critical Avionics RTOS,ddci.com
+34,CoreAVI,Mission-Critical Graphics Drivers,coreavi.com
+35,Presagis,Modeling & Tactical Sim Systems,presagis.com
+36,MAK Technologies,Distributed Defense Simulation,mak.com
+37,Bohemia Interactive Simulations,Military Virtual Training Platforms,bisimulations.com
+38,Mass Virtual,VR Training Solutions for the DoD,massvirtual.com
+39,Pinnacle Solutions,Aerospace Training & Simulations,pinnaclesolutionsinc.com
+40,Cole Engineering Services,Complex Modeling & Simulation Systems,coleengineering.com
+41,DiSTI Corporation,Virtual Maintenance Training Software,disti.com
+42,Vertex Aerospace,Specialized Fleet Support Services,vtxaero.com
+43,Systems & Technology Research,Advanced R&D Data Analysis,str.us
+44,"Metron, Inc.",Advanced Operations Research & Applied Math,metsci.com
+45,Decisive Analytics,Applied AI & Systems Engineering,dac.us
+46,Radiance Technologies,Specialized Intelligence R&D Support,radiancetech.com
+47,InCadence Strategic Solutions,Biometrics & Identity Platforms,incadencecorp.com
+48,KeyW Corporation,Advanced Cyber & Intelligence Tech,keywcorp.com
+49,Signature Science,Bio-Defense & Threat Tracking,signaturescience.com
+50,ARA (Applied Research Associates),Specialized Engineering & Environmental R&D,ara.com
+51,Torch Technologies,Missile Defense Modeling Services,torchtechnologies.com
+52,Intuitive Research & Tech,Aerospace Engineering & Analysis,irtc-hq.com
+53,Davidson Technologies,Aerospace & Missile Defense Engineering,davidson-tech.com
+54,nLight,High-Power Defense Lasers,nlight.net
+55,Directed Energy Technologies,High-Power Tactical RF Systems,directedenergytechnologies.com
+56,Verus Research,High-Power Microwave Testing,verusresearch.net
+57,Kymeta Corporation,Metamaterial Flat-Panel SatCom,kymetacorp.com
+58,Isotropic Systems,Multi-Beam Satellite Ground Terminals,isotropicsystems.com
+59,Phasor Inc.,Electronically Steered SatCom Antennas,phasorsat.com
+60,ThinKom Solutions,Phased-Array SatCom Solutions,thinkom.com
+61,CesiumAstro,Active Phased Array Space Systems,cesiumastro.com
+62,HawkEye 360,Radio Frequency Satellite Intelligence,he360.com
+63,Capella Space,Synthetic Aperture Radar (SAR) Constellations,capellaspace.com
+64,Iceye,High-Resolution SAR Micro-Satellites,iceye.com
+65,Ursa Space Systems,Geospatial Satellite Data Intelligence,ursaspace.com
+66,Orbital Insight,Geospatial AI & Location Analytics,orbitalinsight.com
+67,BlackSky,High-Frequency Satellite Imaging,blacksky.com
+68,Satellogic,High-Resolution Earth Observation Imagery,satellogic.com
+69,Planet Labs,Daily Global Earth Observation Imagery,planet.com
+70,Spire Global,Space-to-Cloud Maritime & Weather Data,spire.com
+71,Slingshot Aerospace,Space Domain Software Awareness,slingshotaerospace.com
+72,LeoLabs,Low Earth Orbit Space Tracking Systems,leolabs.space
+73,Kayhan Space,Satellite Conjunction Assessment Platforms,kayhan.space
+74,Cognitive Space,AI SaaS for Satellite Operations,cognitivespace.com
+75,True Anomaly,Space Security & Tactical Orbital Vehicles,trueanomaly.space
+76,Starfish Space,Satellite Servicing & Space Debris Removal,starfishspace.com
+77,Atomos Space,In-Space Nuclear & Orbital Logistics,atomosspace.com
+78,Impulse Space,In-Space Propulsion Systems & Logistical Vehicles,impulsespace.com
+79,Launcher,Rocket Engines & Orbital Transfer Software,launcherspace.com
+80,Ursa Major Technologies,Propulsion Systems for Rockets & Hypersonics,ursamajor.com
+81,Hermeus,Hypersonic Military Aircraft Tech,hermeus.com
+82,Boom Supersonic,Commercial & Defense Supersonic Aircraft,boomsupersonic.com
+83,Venus Aerospace,Hypersonic Spaceplanes & Drone Tracking,venusaero.com
+84,Stratolaunch,Air-Launch Testbeds for Hypersonic Flights,stratolaunch.com
+85,Calspan,Flight Research & Airborne Test Services,calspan.com
+86,Fona Technologies,Tactical Infrastructure Software,fonatech.com
+87,Sonaca Spatial,Aerospace Testing Systems,sonaca.com
+88,AeroTEC,Aerospace Testing & Flight Evaluation,aerotec.com
+89,Seabury Solutions,Aviation Regulatory Maintenance Software,seaburysolutions.com
+90,EmpowerMX,Aerospace Fleet Software Platforms,empowermx.com
+91,Ramco Systems,Aviation Maintenance ERP Solutions,ramco.com
