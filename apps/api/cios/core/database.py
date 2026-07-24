@@ -1,6 +1,22 @@
-"""Async PostgreSQL database engine with tenant-aware session management."""
+"""Async PostgreSQL database engine + session management.
+
+Tenant RLS context (``app.current_tenant``) is deliberately *not* set here.
+It used to be applied via a ``ContextVar`` read at session-creation time —
+correct only when that ContextVar happened to already be set by the time
+this ran, which depended on FastAPI resolving a *different* dependency
+(``get_current_user``) first. FastAPI resolves dependencies strictly in a
+route's parameter declaration order, so any route listing ``db: DB`` before
+``user: Auth`` silently opened a session with no tenant context at all, and
+—because the underlying Postgres session-level GUC isn't reset when
+SQLAlchemy's pool checks a physical connection back in — could inherit
+whatever tenant a *previous, different* request last set on that pooled
+connection. See ``core/dependencies.py``'s ``get_current_user`` for the
+fix: it now sets the GUC directly (as ``SET LOCAL``, transaction-scoped) on
+the exact same cached session the route handler receives, independent of
+parameter order.
+"""
+
 from collections.abc import AsyncGenerator
-from contextvars import ContextVar
 from typing import Any
 
 from sqlalchemy.ext.asyncio import (
@@ -10,11 +26,8 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.pool import NullPool
 
 from cios.config import settings
-
-_current_tenant: ContextVar[str | None] = ContextVar("current_tenant", default=None)
 
 
 class Base(DeclarativeBase):
@@ -39,19 +52,9 @@ async_session_factory = async_sessionmaker(
 )
 
 
-async def init_db() -> None:
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with async_session_factory() as session:
         try:
-            tenant_id = _current_tenant.get()
-            if tenant_id:
-                await session.execute(
-                    f"SET app.current_tenant = '{tenant_id}'"  # noqa: S608
-                )
             yield session
             await session.commit()
         except Exception:
@@ -59,11 +62,3 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             raise
         finally:
             await session.close()
-
-
-def set_tenant(tenant_id: str) -> None:
-    _current_tenant.set(tenant_id)
-
-
-def get_tenant() -> str | None:
-    return _current_tenant.get()

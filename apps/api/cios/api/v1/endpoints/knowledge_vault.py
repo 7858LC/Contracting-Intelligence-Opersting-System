@@ -1,4 +1,5 @@
 """Knowledge Vault API — per-tenant private AI memory."""
+
 import uuid
 from typing import Any
 
@@ -6,7 +7,7 @@ from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy import select
 
-from cios.core.dependencies import Auth, DB
+from cios.core.dependencies import DB, Auth
 from cios.models.knowledge_vault import KnowledgeDocument
 
 router = APIRouter()
@@ -53,9 +54,11 @@ async def list_documents(
     document_type: str | None = Query(None),
     search: str | None = Query(None),
 ) -> dict[str, Any]:
-    query = select(KnowledgeDocument).where(
-        KnowledgeDocument.tenant_id == user.tenant_id
-    ).order_by(KnowledgeDocument.created_at.desc())
+    query = (
+        select(KnowledgeDocument)
+        .where(KnowledgeDocument.tenant_id == user.tenant_id)
+        .order_by(KnowledgeDocument.created_at.desc())
+    )
 
     if document_type:
         query = query.where(KnowledgeDocument.document_type == document_type)
@@ -91,8 +94,13 @@ async def upload_document(
         )
 
     import json
+
     try:
-        tag_list = json.loads(tags) if tags.startswith("[") else [t.strip() for t in tags.split(",") if t.strip()]
+        tag_list = (
+            json.loads(tags)
+            if tags.startswith("[")
+            else [t.strip() for t in tags.split(",") if t.strip()]
+        )
     except (json.JSONDecodeError, ValueError):
         tag_list = [t.strip() for t in tags.split(",") if t.strip()]
 
@@ -112,9 +120,8 @@ async def upload_document(
     await db.flush()
 
     from cios.tasks.ingestion import ingest_document
-    task = ingest_document.delay(
-        str(user.tenant_id), str(doc.id), content, file.content_type
-    )
+
+    task = ingest_document.delay(str(user.tenant_id), str(doc.id), content, file.content_type)
 
     return {
         "document_id": str(doc.id),
@@ -128,6 +135,7 @@ async def upload_document(
 async def search_knowledge_vault(body: SearchRequest, user: Auth) -> dict[str, Any]:
     """Semantic search across the tenant's Knowledge Vault using vector similarity."""
     from cios.vector.tenant_store import TenantVectorStore
+
     store = TenantVectorStore(str(user.tenant_id))
     raw = await store.search(
         query=body.query,
@@ -163,6 +171,7 @@ async def delete_document(document_id: uuid.UUID, db: DB, user: Auth) -> None:
 
     if doc.qdrant_collection:
         from cios.vector.tenant_store import TenantVectorStore
+
         store = TenantVectorStore(str(user.tenant_id))
         await store.delete_document(str(document_id))
 

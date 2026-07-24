@@ -1,5 +1,7 @@
 """Initial onboarding analysis task."""
+
 import asyncio
+
 from cios.tasks import celery_app
 
 

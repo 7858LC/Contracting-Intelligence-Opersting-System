@@ -5,11 +5,12 @@ Receives executive queries, decomposes into director tasks,
 synthesizes results, and produces board-level recommendations.
 Never exposed directly to users — only recommendations are surfaced.
 """
+
 from typing import Any
 
 from cios.config import settings
-from .base import AgentContext, BaseAgent, Recommendation
 
+from .base import AgentContext, BaseAgent
 
 CEO_SYSTEM_PROMPT = """You are the Chief Intelligence Officer of CIOS — the Contract Intelligence
 Operating System. You operate at the executive level of a hierarchical AI system designed to help
@@ -47,8 +48,10 @@ class CEOAgent(BaseAgent):
         query: str = kwargs.get("query", "Provide executive capture assessment")
 
         evidence_block = self._build_evidence_block(
-            [{"source": o.get("agent", "director"), "content": str(o.get("result", ""))[:500]}
-             for o in director_outputs]
+            [
+                {"source": o.get("agent", "director"), "content": str(o.get("result", ""))[:500]}
+                for o in director_outputs
+            ]
         )
 
         user_message = f"""
@@ -56,7 +59,7 @@ EXECUTIVE SYNTHESIS REQUEST
 ============================
 Query: {query}
 Rule Pack: {context.rule_pack}
-Tenant Context: {context.metadata.get('company_profile', 'Not provided')}
+Tenant Context: {context.metadata.get("company_profile", "Not provided")}
 
 DIRECTOR INTELLIGENCE REPORTS:
 {evidence_block}
@@ -93,8 +96,8 @@ Respond as structured JSON.
         CEO → Directors → Analysts → Synthesis
         """
         from .directors.capture_director import CaptureDirector
-        from .directors.compliance_director import ComplianceDirector
         from .directors.competitive_intel_director import CompetitiveIntelDirector
+        from .directors.compliance_director import ComplianceDirector
         from .directors.pricing_director import PricingDirector
         from .directors.risk_director import RiskDirector
 

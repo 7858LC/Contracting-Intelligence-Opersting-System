@@ -1,4 +1,5 @@
 """Bid/No-Bid Engine API — Module 2."""
+
 import uuid
 from typing import Any
 
@@ -6,7 +7,7 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 
-from cios.core.dependencies import Auth, DB
+from cios.core.dependencies import DB, Auth
 from cios.models.bid_decision import BidDecision
 
 router = APIRouter()
@@ -56,9 +57,8 @@ async def create_bid_decision(body: BidDecisionCreate, db: DB, user: Auth) -> di
     await db.flush()
 
     from cios.tasks.bid_analysis import run_bid_analysis
-    task = run_bid_analysis.delay(
-        str(user.tenant_id), str(user.user_id), str(decision.id)
-    )
+
+    task = run_bid_analysis.delay(str(user.tenant_id), str(user.user_id), str(decision.id))
     return {"decision_id": str(decision.id), "task_id": task.id, "status": "queued"}
 
 

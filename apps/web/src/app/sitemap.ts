@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
 const BASE_URL =
-  process.env.NEXT_PUBLIC_APP_URL || "https://uzimaamka.com";
+  process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 const PUBLIC_ROUTES: { url: string; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"]; priority: number }[] = [
   { url: "/", changeFrequency: "weekly", priority: 1.0 },

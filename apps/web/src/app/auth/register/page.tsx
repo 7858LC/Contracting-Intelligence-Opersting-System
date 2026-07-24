@@ -24,6 +24,7 @@ export default function RegisterPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
+    full_name: "",
     email: "",
     password: "",
     company_name: "",
@@ -39,6 +40,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const data = await api.register({
+        full_name: form.full_name,
         email: form.email,
         password: form.password,
         company_name: form.company_name,
@@ -61,6 +63,18 @@ export default function RegisterPage() {
       <p className="text-sm text-muted-foreground mb-6">14 days free · No credit card required</p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Your full name</label>
+          <input
+            type="text"
+            required
+            value={form.full_name}
+            onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+            className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            placeholder="Jordan Rivera"
+          />
+        </div>
+
         <div>
           <label className="block text-sm font-medium mb-1.5">Company name</label>
           <input

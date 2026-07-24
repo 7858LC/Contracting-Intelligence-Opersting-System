@@ -4,11 +4,13 @@ Revision ID: 004_pir_schema
 Revises: 003_jurisdiction_type
 Create Date: 2026-07-19
 """
+
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision = "004_pir_schema"
 down_revision = "003_jurisdiction_type"
@@ -20,11 +22,26 @@ def upgrade() -> None:
     # ── pir_companies ─────────────────────────────────────────────────────────
     op.create_table(
         "pir_companies",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), onupdate=sa.text("now()"), nullable=False),
-
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            onupdate=sa.text("now()"),
+            nullable=False,
+        ),
         # Identity
         sa.Column("name", sa.String(256), nullable=False),
         sa.Column("domain", sa.String(256), nullable=True),
@@ -33,7 +50,6 @@ def upgrade() -> None:
         sa.Column("samgov_uei", sa.String(12), nullable=True),
         sa.Column("cage_code", sa.String(10), nullable=True),
         sa.Column("duns", sa.String(9), nullable=True),
-
         # Profile
         sa.Column("description", sa.Text, nullable=True),
         sa.Column("industry", sa.String(128), nullable=True),
@@ -47,20 +63,17 @@ def upgrade() -> None:
         sa.Column("naics_codes", postgresql.JSONB, nullable=False, server_default="[]"),
         sa.Column("psc_codes", postgresql.JSONB, nullable=False, server_default="[]"),
         sa.Column("set_aside_types", postgresql.JSONB, nullable=False, server_default="[]"),
-
         # Scores
         sa.Column("overall_signal_score", sa.Float, nullable=False, server_default="0.0"),
         sa.Column("confidence_score", sa.Float, nullable=False, server_default="0.0"),
         sa.Column("growth_momentum_score", sa.Float, nullable=False, server_default="0.0"),
         sa.Column("government_readiness_score", sa.Float, nullable=False, server_default="0.0"),
         sa.Column("priority_tier", sa.String(2), nullable=False, server_default="C"),
-
         # Status
         sa.Column("is_active", sa.Boolean, nullable=False, server_default="true"),
         sa.Column("is_watched", sa.Boolean, nullable=False, server_default="false"),
         sa.Column("last_scanned_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("last_scored_at", sa.DateTime(timezone=True), nullable=True),
-
         sa.UniqueConstraint("tenant_id", "domain", name="uq_pir_company_tenant_domain"),
     )
     op.create_index("idx_pir_company_score", "pir_companies", ["tenant_id", "overall_signal_score"])
@@ -68,7 +81,9 @@ def upgrade() -> None:
     op.create_index("idx_pir_company_uei", "pir_companies", ["samgov_uei"])
     op.create_index("idx_pir_company_domain", "pir_companies", ["domain"])
     op.create_index(
-        "idx_pir_company_naics", "pir_companies", ["naics_codes"],
+        "idx_pir_company_naics",
+        "pir_companies",
+        ["naics_codes"],
         postgresql_using="gin",
     )
 
@@ -82,10 +97,26 @@ def upgrade() -> None:
     # ── pir_signals ───────────────────────────────────────────────────────────
     op.create_table(
         "pir_signals",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), onupdate=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            onupdate=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("company_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("signal_type", sa.String(64), nullable=False),
         sa.Column("source", sa.String(32), nullable=False),
@@ -114,10 +145,26 @@ def upgrade() -> None:
     # ── pir_watchlists ────────────────────────────────────────────────────────
     op.create_table(
         "pir_watchlists",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), onupdate=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            onupdate=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("name", sa.String(256), nullable=False),
         sa.Column("description", sa.Text, nullable=True),
         sa.Column("created_by", postgresql.UUID(as_uuid=True), nullable=False),
@@ -136,10 +183,26 @@ def upgrade() -> None:
     # ── pir_saved_searches ────────────────────────────────────────────────────
     op.create_table(
         "pir_saved_searches",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), onupdate=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            onupdate=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("name", sa.String(256), nullable=False),
         sa.Column("created_by", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("filters", postgresql.JSONB, nullable=False, server_default="{}"),
@@ -157,10 +220,26 @@ def upgrade() -> None:
     # ── pir_ai_analyses ───────────────────────────────────────────────────────
     op.create_table(
         "pir_ai_analyses",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), onupdate=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            onupdate=sa.text("now()"),
+            nullable=False,
+        ),
         # EvidenceMixin fields
         sa.Column("confidence_score", sa.Float, nullable=True),
         sa.Column("evidence", postgresql.JSONB, nullable=False, server_default="[]"),
@@ -193,10 +272,26 @@ def upgrade() -> None:
     # ── pir_scan_jobs ─────────────────────────────────────────────────────────
     op.create_table(
         "pir_scan_jobs",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), onupdate=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            onupdate=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("scan_type", sa.String(64), nullable=False),
         sa.Column("status", sa.String(32), nullable=False, server_default="pending"),
         sa.Column("started_at", sa.DateTime(timezone=True), nullable=True),

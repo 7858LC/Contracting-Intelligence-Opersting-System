@@ -1,8 +1,8 @@
 """Risk Director — technical, programmatic, and financial risk analysis."""
+
 from typing import Any
 
 from cios.agents.base import AgentContext, BaseAgent
-
 
 RISK_SYSTEM_PROMPT = """You are the Risk Director for CIOS, expert in government contract
 risk assessment and risk-based bid decisions.
@@ -41,16 +41,16 @@ class RiskDirector(BaseAgent):
         user_message = f"""
 RISK ASSESSMENT
 ===============
-Opportunity: {opportunity_data.get('title', 'Unknown')}
-Agency: {opportunity_data.get('agency', 'Unknown')}
-Value: ${opportunity_data.get('estimated_value_max', 'Unknown')}
-Contract Type: {opportunity_data.get('contract_type', 'Unknown')}
-Set-Aside: {opportunity_data.get('set_aside_type', 'None')}
-Key Requirements: {opportunity_data.get('key_requirements', [])}
-Incumbent: {opportunity_data.get('incumbent', 'Unknown')}
-Response Deadline: {opportunity_data.get('response_deadline', 'Unknown')}
+Opportunity: {opportunity_data.get("title", "Unknown")}
+Agency: {opportunity_data.get("agency", "Unknown")}
+Value: ${opportunity_data.get("estimated_value_max", "Unknown")}
+Contract Type: {opportunity_data.get("contract_type", "Unknown")}
+Set-Aside: {opportunity_data.get("set_aside_type", "None")}
+Key Requirements: {opportunity_data.get("key_requirements", [])}
+Incumbent: {opportunity_data.get("incumbent", "Unknown")}
+Response Deadline: {opportunity_data.get("response_deadline", "Unknown")}
 
-Organizational Context: {[k.get('content', '')[:150] for k in knowledge_context[:3]]}
+Organizational Context: {[k.get("content", "")[:150] for k in knowledge_context[:3]]}
 
 Produce comprehensive risk register:
 1. Risk identification across all taxonomy categories

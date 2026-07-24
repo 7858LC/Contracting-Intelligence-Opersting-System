@@ -1,14 +1,17 @@
 """Subscription and billing models."""
+
 import uuid
 from datetime import datetime
 from typing import Any
 
 from sqlalchemy import DateTime, Float, Index, Integer, String
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from cios.core.database import Base
-from .base import UUIDMixin, TimestampMixin
+
+from .base import TimestampMixin, UUIDMixin
 
 
 class Subscription(Base, UUIDMixin, TimestampMixin):

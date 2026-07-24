@@ -1,5 +1,8 @@
 """Teaming analysis Celery task."""
-import asyncio, uuid
+
+import asyncio
+import uuid
+
 from cios.tasks import celery_app
 
 
@@ -11,21 +14,21 @@ def run_teaming_analysis(self, tenant_id: str, user_id: str, opportunity_id: str
 
 
 async def _run_async(tenant_id: str, user_id: str, opportunity_id: str) -> dict:
-    from cios.core.database import async_session_factory
-    from cios.agents.directors.capture_director import CaptureDirector
+    from sqlalchemy import select
+
     from cios.agents.base import AgentContext
+    from cios.core.database import async_session_factory
     from cios.models.opportunity import Opportunity
     from cios.models.teaming import TeamingRecommendation
-    from sqlalchemy import select
 
     async with async_session_factory() as db:
         o_result = await db.execute(
             select(Opportunity).where(Opportunity.id == uuid.UUID(opportunity_id))
         )
         opp = o_result.scalar_one_or_none()
-        opportunity_data = opp.to_dict() if opp else {}
+        opp.to_dict() if opp else {}
 
-        context = AgentContext(
+        AgentContext(
             tenant_id=uuid.UUID(tenant_id),
             user_id=uuid.UUID(user_id),
             opportunity_id=uuid.UUID(opportunity_id),

@@ -1,10 +1,12 @@
 """Past Performance Intelligence API — Module 6."""
+
 import uuid
-from fastapi import APIRouter, HTTPException
+
+from fastapi import APIRouter
 from pydantic import BaseModel
 from sqlalchemy import select
 
-from cios.core.dependencies import Auth, DB
+from cios.core.dependencies import DB, Auth
 from cios.models.past_performance import PastPerformance
 
 router = APIRouter()
@@ -34,7 +36,9 @@ async def list_past_performance(db: DB, user: Auth) -> dict:
     result = await db.execute(
         select(PastPerformance)
         .where(PastPerformance.tenant_id == user.tenant_id)
-        .order_by(PastPerformance.relevance_score.desc().nullslast(), PastPerformance.created_at.desc())
+        .order_by(
+            PastPerformance.relevance_score.desc().nullslast(), PastPerformance.created_at.desc()
+        )
     )
     return {"items": [i.to_dict() for i in result.scalars().all()]}
 
@@ -46,6 +50,7 @@ async def create_past_performance(body: PastPerformanceCreate, db: DB, user: Aut
     await db.flush()
     await db.refresh(pp)
     from cios.tasks.ingestion import vectorize_past_performance
+
     vectorize_past_performance.delay(str(user.tenant_id), str(pp.id))
     return pp.to_dict()
 
@@ -54,7 +59,6 @@ async def create_past_performance(body: PastPerformanceCreate, db: DB, user: Aut
 async def assess_relevance(pp_id: uuid.UUID, opportunity_id: uuid.UUID, db: DB, user: Auth) -> dict:
     """AI-score past performance relevance for a specific opportunity."""
     from cios.tasks.scoring import score_pp_relevance
-    task = score_pp_relevance.delay(
-        str(user.tenant_id), str(pp_id), str(opportunity_id)
-    )
+
+    task = score_pp_relevance.delay(str(user.tenant_id), str(pp_id), str(opportunity_id))
     return {"task_id": task.id, "status": "queued"}

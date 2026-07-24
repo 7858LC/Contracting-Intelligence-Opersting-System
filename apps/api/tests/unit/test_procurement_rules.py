@@ -1,6 +1,6 @@
 """Tests for the Procurement Rule Engine."""
-import pytest
-from cios.procurement_rules.registry import RulePackRegistry, US_FEDERAL_FAR, WORLD_BANK
+
+from cios.procurement_rules.registry import US_FEDERAL_FAR, WORLD_BANK, RulePackRegistry
 
 
 def test_registry_returns_known_pack():

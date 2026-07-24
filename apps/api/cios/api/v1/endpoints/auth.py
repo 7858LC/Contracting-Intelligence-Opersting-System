@@ -1,12 +1,14 @@
 """Authentication endpoints."""
+
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 
 from cios.core.dependencies import DB, Auth
+from cios.core.rate_limit import rate_limiter
 from cios.core.security import (
     create_access_token,
     create_refresh_token,
@@ -17,6 +19,11 @@ from cios.core.security import (
 from cios.models.tenant import Tenant, TenantMember
 
 router = APIRouter()
+
+# Unauthenticated endpoints — rate-limited per client IP since there's no
+# tenant/user context yet to key off of.
+_register_rate_limit = Depends(rate_limiter("register", max_requests=5, window_seconds=300))
+_login_rate_limit = Depends(rate_limiter("login", max_requests=10, window_seconds=300))
 
 
 class RegisterRequest(BaseModel):
@@ -47,9 +54,14 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=TokenResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[_register_rate_limit],
+)
 async def register(body: RegisterRequest, db: DB) -> TokenResponse:
-    from python_slugify import slugify
+    from slugify import slugify
 
     slug = body.company_slug or slugify(body.company_name)
 
@@ -67,6 +79,7 @@ async def register(body: RegisterRequest, db: DB) -> TokenResponse:
         user_id=user_id,
         email=body.email,
         full_name=body.full_name,
+        password_hash=hash_password(body.password),
         role="owner",
     )
     db.add(member)
@@ -91,14 +104,17 @@ async def register(body: RegisterRequest, db: DB) -> TokenResponse:
     )
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=TokenResponse, dependencies=[_login_rate_limit])
 async def login(body: LoginRequest, db: DB) -> TokenResponse:
     result = await db.execute(
         select(TenantMember).where(TenantMember.email == body.email, TenantMember.is_active == True)  # noqa: E712
     )
     member = result.scalar_one_or_none()
 
-    if not member:
+    valid_password = member and member.password_hash and verify_password(
+        body.password, member.password_hash
+    )
+    if not valid_password:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     tenant_result = await db.execute(select(Tenant).where(Tenant.id == member.tenant_id))

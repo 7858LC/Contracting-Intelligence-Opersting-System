@@ -1,11 +1,12 @@
 """Tenant management API."""
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 
-from cios.core.dependencies import Auth, AdminAuth, DB
+from cios.core.dependencies import DB, AdminAuth, Auth
 from cios.core.security import generate_api_key
-from cios.models.tenant import Tenant, TenantMember, ApiKey
+from cios.models.tenant import ApiKey, Tenant, TenantMember
 
 router = APIRouter()
 
@@ -65,10 +66,11 @@ async def list_members(db: DB, user: Auth) -> dict:
 
 @router.post("/members/invite")
 async def invite_member(body: InviteMemberRequest, db: DB, user: AdminAuth) -> dict:
-    from cios.tasks.email import send_invite_email
     import secrets
     from datetime import UTC, datetime, timedelta
+
     from cios.models.tenant import TenantInvite
+    from cios.tasks.email import send_invite_email
 
     token = secrets.token_urlsafe(32)
     invite = TenantInvite(
@@ -113,12 +115,18 @@ async def create_api_key(body: ApiKeyCreate, db: DB, user: AdminAuth) -> dict:
 @router.get("/api-keys")
 async def list_api_keys(db: DB, user: Auth) -> dict:
     result = await db.execute(
-        select(ApiKey).where(ApiKey.tenant_id == user.tenant_id, ApiKey.is_active == True)  # noqa: E712
+        select(ApiKey)
+        .where(ApiKey.tenant_id == user.tenant_id, ApiKey.is_active == True)  # noqa: E712
         .order_by(ApiKey.created_at.desc())
     )
     return {
         "api_keys": [
-            {"id": str(k.id), "name": k.name, "key_prefix": k.key_prefix, "created_at": k.created_at.isoformat()}
+            {
+                "id": str(k.id),
+                "name": k.name,
+                "key_prefix": k.key_prefix,
+                "created_at": k.created_at.isoformat(),
+            }
             for k in result.scalars().all()
         ]
     }

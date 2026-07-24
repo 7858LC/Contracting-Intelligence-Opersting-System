@@ -4,9 +4,11 @@ Revision ID: 002_complete
 Revises: 001_initial
 Create Date: 2026-07-18
 """
-from alembic import op
+
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+
+from alembic import op
 
 revision = "002_complete"
 down_revision = "001_initial"
@@ -18,8 +20,15 @@ def upgrade() -> None:
     # ── Tenant Invites ────────────────────────────────────────────────────────
     op.create_table(
         "tenant_invites",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("tenant_id", UUID(as_uuid=True), sa.ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")
+        ),
+        sa.Column(
+            "tenant_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("tenants.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("email", sa.String(256), nullable=False),
         sa.Column("role", sa.String(32), default="member"),
         sa.Column("token", sa.String(64), unique=True, nullable=False),
@@ -32,7 +41,9 @@ def upgrade() -> None:
     # ── API Keys ──────────────────────────────────────────────────────────────
     op.create_table(
         "api_keys",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")
+        ),
         sa.Column("tenant_id", UUID(as_uuid=True), nullable=False, index=True),
         sa.Column("user_id", UUID(as_uuid=True), nullable=False),
         sa.Column("name", sa.String(128), nullable=False),
@@ -49,7 +60,9 @@ def upgrade() -> None:
     # ── Bid Decisions ─────────────────────────────────────────────────────────
     op.create_table(
         "bid_decisions",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")
+        ),
         sa.Column("tenant_id", UUID(as_uuid=True), nullable=False),
         sa.Column("opportunity_id", UUID(as_uuid=True), nullable=False),
         sa.Column("opportunity_title", sa.String(512)),
@@ -86,7 +99,9 @@ def upgrade() -> None:
     # ── Capabilities ──────────────────────────────────────────────────────────
     op.create_table(
         "capabilities",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")
+        ),
         sa.Column("tenant_id", UUID(as_uuid=True), nullable=False),
         sa.Column("name", sa.String(256), nullable=False),
         sa.Column("category", sa.String(64), nullable=False),
@@ -118,7 +133,9 @@ def upgrade() -> None:
     # ── Capability Gaps ───────────────────────────────────────────────────────
     op.create_table(
         "capability_gaps",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")
+        ),
         sa.Column("tenant_id", UUID(as_uuid=True), nullable=False),
         sa.Column("opportunity_id", sa.String(64)),
         sa.Column("gap_name", sa.String(256), nullable=False),
@@ -145,7 +162,9 @@ def upgrade() -> None:
     # ── Past Performances ─────────────────────────────────────────────────────
     op.create_table(
         "past_performances",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")
+        ),
         sa.Column("tenant_id", UUID(as_uuid=True), nullable=False),
         sa.Column("contract_number", sa.String(64)),
         sa.Column("contract_title", sa.String(512), nullable=False),
@@ -179,7 +198,9 @@ def upgrade() -> None:
     # ── Teaming Recommendations ───────────────────────────────────────────────
     op.create_table(
         "teaming_recommendations",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")
+        ),
         sa.Column("tenant_id", UUID(as_uuid=True), nullable=False),
         sa.Column("opportunity_id", UUID(as_uuid=True), nullable=False),
         sa.Column("prime_or_sub", sa.String(16), default="prime"),
@@ -206,7 +227,9 @@ def upgrade() -> None:
     # ── Teaming Partners ──────────────────────────────────────────────────────
     op.create_table(
         "teaming_partners",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")
+        ),
         sa.Column("tenant_id", UUID(as_uuid=True), nullable=False),
         sa.Column("company_name", sa.String(256), nullable=False),
         sa.Column("cage_code", sa.String(8)),
@@ -237,7 +260,9 @@ def upgrade() -> None:
     # ── Competitors ───────────────────────────────────────────────────────────
     op.create_table(
         "competitors",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")
+        ),
         sa.Column("tenant_id", UUID(as_uuid=True), nullable=False),
         sa.Column("company_name", sa.String(256), nullable=False),
         sa.Column("cage_code", sa.String(8)),
@@ -270,7 +295,9 @@ def upgrade() -> None:
     # ── Competitor Intelligence ───────────────────────────────────────────────
     op.create_table(
         "competitor_intelligence",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")
+        ),
         sa.Column("tenant_id", UUID(as_uuid=True), nullable=False),
         sa.Column("competitor_id", UUID(as_uuid=True), nullable=False),
         sa.Column("opportunity_id", UUID(as_uuid=True)),
@@ -295,14 +322,21 @@ def upgrade() -> None:
     # ── Knowledge Chunks ──────────────────────────────────────────────────────
     op.create_table(
         "knowledge_chunks",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")
+        ),
         sa.Column("tenant_id", UUID(as_uuid=True), nullable=False),
-        sa.Column("document_id", UUID(as_uuid=True), sa.ForeignKey("knowledge_documents.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "document_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("knowledge_documents.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("chunk_index", sa.Integer(), nullable=False),
         sa.Column("text", sa.Text(), nullable=False),
         sa.Column("qdrant_point_id", sa.String(64)),
         sa.Column("token_count", sa.Integer()),
-        sa.Column("metadata", JSONB(), default={}),
+        sa.Column("extra_metadata", JSONB(), default={}),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("NOW()")),
     )
     op.create_index("idx_kc_document", "knowledge_chunks", ["document_id"])
@@ -315,7 +349,9 @@ def upgrade() -> None:
     # ── Agent Runs ────────────────────────────────────────────────────────────
     op.create_table(
         "agent_runs",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")
+        ),
         sa.Column("tenant_id", UUID(as_uuid=True), nullable=False),
         sa.Column("agent_type", sa.String(64), nullable=False),
         sa.Column("agent_name", sa.String(128), nullable=False),
@@ -336,7 +372,9 @@ def upgrade() -> None:
         sa.Column("completed_at", sa.DateTime(timezone=True)),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("NOW()")),
     )
-    op.create_index("idx_ar_tenant_resource", "agent_runs", ["tenant_id", "resource_type", "resource_id"])
+    op.create_index(
+        "idx_ar_tenant_resource", "agent_runs", ["tenant_id", "resource_type", "resource_id"]
+    )
     op.execute("ALTER TABLE agent_runs ENABLE ROW LEVEL SECURITY")
     op.execute("""
         CREATE POLICY tenant_isolation ON agent_runs
@@ -346,9 +384,16 @@ def upgrade() -> None:
     # ── Agent Run Steps ───────────────────────────────────────────────────────
     op.create_table(
         "agent_run_steps",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")
+        ),
         sa.Column("tenant_id", UUID(as_uuid=True), nullable=False),
-        sa.Column("agent_run_id", UUID(as_uuid=True), sa.ForeignKey("agent_runs.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "agent_run_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("agent_runs.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("step_number", sa.Integer(), nullable=False),
         sa.Column("step_name", sa.String(128)),
         sa.Column("agent_name", sa.String(128)),
@@ -370,7 +415,9 @@ def upgrade() -> None:
     # ── Invoices ──────────────────────────────────────────────────────────────
     op.create_table(
         "invoices",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")
+        ),
         sa.Column("tenant_id", UUID(as_uuid=True), nullable=False),
         sa.Column("stripe_invoice_id", sa.String(128), unique=True),
         sa.Column("amount_due", sa.Integer(), nullable=False),

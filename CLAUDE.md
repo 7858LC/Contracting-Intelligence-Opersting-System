@@ -50,14 +50,22 @@ Copy `.env.example` to `.env` and populate. Required:
 - **Evidence-first AI** — every recommendation includes confidence score, evidence, regulatory citation, assumptions, and alternatives. Never surface AI outputs without this structure.
 - **Per-tenant vector isolation** — each tenant gets a private Qdrant collection. Zero cross-contamination.
 - **Hierarchical agent orchestration** — CEO Agent → Directors → Analysts. Users see only recommendations, never agent internals.
-- **Row-level security** — PostgreSQL RLS on every tenant-scoped table. Enforce via `app.current_tenant` session variable.
+- **Row-level security** — PostgreSQL RLS on every tenant-scoped table. Enforce via `app.current_tenant` session variable, set once in `get_current_user`/`get_current_platform_admin` (`core/dependencies.py`) directly on the request's cached DB session — safe to declare `db`/`user` in any order in a route signature. A background task or script outside that dependency chain (Celery tasks, `scripts/*.py`) must set it itself before any RLS-scoped query, e.g. `SELECT set_config('app.current_tenant', :tenant_id, false)`; nothing sets it for you.
+- **Commercial SaaS, not a federal system of record** — CIOS serves government contractors, not government agencies. It derives decision intelligence from public procurement data and customer-owned inputs only; it never stores or processes CUI, classified information, or export-controlled technical data. Customer strategy belongs to the customer, government data stays with the government.
+- **Landlord/tenant separation** — platform operators (`PlatformAdmin`) are a distinct identity space from tenant users, never tenant-scoped and never RLS-subject. Landlord JWTs carry a `scope: platform_admin` claim that tenant tokens never have (and vice versa for `tenant_id`), so the two audiences are never interchangeable. No self-service signup for landlord accounts — provision via `apps/api/scripts/create_platform_admin.py`. Landlord API lives under `/api/v1/admin`, console UI under `apps/web/src/app/admin`; every tenant-ops action (suspend/activate) writes an `AuditLog` row attributed to the acting admin.
 
-## Testing
+## Testing Discipline
+
+This project runs on the Damascus Protocol — schema drift, wiring bugs, and cross-module breakage get caught automatically as the codebase evolves, instead of accumulating silently until one big pre-launch sweep finds them all at once (which is exactly what happened here once: a dependency-order bug, a response-type mismatch, and 14 drifted tables all shipped clean through review and sat live until the first real end-to-end test pass hit them). Four mechanisms carry that going forward: the `alembic check` CI gate below, the module checklist's step 8, the shared fixtures in `tests/integration/conftest.py`, and a weekly automated regression sweep against a real Postgres + Redis. None of these are ceremony. Don't skip or bypass one because a change feels too small to bother — that exact reasoning is how each of the three bugs above shipped in the first place.
 
 ```bash
 cd apps/api
 pytest tests/ -v --cov=cios
 ```
+
+`tests/integration/` requires a real, migrated Postgres + Redis — `docker compose -f infra/docker/docker-compose.yml up postgres redis` locally, same setup CI uses. These can't run against a mock; that's the point (see `tests/integration/conftest.py`). Two things that bite new integration tests:
+- Anything hitting `/auth/register` or `/auth/login` needs a distinct `X-Forwarded-For` header per call, or the shared-IP test harness trips the endpoint's own rate limiter (`core/rate_limit.py`).
+- After changing a model, run `alembic check` (also gates CI) before writing a migration by hand — it tells you exactly what's out of sync instead of finding out from a 500 later.
 
 ## AI Models
 
@@ -75,6 +83,7 @@ pytest tests/ -v --cov=cios
 5. Create agent in `apps/api/cios/agents/`
 6. Create Celery task in `apps/api/cios/tasks/`
 7. Add frontend page in `apps/web/src/app/dashboard/`
+8. Add at least one smoke test in `apps/api/tests/integration/` exercising the new endpoint(s) through the real HTTP/DB/Redis stack (see `test_module_smoke.py`) — this is the tier that catches wiring bugs (broken imports, missing router registration, model/migration drift) that unit tests and manual testing both miss.
 
 ## Security Rules
 

@@ -1,4 +1,5 @@
 """USASpending.gov scanner — contract award signal detection."""
+
 from __future__ import annotations
 
 import logging
@@ -6,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from cios.models.pir import SignalSource, SignalType
+
 from .base import BaseScanner, ScannedSignal, ScanResult
 
 logger = logging.getLogger(__name__)
@@ -14,21 +16,21 @@ _BASE = "https://api.usaspending.gov/api/v2"
 
 # Contract type code → signal type
 _AWARD_TYPE_SIGNAL: dict[str, str] = {
-    "A": SignalType.FEDERAL_CONTRACT_AWARD,   # BPA Call
-    "B": SignalType.FEDERAL_CONTRACT_AWARD,   # Purchase Order
-    "C": SignalType.FEDERAL_CONTRACT_AWARD,   # Delivery Order
-    "D": SignalType.IDIQ_AWARD,              # Definitive Contract
+    "A": SignalType.FEDERAL_CONTRACT_AWARD,  # BPA Call
+    "B": SignalType.FEDERAL_CONTRACT_AWARD,  # Purchase Order
+    "C": SignalType.FEDERAL_CONTRACT_AWARD,  # Delivery Order
+    "D": SignalType.IDIQ_AWARD,  # Definitive Contract
     "E": SignalType.FEDERAL_CONTRACT_AWARD,
     "F": SignalType.FEDERAL_CONTRACT_AWARD,
-    "G": SignalType.GWAC_AWARD,              # Grants/cooperative
-    "IDV_A": SignalType.IDIQ_AWARD,          # GWAC
-    "IDV_B": SignalType.IDIQ_AWARD,          # IDC
-    "IDV_B_A": SignalType.IDIQ_AWARD,        # BPA
-    "IDV_B_B": SignalType.IDIQ_AWARD,        # BPA
-    "IDV_B_C": SignalType.IDIQ_AWARD,        # BPA
-    "IDV_C": SignalType.GWAC_AWARD,          # FSS
-    "IDV_D": SignalType.IDIQ_AWARD,          # AOA
-    "IDV_E": SignalType.IDIQ_AWARD,          # BOA
+    "G": SignalType.GWAC_AWARD,  # Grants/cooperative
+    "IDV_A": SignalType.IDIQ_AWARD,  # GWAC
+    "IDV_B": SignalType.IDIQ_AWARD,  # IDC
+    "IDV_B_A": SignalType.IDIQ_AWARD,  # BPA
+    "IDV_B_B": SignalType.IDIQ_AWARD,  # BPA
+    "IDV_B_C": SignalType.IDIQ_AWARD,  # BPA
+    "IDV_C": SignalType.GWAC_AWARD,  # FSS
+    "IDV_D": SignalType.IDIQ_AWARD,  # AOA
+    "IDV_E": SignalType.IDIQ_AWARD,  # BOA
 }
 
 
@@ -126,23 +128,25 @@ class USASpendingScanner(BaseScanner):
             SignalType.IDIQ_AWARD: "IDIQ Award",
         }.get(sig_type, "Federal Contract Award")
 
-        result.add_signal(ScannedSignal(
-            signal_type=sig_type,
-            source=self.source_name,
-            title=f"{recipient} — {type_label} ({agency})",
-            description=(
-                f"Award: ${amount:,.0f} from {agency}. "
-                f"{description[:200] if description else ''}"
-            ).strip(),
-            source_url=f"https://www.usaspending.gov/award/{award.get('Award ID', '')}",
-            detected_at=detected_at,
-            raw_data=award,
-            company_name=recipient,
-            samgov_uei=uei,
-            naics_codes=[str(naics)] if naics else [],
-            headquarters_city=city,
-            headquarters_state=state,
-        ))
+        result.add_signal(
+            ScannedSignal(
+                signal_type=sig_type,
+                source=self.source_name,
+                title=f"{recipient} — {type_label} ({agency})",
+                description=(
+                    f"Award: ${amount:,.0f} from {agency}. "
+                    f"{description[:200] if description else ''}"
+                ).strip(),
+                source_url=f"https://www.usaspending.gov/award/{award.get('Award ID', '')}",
+                detected_at=detected_at,
+                raw_data=award,
+                company_name=recipient,
+                samgov_uei=uei,
+                naics_codes=[str(naics)] if naics else [],
+                headquarters_city=city,
+                headquarters_state=state,
+            )
+        )
 
     async def _scan_recompetes(self, result: ScanResult, days_back: int) -> None:
         """Detect companies that recently won recompete awards (same awardee, same PIID base)."""
@@ -150,11 +154,20 @@ class USASpendingScanner(BaseScanner):
         start_date = (datetime.now(UTC) - timedelta(days=days_back)).strftime("%Y-%m-%d")
         payload = {
             "filters": {
-                "time_period": [{"start_date": start_date, "end_date": datetime.now(UTC).strftime("%Y-%m-%d")}],
+                "time_period": [
+                    {"start_date": start_date, "end_date": datetime.now(UTC).strftime("%Y-%m-%d")}
+                ],
                 "award_type_codes": ["A", "B", "C", "D"],
                 "program_activities": [],
             },
-            "fields": ["Recipient Name", "recipient_uei", "Award Amount", "Awarding Agency", "Action Date", "NAICS Code"],
+            "fields": [
+                "Recipient Name",
+                "recipient_uei",
+                "Award Amount",
+                "Awarding Agency",
+                "Action Date",
+                "NAICS Code",
+            ],
             "sort": "Action Date",
             "order": "desc",
             "limit": 50,
@@ -189,17 +202,22 @@ class USASpendingScanner(BaseScanner):
                 except (ValueError, TypeError):
                     detected_at = datetime.now(UTC)
 
-                result.add_signal(ScannedSignal(
-                    signal_type=SignalType.CONTRACT_RECOMPETE,
-                    source=self.source_name,
-                    title=f"{recipient} — High-Value Recompete Signal ({agency})",
-                    description=f"Award ${amount:,.0f} from {agency} — indicative of active contract pursuit.",
-                    source_url="https://www.usaspending.gov/search",
-                    detected_at=detected_at,
-                    raw_data=award,
-                    company_name=recipient,
-                    samgov_uei=uei,
-                    naics_codes=[str(naics)] if naics else [],
-                ))
+                result.add_signal(
+                    ScannedSignal(
+                        signal_type=SignalType.CONTRACT_RECOMPETE,
+                        source=self.source_name,
+                        title=f"{recipient} — High-Value Recompete Signal ({agency})",
+                        description=(
+                            f"Award ${amount:,.0f} from {agency} — "
+                            "indicative of active contract pursuit."
+                        ),
+                        source_url="https://www.usaspending.gov/search",
+                        detected_at=detected_at,
+                        raw_data=award,
+                        company_name=recipient,
+                        samgov_uei=uei,
+                        naics_codes=[str(naics)] if naics else [],
+                    )
+                )
             except Exception:
                 continue

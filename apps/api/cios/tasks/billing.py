@@ -1,6 +1,9 @@
 """Stripe billing event handler."""
+
 import asyncio
+
 import structlog
+
 from cios.tasks import celery_app
 
 log = structlog.get_logger(__name__)
@@ -8,15 +11,14 @@ log = structlog.get_logger(__name__)
 
 @celery_app.task(bind=True, max_retries=3)
 def handle_stripe_event(self, event_type: str, event_data: dict) -> dict:
-    return asyncio.get_event_loop().run_until_complete(
-        _handle_async(event_type, event_data)
-    )
+    return asyncio.get_event_loop().run_until_complete(_handle_async(event_type, event_data))
 
 
 async def _handle_async(event_type: str, event_data: dict) -> dict:
+    from sqlalchemy import select
+
     from cios.core.database import async_session_factory
     from cios.models.subscription import Subscription
-    from sqlalchemy import select
 
     log.info("stripe_event", type=event_type)
 
@@ -33,9 +35,11 @@ async def _handle_async(event_type: str, event_data: dict) -> dict:
                 await db.commit()
 
     elif event_type == "invoice.payment_succeeded":
-        from cios.models.subscription import Invoice
         import uuid
-        from datetime import datetime, UTC
+        from datetime import UTC, datetime
+
+        from cios.models.subscription import Invoice
+
         async with async_session_factory() as db:
             tenant_id = event_data.get("metadata", {}).get("tenant_id")
             if tenant_id:

@@ -1,5 +1,7 @@
 """Tests for security utilities."""
+
 import os
+
 import pytest
 
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://user:pass@localhost/test")
@@ -8,13 +10,13 @@ os.environ.setdefault("ENCRYPTION_KEY", "0" * 64)
 os.environ.setdefault("ANTHROPIC_API_KEY", "test_key")
 
 from cios.core.security import (
+    TenantEncryption,
     create_access_token,
     decode_token,
-    hash_password,
-    verify_password,
     generate_api_key,
+    hash_password,
     verify_api_key,
-    TenantEncryption,
+    verify_password,
 )
 
 
@@ -27,7 +29,13 @@ def test_password_round_trip():
 
 
 def test_jwt_round_trip():
-    payload = {"sub": "user-123", "tenant_id": "tenant-456", "email": "test@example.com", "role": "admin", "plan": "pro"}
+    payload = {
+        "sub": "user-123",
+        "tenant_id": "tenant-456",
+        "email": "test@example.com",
+        "role": "admin",
+        "plan": "pro",
+    }
     token = create_access_token(payload)
     decoded = decode_token(token)
     assert decoded["sub"] == "user-123"

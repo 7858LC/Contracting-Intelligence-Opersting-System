@@ -4,7 +4,7 @@ import { ArrowRight, BarChart3, BookOpen, Brain, Lock, Radio, Shield, Target, Za
 import { buildPageMetadata } from "@/lib/metadata";
 import { breadcrumbSchema, productSchema } from "@/lib/jsonld";
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://uzimaamka.com";
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 export const metadata: Metadata = buildPageMetadata({
   title: "CIOS™ — Contract Intelligence Operating System",

@@ -1,17 +1,17 @@
 """Capability and Gap Analysis models — Modules 5 & 15."""
+
 from sqlalchemy import Boolean, Float, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from cios.core.database import Base
-from .base import UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin
+
+from .base import EvidenceMixin, TenantMixin, TimestampMixin, UUIDMixin
 
 
 class Capability(Base, UUIDMixin, TimestampMixin, TenantMixin):
     __tablename__ = "capabilities"
-    __table_args__ = (
-        Index("idx_cap_tenant_category", "tenant_id", "category"),
-    )
+    __table_args__ = (Index("idx_cap_tenant_category", "tenant_id", "category"),)
 
     name: Mapped[str] = mapped_column(String(256), nullable=False)
     category: Mapped[str] = mapped_column(String(64), nullable=False)
