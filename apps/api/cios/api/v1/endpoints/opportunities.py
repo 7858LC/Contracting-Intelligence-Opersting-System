@@ -1,6 +1,7 @@
 """Opportunity Intelligence API — Module 1."""
 
 import uuid
+from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -60,7 +61,7 @@ class OpportunityResponse(BaseModel):
     set_aside_type: str | None
     incumbent: str | None
     source: str
-    created_at: str
+    created_at: datetime
 
     model_config = {"from_attributes": True}
 
