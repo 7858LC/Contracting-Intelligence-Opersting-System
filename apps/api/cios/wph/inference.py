@@ -21,6 +21,7 @@ from .schemas import (
     ExtractedSignal,
     InferredAttribute,
     ShapingRiskFlag,
+    TaskOrderFairOpportunityFlag,
     VehicleContestabilityFlag,
     WinningProfile,
 )
@@ -132,6 +133,7 @@ class AttributeInferenceEngine:
         unknowns = self._package_unknowns(signals, attributes)
         shaping_risk = self._shaping_risk(signals)
         vehicle_contestability = self._vehicle_contestability(signals)
+        task_order_fair_opportunity = self._task_order_fair_opportunity(signals)
         return WinningProfile(
             summary=summary,
             overall_confidence=overall_conf,
@@ -140,6 +142,7 @@ class AttributeInferenceEngine:
             unknown_factors=unknowns,
             shaping_risk=shaping_risk,
             vehicle_contestability=vehicle_contestability,
+            task_order_fair_opportunity=task_order_fair_opportunity,
         )
 
     # ── Component computations ───────────────────────────────────────────────────
@@ -386,6 +389,95 @@ class AttributeInferenceEngine:
             narrow_signal_count=n_narrow,
             open_evidence=open_evidence,
             narrow_evidence=narrow_evidence,
+            source_refs=source_refs,
+            narrative=narrative,
+        )
+
+    @staticmethod
+    def _task_order_fair_opportunity(
+        signals: list[ExtractedSignal],
+    ) -> TaskOrderFairOpportunityFlag:
+        """Task-order-level read: is this task order being openly competed among
+        IDIQ/GWAC/MAC awardees via fair opportunity, or directed/sole-sourced under
+        a FAR 16.505(b)(2) exception?
+
+        Layer (b) of vehicle contestability — a different question from
+        ``_vehicle_contestability`` (layer (a): is the base vehicle's own seat
+        contestable). Never folded into the weighted attribute average — see
+        ``TaskOrderFairOpportunityFlag`` docstring for why that matters.
+        """
+        competed_cat = SignalCategory.TASK_ORDER_FAIR_OPPORTUNITY.value
+        directed_cat = SignalCategory.TASK_ORDER_DIRECTED_AWARD.value
+        competed_hits = [s for s in signals if s.category == competed_cat]
+        directed_hits = [s for s in signals if s.category == directed_cat]
+
+        if not competed_hits and not directed_hits:
+            return TaskOrderFairOpportunityFlag(
+                fair_opportunity_status="unknown",
+                narrative=(
+                    "No language addressing fair-opportunity competition vs. a directed "
+                    "award was found in the evidence reviewed. This does not mean the task "
+                    "order is competed or directed — only that the written record contains "
+                    "no textual signal either way. If this evidence package concerns the "
+                    "base vehicle itself rather than a task order under it, this read does "
+                    "not apply."
+                ),
+            )
+
+        top_competed = sorted(competed_hits, key=lambda s: (s.strength, s.confidence), reverse=True)
+        top_directed = sorted(directed_hits, key=lambda s: (s.strength, s.confidence), reverse=True)
+        n_competed, n_directed = len(top_competed), len(top_directed)
+
+        if n_directed and not n_competed:
+            status = "directed"
+        elif n_competed and not n_directed:
+            status = "competed"
+        elif n_directed > n_competed:
+            status = "directed" if n_directed >= n_competed * 2 else "mixed"
+        elif n_competed > n_directed:
+            status = "competed" if n_competed >= n_directed * 2 else "mixed"
+        else:
+            status = "mixed"
+
+        competed_evidence = [
+            {"text": s.evidence_text, "source": s.source_ref or s.source_document_type}
+            for s in top_competed[:4]
+        ]
+        directed_evidence = [
+            {"text": s.evidence_text, "source": s.source_ref or s.source_document_type}
+            for s in top_directed[:4]
+        ]
+        source_refs = sorted({s.source_document_type for s in competed_hits + directed_hits})
+
+        if status == "competed":
+            narrative = (
+                f"{n_competed} passage(s) describe an openly competed task order under FAR "
+                f'16.505(b) fair opportunity (e.g., "{top_competed[0].evidence_text[:120]}"). '
+                "B&P investment aimed at winning this task order in open competition has a "
+                "plausible path to an award."
+            )
+        elif status == "directed":
+            narrative = (
+                f"{n_directed} passage(s) describe a task order directed or sole-sourced under "
+                f'a fair-opportunity exception (e.g., "{top_directed[0].evidence_text[:120]}"). '
+                "B&P aimed at winning this task order in open competition is unlikely to pay "
+                "off — the record reads as already directed elsewhere. Confirm directly with "
+                "the contracting office before committing capture resources."
+            )
+        else:
+            narrative = (
+                f"Evidence is mixed: {n_competed} passage(s) suggest fair-opportunity "
+                f"competition and {n_directed} passage(s) suggest a directed award. The "
+                "written record does not resolve cleanly in either direction — confirm "
+                "directly with the contracting office before committing B&P."
+            )
+
+        return TaskOrderFairOpportunityFlag(
+            fair_opportunity_status=status,
+            competed_signal_count=n_competed,
+            directed_signal_count=n_directed,
+            competed_evidence=competed_evidence,
+            directed_evidence=directed_evidence,
             source_refs=source_refs,
             narrative=narrative,
         )

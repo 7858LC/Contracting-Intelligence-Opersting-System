@@ -121,8 +121,7 @@ class VehicleContestabilityFlag:
     inside ordinary evaluation-factor math. Only meaningful when the evidence
     package concerns a contract vehicle itself (e.g. an IDIQ/GWAC/MAC
     solicitation or on-ramp announcement) rather than a task order under one
-    already held — task-order-level fair-opportunity/logical-follow-on signals
-    are a separate, not-yet-built read.
+    already held — for that, see ``TaskOrderFairOpportunityFlag``.
     """
 
     contestability: str = "unknown"  # open | limited | narrow | unknown
@@ -146,6 +145,46 @@ class VehicleContestabilityFlag:
 
 
 @dataclass
+class TaskOrderFairOpportunityFlag:
+    """Task-order-level read of whether a task order under an existing
+    IDIQ/GWAC/MAC is being openly competed among awardees via FAR 16.505(b)
+    fair opportunity, or directed/sole-sourced to a specific firm under a
+    16.505(b)(2) exception (logical follow-on, urgency, only-one-capable, etc.).
+
+    This is layer (b) of contract-vehicle contestability — deliberately a
+    different question from ``VehicleContestabilityFlag`` (layer (a): is the
+    base vehicle's own seat contestable). A firm can hold a seat on a wide-open
+    vehicle and still see every task order under it directed to the incumbent,
+    or hold a seat on a narrow/closed vehicle and still win an openly-competed
+    task order. Kept separate from ``WinningProfile.attributes`` for the same
+    reason as ``ShapingRiskFlag``/``VehicleContestabilityFlag``: folding a
+    "this task order may not be winnable regardless of proposal quality" read
+    into the weighted attribute average would bury it inside ordinary
+    evaluation-factor math. Only meaningful when the evidence package concerns
+    a task order under an existing vehicle rather than the base vehicle itself.
+    """
+
+    fair_opportunity_status: str = "unknown"  # competed | directed | mixed | unknown
+    competed_signal_count: int = 0
+    directed_signal_count: int = 0
+    competed_evidence: list[dict] = field(default_factory=list)  # [{text, source}]
+    directed_evidence: list[dict] = field(default_factory=list)  # [{text, source}]
+    source_refs: list[str] = field(default_factory=list)
+    narrative: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "fair_opportunity_status": self.fair_opportunity_status,
+            "competed_signal_count": self.competed_signal_count,
+            "directed_signal_count": self.directed_signal_count,
+            "competed_evidence": self.competed_evidence,
+            "directed_evidence": self.directed_evidence,
+            "source_refs": self.source_refs,
+            "narrative": self.narrative,
+        }
+
+
+@dataclass
 class WinningProfile:
     summary: str
     overall_confidence: float  # 0–100
@@ -155,6 +194,9 @@ class WinningProfile:
     shaping_risk: ShapingRiskFlag = field(default_factory=ShapingRiskFlag)
     vehicle_contestability: VehicleContestabilityFlag = field(
         default_factory=VehicleContestabilityFlag
+    )
+    task_order_fair_opportunity: TaskOrderFairOpportunityFlag = field(
+        default_factory=TaskOrderFairOpportunityFlag
     )
 
     def to_dict(self) -> dict[str, Any]:
@@ -167,6 +209,7 @@ class WinningProfile:
             "unknown_factors": self.unknown_factors,
             "shaping_risk": self.shaping_risk.to_dict(),
             "vehicle_contestability": self.vehicle_contestability.to_dict(),
+            "task_order_fair_opportunity": self.task_order_fair_opportunity.to_dict(),
         }
 
 

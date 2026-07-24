@@ -53,6 +53,9 @@ class SolicitationCreate(BaseModel):
     incumbent: str | None = None
     rule_pack: str = "us_federal_far"
     opportunity_id: uuid.UUID | None = None
+    is_task_order: bool = False
+    base_vehicle_name: str | None = None
+    base_vehicle_contract_number: str | None = None
 
     @field_validator("rule_pack")
     @classmethod
@@ -79,6 +82,9 @@ class SolicitationResponse(BaseModel):
     estimated_value: float | None
     incumbent: str | None
     rule_pack: str
+    is_task_order: bool
+    base_vehicle_name: str | None
+    base_vehicle_contract_number: str | None
     pipeline_status: str
     document_count: int
     signal_count: int
@@ -224,6 +230,7 @@ async def _profile_payload(db: Any, profile: WPHProfile, tenant_id: uuid.UUID) -
         "unknown_factors": profile.unknown_factors,
         "shaping_risk": profile.shaping_risk,
         "vehicle_contestability": profile.vehicle_contestability,
+        "task_order_fair_opportunity": profile.task_order_fair_opportunity,
         "model_used": profile.model_used,
         "created_at": profile.created_at.isoformat() if profile.created_at else None,
         "attributes": [

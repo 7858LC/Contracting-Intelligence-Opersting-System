@@ -216,6 +216,7 @@ class WPHService:
             unknown_factors=profile.unknown_factors,
             shaping_risk=profile.shaping_risk.to_dict(),
             vehicle_contestability=profile.vehicle_contestability.to_dict(),
+            task_order_fair_opportunity=profile.task_order_fair_opportunity.to_dict(),
             status="generated",
             model_used=model_used,
             confidence_score=profile.overall_confidence / 100.0,
@@ -252,7 +253,12 @@ class WPHService:
     async def load_profile_dataclass(
         self, profile_row: WPHProfile, tenant_id: uuid.UUID, rule_pack: str
     ) -> WinningProfile:
-        from .schemas import InferredAttribute, ShapingRiskFlag, VehicleContestabilityFlag
+        from .schemas import (
+            InferredAttribute,
+            ShapingRiskFlag,
+            TaskOrderFairOpportunityFlag,
+            VehicleContestabilityFlag,
+        )
 
         attr_rows = (
             (
@@ -294,6 +300,7 @@ class WPHService:
             a.key = by_name.get(a.name, a.name.lower().replace(" ", "_"))
         shaping_risk_data = profile_row.shaping_risk or {}
         vehicle_data = profile_row.vehicle_contestability or {}
+        task_order_data = profile_row.task_order_fair_opportunity or {}
         return WinningProfile(
             summary=profile_row.summary or "",
             overall_confidence=profile_row.overall_confidence,
@@ -315,6 +322,15 @@ class WPHService:
                 narrow_evidence=list(vehicle_data.get("narrow_evidence", [])),
                 source_refs=list(vehicle_data.get("source_refs", [])),
                 narrative=vehicle_data.get("narrative", ""),
+            ),
+            task_order_fair_opportunity=TaskOrderFairOpportunityFlag(
+                fair_opportunity_status=task_order_data.get("fair_opportunity_status", "unknown"),
+                competed_signal_count=task_order_data.get("competed_signal_count", 0),
+                directed_signal_count=task_order_data.get("directed_signal_count", 0),
+                competed_evidence=list(task_order_data.get("competed_evidence", [])),
+                directed_evidence=list(task_order_data.get("directed_evidence", [])),
+                source_refs=list(task_order_data.get("source_refs", [])),
+                narrative=task_order_data.get("narrative", ""),
             ),
         )
 

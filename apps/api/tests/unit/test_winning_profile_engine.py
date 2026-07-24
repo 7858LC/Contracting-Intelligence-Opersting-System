@@ -255,6 +255,86 @@ def test_no_vehicle_language_yields_unknown_contestability():
     assert profile.vehicle_contestability.narrative
 
 
+# ── Task-order fair opportunity (layer (b) of IDIQ contestability) ──────────────
+
+
+def test_extraction_classifies_task_order_fair_opportunity_signal():
+    doc = EvidenceDoc(
+        document_type="contract_vehicle",
+        title="Task Order RFP",
+        content="This is a request for task order proposal open to all IDIQ holders.",
+    )
+    signals = SignalExtractor(_TAXONOMY).extract_from_document(doc)
+    categories = {s.category for s in signals}
+    assert SignalCategory.TASK_ORDER_FAIR_OPPORTUNITY.value in categories
+
+
+def test_extraction_classifies_task_order_directed_award_signal():
+    doc = EvidenceDoc(
+        document_type="contract_vehicle",
+        title="Directed Task Order",
+        content="This is a logical follow-on directed task order to the incumbent.",
+    )
+    signals = SignalExtractor(_TAXONOMY).extract_from_document(doc)
+    categories = {s.category for s in signals}
+    assert SignalCategory.TASK_ORDER_DIRECTED_AWARD.value in categories
+
+
+def test_competed_task_order_language_flags_competed_and_not_diluted_into_attributes():
+    docs = [
+        EvidenceDoc(
+            document_type="contract_vehicle",
+            title="Task Order RFP",
+            content=(
+                "This is a task order competition open to all IDIQ holders. A request for "
+                "task order proposal (RFTOP) will be issued to eligible awardees. Past "
+                "performance and technical approach will be evaluated."
+            ),
+        )
+    ]
+    signals = SignalExtractor(_TAXONOMY).extract(docs)
+    profile = AttributeInferenceEngine(_TAXONOMY).build_profile(signals)
+
+    assert profile.task_order_fair_opportunity.fair_opportunity_status == "competed"
+    assert profile.task_order_fair_opportunity.competed_signal_count >= 2
+    assert profile.task_order_fair_opportunity.competed_evidence
+    assert profile.task_order_fair_opportunity.directed_signal_count == 0
+
+    # Task-order language must not affect the weighted attribute average.
+    for attr in profile.attributes:
+        assert SignalCategory.TASK_ORDER_FAIR_OPPORTUNITY.value not in attr.signal_categories
+        assert SignalCategory.TASK_ORDER_DIRECTED_AWARD.value not in attr.signal_categories
+
+
+def test_directed_task_order_language_flags_directed_and_does_not_cross_fire_competed():
+    """Regression: 'fair opportunity exception' must not also match the competed
+    category's 'fair opportunity' keyword — the two are mutually exclusive reads."""
+    docs = [
+        EvidenceDoc(
+            document_type="contract_vehicle",
+            title="Directed Task Order",
+            content=(
+                "This is a logical follow-on directed task order under a fair opportunity "
+                "exception per the justification for exception to fair opportunity (JEFO)."
+            ),
+        )
+    ]
+    signals = SignalExtractor(_TAXONOMY).extract(docs)
+    profile = AttributeInferenceEngine(_TAXONOMY).build_profile(signals)
+
+    assert profile.task_order_fair_opportunity.fair_opportunity_status == "directed"
+    assert profile.task_order_fair_opportunity.directed_signal_count >= 1
+    assert profile.task_order_fair_opportunity.directed_evidence
+    assert profile.task_order_fair_opportunity.competed_signal_count == 0
+
+
+def test_no_task_order_language_yields_unknown_fair_opportunity_status():
+    signals = SignalExtractor(_TAXONOMY).extract(SAMPLE_DOCUMENTS)
+    profile = AttributeInferenceEngine(_TAXONOMY).build_profile(signals)
+    assert profile.task_order_fair_opportunity.fair_opportunity_status == "unknown"
+    assert profile.task_order_fair_opportunity.narrative
+
+
 def test_narrow_vehicle_surfaces_as_high_severity_risk_in_assessment(
     engine: WinningProfileEngine,
 ):

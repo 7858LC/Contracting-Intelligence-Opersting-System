@@ -61,6 +61,8 @@ class SignalCategory(StrEnum):
     SHAPING_RISK = "shaping_risk"
     VEHICLE_OPEN_COMPETITION = "vehicle_open_competition"
     VEHICLE_NARROWING = "vehicle_narrowing"
+    TASK_ORDER_FAIR_OPPORTUNITY = "task_order_fair_opportunity"
+    TASK_ORDER_DIRECTED_AWARD = "task_order_directed_award"
 
 
 class ConfidenceLevel(StrEnum):

@@ -446,6 +446,47 @@ _US_FEDERAL_FAR_SIGNAL_LEXICON: tuple[SignalPattern, ...] = (
         "seat on this vehicle is unlikely to pay off; value would instead concentrate "
         "on task orders under vehicles already held.",
     ),
+    SignalPattern(
+        SignalCategory.TASK_ORDER_FAIR_OPPORTUNITY,
+        (
+            "request for task order proposal",
+            "rftop",
+            "task order request for proposal",
+            "fair opportunity to be considered",
+            "all idiq holders",
+            "competed among awardees",
+            "task order competition",
+            "task order rfp",
+        ),
+        75.0,
+        "Language associated with a task order that will be openly competed among "
+        "eligible IDIQ/GWAC/MAC awardees under FAR 16.505(b) fair opportunity, "
+        "rather than directed to a specific firm. A task-order-level read — only "
+        "meaningful when the evidence package concerns a task order under an "
+        "existing vehicle, not the base vehicle itself.",
+    ),
+    SignalPattern(
+        SignalCategory.TASK_ORDER_DIRECTED_AWARD,
+        (
+            "logical follow-on",
+            "directed task order",
+            "sole-source task order",
+            "fair opportunity exception",
+            "limited-source justification",
+            "unusual and compelling urgency",
+            "only one contractor capable",
+            "bridge task order",
+            "follow-on to the incumbent",
+            "justification for exception to fair opportunity",
+            "jefo",
+        ),
+        75.0,
+        "Language associated with a task order directed or sole-sourced to a "
+        "specific awardee under a FAR 16.505(b)(2) fair-opportunity exception "
+        "rather than openly competed among IDIQ holders. A task-order-level read: "
+        "B&P aimed at winning this task order in open competition is unlikely to "
+        "pay off if the record shows it is being directed elsewhere.",
+    ),
 )
 
 

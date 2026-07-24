@@ -80,6 +80,15 @@ class WPHSolicitation(Base, UUIDMixin, TimestampMixin, TenantMixin):
     incumbent: Mapped[str | None] = mapped_column(String(256))
     rule_pack: Mapped[str] = mapped_column(String(64), default="us_federal_far")
 
+    # Task-order context: this evidence package may concern a task order competed
+    # under an existing IDIQ/GWAC/MAC rather than a full-and-open base solicitation.
+    # Free-text rather than a FK to another WPHSolicitation — the base vehicle
+    # usually isn't itself modeled in WPH, and forcing that link would block a
+    # user who just knows "this TO is under GSA OASIS+ 47QTCA..." from recording it.
+    is_task_order: Mapped[bool] = mapped_column(Boolean, default=False)
+    base_vehicle_name: Mapped[str | None] = mapped_column(String(256))
+    base_vehicle_contract_number: Mapped[str | None] = mapped_column(String(128))
+
     pipeline_status: Mapped[str] = mapped_column(
         String(32), default=PipelineStatus.DRAFT, nullable=False
     )
@@ -192,6 +201,7 @@ class WPHProfile(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin):
     unknown_factors: Mapped[list] = mapped_column(JSONB, default=list)
     shaping_risk: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     vehicle_contestability: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    task_order_fair_opportunity: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
 
     status: Mapped[str] = mapped_column(String(32), default="generated")
     model_used: Mapped[str | None] = mapped_column(String(64))
