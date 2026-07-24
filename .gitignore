@@ -65,3 +65,6 @@ secrets/
 # Logs
 *.log
 logs/
+
+# Local Redis snapshots (dev/test runs)
+*.rdb

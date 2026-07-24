@@ -7,11 +7,11 @@ surface weaknesses/deficiencies, and generate red team commentary.
 Based on FAR 15.305, FAR 15.306 (competitive range), FAR 15.308 (source selection
 decision), and DoD Source Selection Procedures.
 """
+
 from typing import Any
 
 from cios.agents.base import AgentContext, BaseAgent
 from cios.config import settings
-
 
 AWARD_SIMULATOR_SYSTEM_PROMPT = """You are a Source Selection Authority (SSA) simulation engine
 within CIOS. You emulate how government evaluators assess proposals under FAR Part 15.
@@ -79,12 +79,24 @@ OUTPUT FORMAT — respond with ONLY valid JSON, no markdown fences, no prose:
     }
   },
   "strengths": [{"factor": "<name>", "description": "<text>", "citation": "<FAR ref>"}],
-  "weaknesses": [{"factor": "<name>", "description": "<text>", "citation": "<FAR ref>", "severity": "weakness"}],
-  "significant_weaknesses": [{"factor": "<name>", "description": "<text>", "citation": "<FAR ref>", "severity": "significant_weakness"}],
-  "deficiencies": [{"factor": "<name>", "description": "<text>", "citation": "<FAR ref>", "severity": "deficiency"}],
+  "weaknesses": [
+    {"factor": "<name>", "description": "<text>", "citation": "<FAR ref>", "severity": "weakness"}
+  ],
+  "significant_weaknesses": [
+    {"factor": "<name>", "description": "<text>", "citation": "<FAR ref>",
+     "severity": "significant_weakness"}
+  ],
+  "deficiencies": [
+    {"factor": "<name>", "description": "<text>", "citation": "<FAR ref>", "severity": "deficiency"}
+  ],
   "red_team_comments": [{"observation": "<text>", "impact": "<text>", "recommendation": "<text>"}],
-  "suggested_improvements": [{"title": "<short title>", "description": "<text>", "expected_score_impact": "<+N points>", "priority": "<high|medium|low>", "factor": "<factor_name>"}],
-  "rule_citations": [{"regulation": "<FAR|DFARS|etc>", "section": "<section>", "text": "<quoted text>"}],
+  "suggested_improvements": [
+    {"title": "<short title>", "description": "<text>", "expected_score_impact": "<+N points>",
+     "priority": "<high|medium|low>", "factor": "<factor_name>"}
+  ],
+  "rule_citations": [
+    {"regulation": "<FAR|DFARS|etc>", "section": "<section>", "text": "<quoted text>"}
+  ],
   "risks": [{"description": "<risk>", "likelihood": "<high|medium|low>", "mitigation": "<text>"}]
 }"""
 
@@ -105,38 +117,42 @@ class AwardSimulatorAgent(BaseAgent):
 
         evidence_block = self._build_evidence_block(knowledge_context[:8])
 
-        eval_factors_block = "\n".join(
-            f"- {f.get('name', 'Factor')}: Weight {f.get('weight', 1.0)}, Type {f.get('type', 'technical')}"
-            for f in evaluation_factors
-        ) or "Not specified — use standard FAR 15.305 factors"
+        eval_factors_block = (
+            "\n".join(
+                f"- {f.get('name', 'Factor')}: Weight {f.get('weight', 1.0)}, "
+                f"Type {f.get('type', 'technical')}"
+                for f in evaluation_factors
+            )
+            or "Not specified — use standard FAR 15.305 factors"
+        )
 
         user_message = f"""
 SOURCE SELECTION SIMULATION
 ============================
-SOLICITATION: {opportunity_data.get('title', 'Unknown')}
-AGENCY: {opportunity_data.get('agency', 'Unknown')}
-SOLICITATION NUMBER: {opportunity_data.get('solicitation_number', 'Unknown')}
+SOLICITATION: {opportunity_data.get("title", "Unknown")}
+AGENCY: {opportunity_data.get("agency", "Unknown")}
+SOLICITATION NUMBER: {opportunity_data.get("solicitation_number", "Unknown")}
 EVALUATION METHODOLOGY: {evaluation_methodology}
-CONTRACT TYPE: {opportunity_data.get('contract_type', 'Unknown')}
+CONTRACT TYPE: {opportunity_data.get("contract_type", "Unknown")}
 PROCUREMENT RULE PACK: {rule_pack}
 
 EVALUATION FACTORS (in priority order):
 {eval_factors_block}
 
 SOLICITATION REQUIREMENTS SUMMARY:
-{opportunity_data.get('description', 'Not provided')[:2000]}
+{opportunity_data.get("description", "Not provided")[:2000]}
 
 KEY REQUIREMENTS:
-{opportunity_data.get('key_requirements', [])}
+{opportunity_data.get("key_requirements", [])}
 
 OFFEROR PROFILE (from Knowledge Vault):
 {evidence_block}
 
 PROPOSAL CONTENT PROVIDED:
-Technical Volume: {proposal_content.get('technical', 'Not provided')[:1000]}
-Management Volume: {proposal_content.get('management', 'Not provided')[:500]}
-Past Performance: {proposal_content.get('past_performance', 'Not provided')[:500]}
-Price: {proposal_content.get('price', 'Not provided')}
+Technical Volume: {proposal_content.get("technical", "Not provided")[:1000]}
+Management Volume: {proposal_content.get("management", "Not provided")[:500]}
+Past Performance: {proposal_content.get("past_performance", "Not provided")[:500]}
+Price: {proposal_content.get("price", "Not provided")}
 
 ---
 

@@ -1,14 +1,17 @@
 """Tenant, user membership, invites, API keys, and audit logs."""
+
 import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, text
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, text
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from cios.core.database import Base
-from .base import UUIDMixin, TimestampMixin
+
+from .base import TimestampMixin, UUIDMixin
 
 
 class Tenant(Base, UUIDMixin, TimestampMixin):
@@ -35,9 +38,7 @@ class Tenant(Base, UUIDMixin, TimestampMixin):
 
 class TenantMember(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "tenant_members"
-    __table_args__ = (
-        Index("uq_tenant_member", "tenant_id", "user_id", unique=True),
-    )
+    __table_args__ = (Index("uq_tenant_member", "tenant_id", "user_id", unique=True),)
 
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
@@ -45,6 +46,10 @@ class TenantMember(Base, UUIDMixin, TimestampMixin):
     user_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False, index=True)
     email: Mapped[str] = mapped_column(String(256), nullable=False)
     full_name: Mapped[str | None] = mapped_column(String(256))
+    # Nullable: a member row with no hash set has no usable password yet (e.g. an
+    # invited-but-not-yet-accepted seat) and must be rejected at login, not treated
+    # as "no password required."
+    password_hash: Mapped[str | None] = mapped_column(String(256))
     role: Mapped[str] = mapped_column(String(32), default="member")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -55,7 +60,9 @@ class TenantMember(Base, UUIDMixin, TimestampMixin):
 class TenantInvite(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "tenant_invites"
 
-    tenant_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
     email: Mapped[str] = mapped_column(String(256), nullable=False)
     role: Mapped[str] = mapped_column(String(32), default="member")
     token: Mapped[str] = mapped_column(String(256), unique=True, nullable=False)
@@ -80,9 +87,7 @@ class ApiKey(Base, UUIDMixin, TimestampMixin):
 
 class AuditLog(Base, UUIDMixin):
     __tablename__ = "audit_logs"
-    __table_args__ = (
-        Index("idx_audit_tenant_created", "tenant_id", "created_at"),
-    )
+    __table_args__ = (Index("idx_audit_tenant_created", "tenant_id", "created_at"),)
 
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
@@ -92,7 +97,7 @@ class AuditLog(Base, UUIDMixin):
     resource_type: Mapped[str] = mapped_column(String(64), nullable=False)
     resource_id: Mapped[str | None] = mapped_column(String(64))
     changes: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
-    metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    extra_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     ip_address: Mapped[str | None] = mapped_column(String(45))
     user_agent: Mapped[str | None] = mapped_column(String(512))
     created_at: Mapped[datetime] = mapped_column(
@@ -100,3 +105,24 @@ class AuditLog(Base, UUIDMixin):
     )
 
     tenant: Mapped["Tenant"] = relationship(back_populates="audit_logs")
+
+
+class PlatformAdmin(Base, UUIDMixin, TimestampMixin):
+    """A landlord/platform-operator identity — deliberately separate from
+    ``TenantMember``. Not scoped to any tenant, carries no ``tenant_id``, and is
+    never subject to tenant RLS. Distinct from the tenant-auth JWT audience (see
+    ``core/security.py``'s ``scope`` claim) so a stolen tenant token can never be
+    replayed as landlord access, or vice versa. There is no self-service signup —
+    accounts are provisioned via ``scripts/create_platform_admin.py``.
+    """
+
+    __tablename__ = "platform_admins"
+
+    email: Mapped[str] = mapped_column(String(256), unique=True, nullable=False, index=True)
+    password_hash: Mapped[str] = mapped_column(String(256), nullable=False)
+    full_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    # "support" — read-only tenant visibility for troubleshooting.
+    # "admin" — read-only plus tenant ops actions (suspend/activate).
+    role: Mapped[str] = mapped_column(String(32), default="support")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -1,7 +1,8 @@
 """CIOS FastAPI application entry point."""
+
 import time
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 import structlog
 from fastapi import FastAPI, Request, Response
@@ -9,11 +10,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 
+from cios.api.v1.router import api_router
 from cios.config import settings
-from cios.core.database import engine, init_db
+from cios.core.database import engine
 from cios.core.redis import redis_client
 from cios.core.telemetry import setup_telemetry
-from cios.api.v1.router import api_router
 
 log = structlog.get_logger(__name__)
 
@@ -21,7 +22,6 @@ log = structlog.get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     log.info("CIOS API starting", env=settings.app_env, version="1.0.0")
-    await init_db()
     await redis_client.ping()
     log.info("CIOS API ready")
     yield

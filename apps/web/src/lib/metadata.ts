@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 const BASE_URL =
-  process.env.NEXT_PUBLIC_APP_URL || "https://uzimaamka.com";
+  process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 interface PageMetadataOptions {
   title: string;

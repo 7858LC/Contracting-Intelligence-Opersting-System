@@ -1,10 +1,12 @@
 """Past Performance Intelligence model — Module 6."""
+
 from sqlalchemy import Boolean, Float, Index, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from cios.core.database import Base
-from .base import UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin
+
+from .base import EvidenceMixin, TenantMixin, TimestampMixin, UUIDMixin
 
 
 class PastPerformance(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin):

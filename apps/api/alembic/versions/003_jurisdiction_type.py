@@ -4,8 +4,10 @@ Revision ID: 003_jurisdiction_type
 Revises: 002_complete
 Create Date: 2026-07-19
 """
-from alembic import op
+
 import sqlalchemy as sa
+
+from alembic import op
 
 revision = "003_jurisdiction_type"
 down_revision = "002_complete"

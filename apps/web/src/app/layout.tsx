@@ -8,7 +8,7 @@ import "@/styles/globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const jetbrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains" });
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://uzimaamka.com";
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 export const metadata: Metadata = {
   title: {

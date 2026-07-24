@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CIOS Target Firm Monitor</title>
+<style>
+:root {
+  --bg:       #0d1117;
+  --surface:  #161b22;
+  --border:   #30363d;
+  --blue:     #1f6feb;
+  --blue-lt:  #58a6ff;
+  --green:    #3fb950;
+  --amber:    #d29922;
+  --red:      #f85149;
+  --text:     #c9d1d9;
+  --muted:    #8b949e;
+  --radius:   6px;
+  --font:     'JetBrains Mono', 'Courier New', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; min-height: 100vh; }
+a { color: var(--blue-lt); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.topbar {
+  display: flex; align-items: center; gap: 1.5rem;
+  padding: 0 1.5rem; height: 48px;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 100;
+}
+.topbar-brand { font-weight: 700; color: var(--blue-lt); letter-spacing: 0.05em; }
+.topbar-sub { font-size: 12px; color: var(--muted); flex: 1; }
+
+.container { max-width: 1300px; margin: 0 auto; padding: 1.5rem; }
+
+.stat-row { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.stat-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 1rem 1.25rem; min-width: 160px; flex: 1;
+}
+.stat-card .num { font-size: 24px; font-weight: 700; color: var(--blue-lt); }
+.stat-card .label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  margin-bottom: 1.5rem; overflow: hidden;
+}
+.card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+}
+.card-header h2 { font-size: 15px; font-weight: 600; }
+.card-body { padding: 0; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 6px 14px; border-radius: var(--radius); font-family: var(--font);
+  font-size: 13px; cursor: pointer; border: 1px solid transparent;
+}
+.btn-primary { background: var(--blue); color: #fff; }
+.btn-primary:hover { opacity: 0.85; }
+
+.table-wrap { overflow-x: auto; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table th {
+  text-align: left; padding: 8px 12px; color: var(--muted); font-weight: 500;
+  border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+.data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+.chip { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.chip-new  { background: rgba(63,185,80,0.2);  color: var(--green); }
+.chip-mod  { background: rgba(210,153,34,0.2); color: var(--amber); }
+.muted { color: var(--muted); }
+.empty { padding: 2rem; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<nav class="topbar">
+  <span class="topbar-brand">CIOS TARGET FIRM MONITOR</span>
+  <span class="topbar-sub">USASpending.gov award tracking for CIOS platform outreach targets</span>
+  <form method="post" action="{{ url_for('run_check') }}">
+    <button class="btn btn-primary" type="submit">Run Check Now</button>
+  </form>
+</nav>
+
+<main class="container">
+
+  <div class="stat-row">
+    <div class="stat-card"><div class="num">{{ stats.total_firms }}</div><div class="label">Firms Tracked</div></div>
+    <div class="stat-card"><div class="num">{{ stats.naics_resolved }}</div><div class="label">NAICS Resolved</div></div>
+    <div class="stat-card"><div class="num">{{ stats.flagged_events }}</div><div class="label">Flagged Events (all time)</div></div>
+    <div class="stat-card"><div class="num">{{ stats.last_checked }}</div><div class="label">Last Checked</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>Recent Flags</h2></div>
+    <div class="card-body">
+      {% if flags %}
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Flagged</th><th>Type</th><th>Company</th><th>Award ID</th>
+              <th>Agency</th><th>Amount</th><th>NAICS</th><th>Start Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in flags %}
+            <tr>
+              <td class="muted">{{ f.flagged_at }}</td>
+              <td>
+                {% if f.event_type == 'NEW_AWARD' %}
+                  <span class="chip chip-new">NEW</span>
+                {% else %}
+                  <span class="chip chip-mod">MODIFIED</span>
+                {% endif %}
+              </td>
+              <td>{{ f.company }}</td>
+              <td>{{ f.award_id }}</td>
+              <td>{{ f.agency }}</td>
+              <td>{{ "${:,.0f}".format(f.award_amount|float) if f.award_amount else "—" }}</td>
+              <td class="muted">{{ f.naics_code }}</td>
+              <td class="muted">{{ f.start_date }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty">No flagged award activity yet. Run a check after the baseline has been seeded.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>Firm List</h2></div>
+    <div class="card-body">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th><th>Company</th><th>Industry / Niche</th><th>Website</th>
+              <th>NAICS</th><th>NAICS Description</th><th>UEI</th>
+              <th>Last Award</th><th>Last Checked</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in firms %}
+            <tr>
+              <td class="muted">{{ f.id }}</td>
+              <td>{{ f.company }}</td>
+              <td class="muted">{{ f.industry }}</td>
+              <td><a href="https://{{ f.website }}" target="_blank" rel="noopener">{{ f.website }}</a></td>
+              <td>{{ f.naics_code or "—" }}</td>
+              <td class="muted">{{ f.naics_description or "—" }}</td>
+              <td class="muted">{{ f.uei or "—" }}</td>
+              <td class="muted">{{ f.last_award_date or "—" }}</td>
+              <td class="muted">{{ f.last_checked or "never" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</main>
+</body>
+</html>

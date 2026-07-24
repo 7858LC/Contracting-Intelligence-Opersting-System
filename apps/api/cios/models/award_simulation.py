@@ -1,14 +1,16 @@
 """Award Simulator model — flagship feature, Module 13."""
+
 import uuid
 from datetime import datetime
-from typing import Any
 
 from sqlalchemy import DateTime, Float, ForeignKey, Index, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from cios.core.database import Base
-from .base import UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin
+
+from .base import EvidenceMixin, TenantMixin, TimestampMixin, UUIDMixin
 
 
 class AwardSimulation(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin):
@@ -16,10 +18,9 @@ class AwardSimulation(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixi
     Emulates government source selection to predict award probability
     and surface weaknesses/deficiencies before proposal submission.
     """
+
     __tablename__ = "award_simulations"
-    __table_args__ = (
-        Index("idx_sim_tenant_opp", "tenant_id", "opportunity_id"),
-    )
+    __table_args__ = (Index("idx_sim_tenant_opp", "tenant_id", "opportunity_id"),)
 
     opportunity_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
     name: Mapped[str] = mapped_column(String(256), nullable=False)

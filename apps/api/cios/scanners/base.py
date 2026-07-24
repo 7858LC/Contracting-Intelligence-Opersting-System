@@ -1,4 +1,5 @@
 """Base scanner interface — all signal source adapters implement this."""
+
 from __future__ import annotations
 
 import asyncio
@@ -76,7 +77,7 @@ class BaseScanner(ABC):
             follow_redirects=True,
         )
 
-    async def __aenter__(self) -> "BaseScanner":
+    async def __aenter__(self) -> BaseScanner:
         return self
 
     async def __aexit__(self, *_: Any) -> None:
@@ -96,7 +97,7 @@ class BaseScanner(ABC):
                 return response
             except httpx.HTTPStatusError as e:
                 if e.response.status_code in (429, 503):
-                    wait = (2 ** attempt) * 2
+                    wait = (2**attempt) * 2
                     logger.info("Rate limited by %s — waiting %ss", url, wait)
                     await asyncio.sleep(wait)
                 else:
@@ -118,7 +119,7 @@ class BaseScanner(ABC):
                 return response
             except httpx.HTTPStatusError as e:
                 if e.response.status_code in (429, 503):
-                    await asyncio.sleep((2 ** attempt) * 2)
+                    await asyncio.sleep((2**attempt) * 2)
                 else:
                     logger.warning("HTTP %s from %s", e.response.status_code, url)
                     return None

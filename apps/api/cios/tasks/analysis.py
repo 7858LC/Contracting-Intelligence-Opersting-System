@@ -1,6 +1,8 @@
 """Full opportunity analysis task — orchestrates CEO Agent pipeline."""
+
 import asyncio
 import uuid
+
 from cios.tasks import celery_app
 
 
@@ -12,12 +14,13 @@ def run_opportunity_analysis(self, tenant_id: str, user_id: str, opportunity_id:
 
 
 async def _run_async(tenant_id: str, user_id: str, opportunity_id: str) -> dict:
-    from cios.core.database import async_session_factory
-    from cios.agents.ceo_agent import CEOAgent
+    from sqlalchemy import select
+
     from cios.agents.base import AgentContext
+    from cios.agents.ceo_agent import CEOAgent
+    from cios.core.database import async_session_factory
     from cios.models.opportunity import Opportunity
     from cios.vector.tenant_store import TenantVectorStore
-    from sqlalchemy import select
 
     async with async_session_factory() as db:
         result = await db.execute(
@@ -52,6 +55,7 @@ async def _run_async(tenant_id: str, user_id: str, opportunity_id: str) -> dict:
         result_data = synthesis.get("result", {})
 
         import json
+
         try:
             exec_summary = result_data.get("executive_summary", "")
             parsed = json.loads(exec_summary) if isinstance(exec_summary, str) else exec_summary

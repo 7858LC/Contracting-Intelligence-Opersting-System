@@ -1,4 +1,5 @@
 """Stripe webhook handler."""
+
 import structlog
 from fastapi import APIRouter, Header, HTTPException, Request
 
@@ -16,6 +17,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
     payload = await request.body()
 
     import stripe
+
     stripe.api_key = settings.stripe_secret_key
 
     try:
@@ -28,6 +30,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
     log.info("stripe_webhook", event_type=event["type"])
 
     from cios.tasks.billing import handle_stripe_event
+
     handle_stripe_event.delay(event["type"], event["data"]["object"])
 
     return {"status": "received"}

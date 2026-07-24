@@ -1,22 +1,24 @@
 """Document ingestion and vectorization tasks."""
+
 import asyncio
 import hashlib
 import uuid
+
 from cios.tasks import celery_app
 
 
 @celery_app.task(bind=True, max_retries=3, soft_time_limit=300)
-def ingest_document(
-    self, tenant_id: str, document_id: str, content: bytes, mime_type: str
-) -> dict:
+def ingest_document(self, tenant_id: str, document_id: str, content: bytes, mime_type: str) -> dict:
     return asyncio.run(_ingest_async(tenant_id, document_id, content, mime_type))
 
 
 async def _ingest_async(tenant_id: str, document_id: str, content: bytes, mime_type: str) -> dict:
-    from cios.core.database import async_session_factory
-    from cios.models.knowledge_vault import KnowledgeDocument, KnowledgeChunk
-    from sqlalchemy import select
     from datetime import UTC, datetime
+
+    from sqlalchemy import select
+
+    from cios.core.database import async_session_factory
+    from cios.models.knowledge_vault import KnowledgeChunk, KnowledgeDocument
 
     async with async_session_factory() as db:
         result = await db.execute(
@@ -31,6 +33,7 @@ async def _ingest_async(tenant_id: str, document_id: str, content: bytes, mime_t
 
         try:
             from cios.vector.tenant_store import TenantVectorStore
+
             text = _extract_text(content, mime_type)
             chunks = _chunk_text(text)
             content_hash = hashlib.sha256(content).hexdigest()
@@ -78,16 +81,20 @@ async def _ingest_async(tenant_id: str, document_id: str, content: bytes, mime_t
 def _extract_text(content: bytes, mime_type: str) -> str:
     if mime_type == "application/pdf":
         try:
-            import pypdf
             import io
+
+            import pypdf
+
             reader = pypdf.PdfReader(io.BytesIO(content))
             return "\n".join(page.extract_text() or "" for page in reader.pages)
         except Exception:
             return content.decode("utf-8", errors="ignore")
     elif "wordprocessingml" in mime_type:
         try:
-            import docx
             import io
+
+            import docx
+
             doc = docx.Document(io.BytesIO(content))
             return "\n".join(p.text for p in doc.paragraphs)
         except Exception:
@@ -114,9 +121,10 @@ def vectorize_past_performance(self, tenant_id: str, pp_id: str) -> dict:
 
 
 async def _vectorize_pp_async(tenant_id: str, pp_id: str) -> dict:
+    from sqlalchemy import select
+
     from cios.core.database import async_session_factory
     from cios.models.past_performance import PastPerformance
-    from sqlalchemy import select
 
     async with async_session_factory() as db:
         result = await db.execute(

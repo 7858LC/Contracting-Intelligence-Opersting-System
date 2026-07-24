@@ -1,8 +1,9 @@
 """Customer onboarding flow API."""
+
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from cios.core.dependencies import Auth, DB, AdminAuth
+from cios.core.dependencies import DB, AdminAuth, Auth
 
 router = APIRouter()
 
@@ -41,6 +42,7 @@ async def complete_onboarding_step(
 ) -> dict:
     if step_name not in ONBOARDING_STEPS:
         from fastapi import HTTPException
+
         raise HTTPException(status_code=400, detail=f"Unknown step: {step_name}")
 
     return {"step": step_name, "status": "completed", "next_step": _next_step(step_name)}
@@ -50,6 +52,7 @@ async def complete_onboarding_step(
 async def complete_onboarding(db: DB, user: AdminAuth) -> dict:
     """Mark onboarding complete and trigger initial AI analysis."""
     from cios.tasks.onboarding import run_initial_analysis
+
     task = run_initial_analysis.delay(str(user.tenant_id))
     return {"status": "onboarding_complete", "task_id": task.id}
 

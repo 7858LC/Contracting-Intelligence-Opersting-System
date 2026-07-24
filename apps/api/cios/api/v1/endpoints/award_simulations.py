@@ -1,4 +1,5 @@
 """Award Simulator API — Module 13, flagship feature."""
+
 import uuid
 from typing import Any
 
@@ -6,7 +7,7 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from cios.core.dependencies import Auth, DB
+from cios.core.dependencies import DB, Auth
 from cios.models.award_simulation import AwardSimulation
 
 router = APIRouter()
@@ -91,6 +92,7 @@ async def create_simulation(body: SimulationCreate, db: DB, user: Auth) -> dict[
     await db.flush()
 
     from cios.tasks.simulation import run_award_simulation
+
     task = run_award_simulation.delay(
         str(user.tenant_id),
         str(user.user_id),

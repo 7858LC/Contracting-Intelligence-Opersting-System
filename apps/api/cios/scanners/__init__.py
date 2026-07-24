@@ -1,8 +1,9 @@
 """PIR Scanner package — pluggable signal source adapters."""
-from .base import BaseScanner, ScanResult, ScannedSignal
+
+from .base import BaseScanner, ScannedSignal, ScanResult
+from .jobs import JobBoardScanner
 from .samgov import SAMGovScanner
 from .usaspending import USASpendingScanner
-from .jobs import JobBoardScanner
 
 __all__ = [
     "BaseScanner",
