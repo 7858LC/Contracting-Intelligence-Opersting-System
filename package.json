@@ -1,6 +1,7 @@
 {
   "name": "cios",
   "version": "1.0.0",
+  "packageManager": "npm@10.9.2",
   "private": true,
   "description": "Contract Intelligence Operating System — The Bloomberg Terminal of Procurement",
   "repository": {
