@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: cios-api
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: infra/docker/Dockerfile.api
+    dockerContext: apps/api
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: APP_URL
+        sync: false
