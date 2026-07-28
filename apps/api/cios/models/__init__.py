@@ -30,6 +30,7 @@ from .tenant import (  # noqa: F401
 from .winning_profile import (  # noqa: F401
     WPHAlignment,
     WPHAssessment,
+    WPHCapturePackage,
     WPHContractor,
     WPHEvidenceDocument,
     WPHProfile,

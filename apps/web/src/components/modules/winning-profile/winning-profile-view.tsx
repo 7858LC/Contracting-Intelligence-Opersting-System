@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import {
   Crosshair, Plus, Sparkles, Play, FileText, Trophy, Gauge,
   AlertTriangle, ChevronDown, ChevronUp, ShieldCheck, Target, Layers,
-  Upload, CheckCircle2, X,
+  Upload, CheckCircle2, X, ClipboardCheck, BookOpen, RefreshCw,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -339,6 +339,186 @@ function SolicitationDetail({ solicitationId }: { solicitationId: string }) {
 
           {/* Rankings */}
           {rankings.length > 0 && <RankingPanel rankings={rankings} />}
+
+          {/* Capture Manager Package */}
+          {assessment && <CapturePackagePanel solicitationId={solicitationId} />}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Capture Manager Package ────────────────────────────────────────────────────
+
+interface CapturePackage {
+  id: string;
+  version: number;
+  status: "draft" | "approved";
+  content: {
+    solicitation: { title: string };
+    profile: { summary: string | null };
+    target_assessment: {
+      recommendation: string;
+      pdq_score: number;
+      executive_summary: string | null;
+    } | null;
+    contractor_rankings: { rank: number; contractor_name: string; overall_alignment_score: number }[];
+    evidence_summary: { document_count: number; signal_count: number };
+  };
+  review_notes: string | null;
+  knowledge_vault_document_id: string | null;
+}
+
+function CapturePackagePanel({ solicitationId }: { solicitationId: string }) {
+  const queryClient = useQueryClient();
+  const [expanded, setExpanded] = useState(true);
+  const [reviewNotes, setReviewNotes] = useState("");
+
+  const { data: pkg, isLoading } = useQuery<CapturePackage | null>({
+    queryKey: ["wph-capture-package", solicitationId],
+    queryFn: async () => {
+      try {
+        return await api.getCapturePackage(solicitationId);
+      } catch {
+        return null;
+      }
+    },
+  });
+
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: ["wph-capture-package", solicitationId] });
+
+  const generateMutation = useMutation({
+    mutationFn: () => api.generateCapturePackage(solicitationId),
+    onSuccess: () => { toast.success("Capture package generated — review and approve below"); invalidate(); },
+    onError: () => toast.error("Failed to generate capture package"),
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: () => api.approveCapturePackage(solicitationId, reviewNotes),
+    onSuccess: () => { toast.success("Capture package approved"); invalidate(); },
+    onError: () => toast.error("Failed to approve capture package"),
+  });
+
+  const publishMutation = useMutation({
+    mutationFn: () => api.publishCapturePackageToVault(solicitationId),
+    onSuccess: () => { toast.success("Published to Knowledge Vault"); invalidate(); },
+    onError: () => toast.error("Failed to publish to Knowledge Vault"),
+  });
+
+  if (isLoading) return <div className="h-24 bg-card border border-border rounded-lg animate-pulse" />;
+
+  return (
+    <div className="bg-card border border-border rounded-lg p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold flex items-center gap-2">
+          <ClipboardCheck className="w-4 h-4 text-primary" />
+          Capture Manager Package
+          {pkg && (
+            <span className={cn(
+              "text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded",
+              pkg.status === "approved" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500"
+            )}>
+              {pkg.status} · v{pkg.version}
+            </span>
+          )}
+        </h2>
+        <button
+          onClick={() => generateMutation.mutate()}
+          disabled={generateMutation.isPending}
+          className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-md text-xs font-medium hover:bg-secondary transition-colors disabled:opacity-50"
+        >
+          {pkg ? <RefreshCw className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
+          {generateMutation.isPending ? "Generating…" : pkg ? "Regenerate" : "Generate Capture Package"}
+        </button>
+      </div>
+
+      {!pkg ? (
+        <p className="text-sm text-muted-foreground">
+          Compiles the winning profile, contractor rankings, and executive assessment above into
+          one risk-informed decision brief for the Capture Manager / CEO.
+        </p>
+      ) : (
+        <>
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+          >
+            {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            {expanded ? "Hide" : "Show"} package content
+          </button>
+
+          {expanded && (
+            <div className="space-y-3 bg-background/50 rounded-md p-4">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Recommendation</p>
+                <p className="text-sm font-medium">
+                  {pkg.content.target_assessment?.recommendation.replace(/_/g, " ")}
+                  {" — "}PDQ {pkg.content.target_assessment?.pdq_score}/100
+                </p>
+              </div>
+              {pkg.content.target_assessment?.executive_summary && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Executive Summary</p>
+                  <p className="text-sm">{pkg.content.target_assessment.executive_summary}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Contractor Rankings</p>
+                <div className="space-y-1">
+                  {pkg.content.contractor_rankings.map((r) => (
+                    <div key={r.contractor_name} className="text-sm flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground w-5">#{r.rank}</span>
+                      <span className="flex-1">{r.contractor_name}</span>
+                      <span className="text-xs font-mono text-muted-foreground">
+                        {r.overall_alignment_score}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Evidence: {pkg.content.evidence_summary.document_count} documents,{" "}
+                {pkg.content.evidence_summary.signal_count} signals
+              </p>
+            </div>
+          )}
+
+          {pkg.status === "draft" ? (
+            <div className="space-y-2 pt-2 border-t border-border/50">
+              <textarea
+                value={reviewNotes}
+                onChange={(e) => setReviewNotes(e.target.value)}
+                placeholder="Optional review notes…"
+                rows={2}
+                className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
+              />
+              <button
+                onClick={() => approveMutation.mutate()}
+                disabled={approveMutation.isPending}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                {approveMutation.isPending ? "Approving…" : "Approve"}
+              </button>
+            </div>
+          ) : pkg.knowledge_vault_document_id ? (
+            <div className="pt-2 border-t border-border/50 flex items-center gap-2 text-sm text-emerald-500">
+              <CheckCircle2 className="w-4 h-4" />
+              Published to Knowledge Vault
+            </div>
+          ) : (
+            <div className="pt-2 border-t border-border/50">
+              <button
+                onClick={() => publishMutation.mutate()}
+                disabled={publishMutation.isPending}
+                className="flex items-center gap-2 px-4 py-2 border border-border rounded-md text-sm font-medium hover:bg-secondary transition-colors disabled:opacity-50"
+              >
+                <BookOpen className="w-4 h-4" />
+                {publishMutation.isPending ? "Publishing…" : "Publish to Knowledge Vault"}
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>

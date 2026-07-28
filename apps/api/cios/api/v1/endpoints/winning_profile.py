@@ -12,7 +12,7 @@ isolation as defense in depth.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -23,6 +23,7 @@ from cios.core.dependencies import DB, Auth, Pages
 from cios.models.winning_profile import (
     WPHAlignment,
     WPHAssessment,
+    WPHCapturePackage,
     WPHContractor,
     WPHEvidenceDocument,
     WPHProfile,
@@ -30,7 +31,7 @@ from cios.models.winning_profile import (
     WPHSignal,
     WPHSolicitation,
 )
-from cios.wph.constants import EvidenceDocumentType, PipelineStatus
+from cios.wph.constants import CapturePackageStatus, EvidenceDocumentType, PipelineStatus
 from cios.wph.service import WPHService
 from cios.wph.taxonomy import TAXONOMY_REGISTRY
 
@@ -725,6 +726,295 @@ async def get_intelligence(sol_id: uuid.UUID, user: Auth, db: DB) -> dict:
     if assessment:
         out["assessment"] = _assessment_payload(assessment)
     return out
+
+
+# ── Capture Manager Package ───────────────────────────────────────────────────────
+
+
+class ApprovePackageRequest(BaseModel):
+    review_notes: str | None = None
+
+
+def _capture_package_payload(p: WPHCapturePackage) -> dict:
+    return {
+        "id": str(p.id),
+        "solicitation_id": str(p.solicitation_id),
+        "version": p.version,
+        "is_current": p.is_current,
+        "status": p.status,
+        "content": p.content,
+        "reviewed_by": str(p.reviewed_by) if p.reviewed_by else None,
+        "reviewed_at": p.reviewed_at.isoformat() if p.reviewed_at else None,
+        "review_notes": p.review_notes,
+        "knowledge_vault_document_id": (
+            str(p.knowledge_vault_document_id) if p.knowledge_vault_document_id else None
+        ),
+        "created_at": p.created_at.isoformat() if p.created_at else None,
+    }
+
+
+async def _compile_capture_package_content(
+    db: Any,
+    sol: WPHSolicitation,
+    profile: WPHProfile,
+    tenant_id: uuid.UUID,
+    target_contractor_id: uuid.UUID | None,
+) -> tuple[dict[str, Any], WPHAssessment | None]:
+    """Compile the profile, every ranked contractor, and the target
+    contractor's assessment into one executive-facing brief. Deliberately no
+    new AI call here — this only reads already-computed, already-evidence-
+    checked results rather than re-narrating them (which would add
+    fabrication risk without adding information)."""
+    rankings = (
+        (
+            await db.execute(
+                select(WPHAlignment)
+                .where(WPHAlignment.profile_id == profile.id, WPHAlignment.tenant_id == tenant_id)
+                .order_by(WPHAlignment.rank.asc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    assess_q = select(WPHAssessment).where(
+        WPHAssessment.solicitation_id == sol.id, WPHAssessment.tenant_id == tenant_id
+    )
+    if target_contractor_id:
+        assess_q = assess_q.where(WPHAssessment.target_contractor_id == target_contractor_id)
+    assessment = (
+        await db.execute(assess_q.order_by(WPHAssessment.created_at.desc()).limit(1))
+    ).scalar_one_or_none()
+
+    doc_count = (
+        await db.execute(
+            select(func.count(WPHEvidenceDocument.id)).where(
+                WPHEvidenceDocument.solicitation_id == sol.id,
+                WPHEvidenceDocument.tenant_id == tenant_id,
+            )
+        )
+    ).scalar_one()
+    signal_count = (
+        await db.execute(
+            select(func.count(WPHSignal.id)).where(
+                WPHSignal.solicitation_id == sol.id, WPHSignal.tenant_id == tenant_id
+            )
+        )
+    ).scalar_one()
+
+    content = {
+        "solicitation": SolicitationResponse.model_validate(sol).model_dump(mode="json"),
+        "profile": await _profile_payload(db, profile, tenant_id),
+        "contractor_rankings": [_alignment_payload(a) for a in rankings],
+        "target_assessment": _assessment_payload(assessment) if assessment else None,
+        "evidence_summary": {"document_count": doc_count, "signal_count": signal_count},
+    }
+    return content, assessment
+
+
+def _render_capture_package_text(content: dict[str, Any]) -> str:
+    """Flatten the compiled capture package into readable plain text for
+    Knowledge Vault ingestion/vectorization."""
+    sol = content.get("solicitation") or {}
+    profile = content.get("profile") or {}
+    assessment = content.get("target_assessment") or {}
+    rankings = content.get("contractor_rankings") or []
+    evidence = content.get("evidence_summary") or {}
+
+    lines = [
+        f"CAPTURE PACKAGE — {sol.get('title', 'Untitled')}",
+        f"Solicitation Number: {sol.get('solicitation_number', 'N/A')}",
+        f"Agency: {sol.get('agency', 'N/A')}",
+        "",
+        "== WINNING PROFILE SUMMARY ==",
+        profile.get("summary") or "",
+        "",
+        "== TARGET CONTRACTOR ASSESSMENT ==",
+        f"Recommendation: {assessment.get('recommendation', 'N/A')}",
+        f"PDQ Score: {assessment.get('pdq_score', 'N/A')}",
+        assessment.get("executive_summary") or "",
+        "",
+        "== CONTRACTOR RANKINGS ==",
+    ]
+    for r in rankings:
+        lines.append(
+            f"#{r.get('rank')} {r.get('contractor_name')} — {r.get('overall_alignment_score')}"
+        )
+    lines += [
+        "",
+        "== EVIDENCE PACKAGE ==",
+        f"Documents: {evidence.get('document_count', 0)}, "
+        f"Signals: {evidence.get('signal_count', 0)}",
+    ]
+    return "\n".join(lines)
+
+
+@router.post("/solicitations/{sol_id}/capture-package", response_model=dict)
+async def generate_capture_package(
+    sol_id: uuid.UUID,
+    user: Auth,
+    db: DB,
+    target_contractor_id: uuid.UUID | None = Query(None),
+) -> dict:
+    """Build (or rebuild) the capture package as a new draft version. Requires
+    a current profile and at least one assessment — run the pipeline first."""
+    sol = await _get_solicitation(db, sol_id, user.tenant_id)
+    profile = await _current_profile(db, sol_id, user.tenant_id)
+
+    content, assessment = await _compile_capture_package_content(
+        db, sol, profile, user.tenant_id, target_contractor_id
+    )
+    if assessment is None:
+        raise HTTPException(
+            status_code=409,
+            detail="No assessment yet. Run alignment + assessment (or the full pipeline) first.",
+        )
+
+    prior = (
+        await db.execute(
+            select(WPHCapturePackage).where(
+                WPHCapturePackage.solicitation_id == sol_id,
+                WPHCapturePackage.tenant_id == user.tenant_id,
+                WPHCapturePackage.is_current.is_(True),
+            )
+        )
+    ).scalar_one_or_none()
+    if prior:
+        prior.is_current = False
+    next_version = (prior.version + 1) if prior else 1
+
+    package = WPHCapturePackage(
+        tenant_id=user.tenant_id,
+        solicitation_id=sol_id,
+        profile_id=profile.id,
+        assessment_id=assessment.id,
+        version=next_version,
+        is_current=True,
+        status=CapturePackageStatus.DRAFT.value,
+        content=content,
+    )
+    db.add(package)
+    await db.commit()
+    await db.refresh(package)
+    return _capture_package_payload(package)
+
+
+@router.get("/solicitations/{sol_id}/capture-package", response_model=dict)
+async def get_capture_package(sol_id: uuid.UUID, user: Auth, db: DB) -> dict:
+    await _get_solicitation(db, sol_id, user.tenant_id)
+    package = (
+        await db.execute(
+            select(WPHCapturePackage).where(
+                WPHCapturePackage.solicitation_id == sol_id,
+                WPHCapturePackage.tenant_id == user.tenant_id,
+                WPHCapturePackage.is_current.is_(True),
+            )
+        )
+    ).scalar_one_or_none()
+    if not package:
+        raise HTTPException(status_code=404, detail="No capture package yet. Generate one first.")
+    return _capture_package_payload(package)
+
+
+@router.get("/solicitations/{sol_id}/capture-package/history", response_model=dict)
+async def list_capture_package_versions(sol_id: uuid.UUID, user: Auth, db: DB) -> dict:
+    await _get_solicitation(db, sol_id, user.tenant_id)
+    rows = (
+        (
+            await db.execute(
+                select(WPHCapturePackage)
+                .where(
+                    WPHCapturePackage.solicitation_id == sol_id,
+                    WPHCapturePackage.tenant_id == user.tenant_id,
+                )
+                .order_by(WPHCapturePackage.version.desc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return {"items": [_capture_package_payload(p) for p in rows]}
+
+
+@router.post("/solicitations/{sol_id}/capture-package/approve", response_model=dict)
+async def approve_capture_package(
+    sol_id: uuid.UUID, payload: ApprovePackageRequest, user: Auth, db: DB
+) -> dict:
+    await _get_solicitation(db, sol_id, user.tenant_id)
+    package = (
+        await db.execute(
+            select(WPHCapturePackage).where(
+                WPHCapturePackage.solicitation_id == sol_id,
+                WPHCapturePackage.tenant_id == user.tenant_id,
+                WPHCapturePackage.is_current.is_(True),
+            )
+        )
+    ).scalar_one_or_none()
+    if not package:
+        raise HTTPException(status_code=404, detail="No capture package yet. Generate one first.")
+
+    package.status = CapturePackageStatus.APPROVED.value
+    package.reviewed_by = user.user_id
+    package.reviewed_at = datetime.now(UTC)
+    package.review_notes = payload.review_notes
+    await db.commit()
+    await db.refresh(package)
+    return _capture_package_payload(package)
+
+
+@router.post("/solicitations/{sol_id}/capture-package/publish-to-vault", response_model=dict)
+async def publish_capture_package_to_vault(sol_id: uuid.UUID, user: Auth, db: DB) -> dict:
+    """Copies an approved package into Knowledge Vault as a searchable
+    document — a separate, explicit action from approval, not automatic."""
+    await _get_solicitation(db, sol_id, user.tenant_id)
+    package = (
+        await db.execute(
+            select(WPHCapturePackage).where(
+                WPHCapturePackage.solicitation_id == sol_id,
+                WPHCapturePackage.tenant_id == user.tenant_id,
+                WPHCapturePackage.is_current.is_(True),
+            )
+        )
+    ).scalar_one_or_none()
+    if not package:
+        raise HTTPException(status_code=404, detail="No capture package yet. Generate one first.")
+    if package.status != CapturePackageStatus.APPROVED.value:
+        raise HTTPException(
+            status_code=409, detail="Capture package must be approved before publishing."
+        )
+
+    from cios.models.knowledge_vault import KnowledgeDocument
+    from cios.tasks.ingestion import ingest_document
+
+    sol_title = (package.content.get("solicitation") or {}).get("title", "Untitled")
+    text = _render_capture_package_text(package.content)
+
+    doc = KnowledgeDocument(
+        tenant_id=user.tenant_id,
+        title=f"Capture Package — {sol_title}",
+        document_type="capture_package",
+        description="Executive capture manager package (published from Winning Profile).",
+        file_name=f"capture-package-{sol_id}.txt",
+        file_size_bytes=len(text.encode()),
+        mime_type="text/plain",
+        uploaded_by=user.user_id,
+        vectorization_status="pending",
+        tags=["capture-package", "winning-profile"],
+    )
+    db.add(doc)
+    await db.flush()
+
+    task = ingest_document.delay(str(user.tenant_id), str(doc.id), text.encode(), "text/plain")
+
+    package.knowledge_vault_document_id = doc.id
+    await db.commit()
+
+    return {
+        "capture_package_id": str(package.id),
+        "knowledge_vault_document_id": str(doc.id),
+        "task_id": task.id,
+        "status": "queued",
+    }
 
 
 # ── Sample dataset seeding ───────────────────────────────────────────────────────

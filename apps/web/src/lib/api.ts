@@ -521,6 +521,39 @@ class CIOSApiClient {
     const { data } = await this.client.post("/winning-profile/sample", null, { params: { run } });
     return data;
   }
+
+  // ── Capture Manager Package ──────────────────────────────────────────────
+
+  async generateCapturePackage(solicitationId: string) {
+    const { data } = await this.client.post(
+      `/winning-profile/solicitations/${solicitationId}/capture-package`);
+    return data;
+  }
+
+  async getCapturePackage(solicitationId: string) {
+    const { data } = await this.client.get(
+      `/winning-profile/solicitations/${solicitationId}/capture-package`);
+    return data;
+  }
+
+  async listCapturePackageHistory(solicitationId: string) {
+    const { data } = await this.client.get(
+      `/winning-profile/solicitations/${solicitationId}/capture-package/history`);
+    return data;
+  }
+
+  async approveCapturePackage(solicitationId: string, reviewNotes?: string) {
+    const { data } = await this.client.post(
+      `/winning-profile/solicitations/${solicitationId}/capture-package/approve`,
+      { review_notes: reviewNotes || null });
+    return data;
+  }
+
+  async publishCapturePackageToVault(solicitationId: string) {
+    const { data } = await this.client.post(
+      `/winning-profile/solicitations/${solicitationId}/capture-package/publish-to-vault`);
+    return data;
+  }
 }
 
 export const api = new CIOSApiClient();

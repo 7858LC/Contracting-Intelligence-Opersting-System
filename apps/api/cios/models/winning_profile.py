@@ -21,10 +21,12 @@ Pipeline (each stage persists here):
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
     Boolean,
+    DateTime,
     Float,
     ForeignKey,
     Index,
@@ -39,6 +41,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from cios.core.database import Base
 from cios.wph.constants import (  # noqa: F401 — re-exported for API/task consumers
+    CapturePackageStatus,
     ConfidenceLevel,
     EvidenceDocumentType,
     PipelineStatus,
@@ -385,3 +388,56 @@ class WPHAssessment(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin)
             "candidate_pool_size": self.candidate_pool_size,
             "executive_summary": self.executive_summary,
         }
+
+
+# ── Capture Manager Package ───────────────────────────────────────────────────────
+
+
+class WPHCapturePackage(Base, UUIDMixin, TimestampMixin, TenantMixin):
+    """The executive-facing capture package — a compiled, human-reviewed
+    risk-informed decision brief for one solicitation.
+
+    Deliberately NOT a new AI-generation pass: ``content`` is a compile of
+    already-computed, already-evidence-checked results (WPHProfile,
+    WPHAlignment rows, WPHAssessment) rather than an AI re-narration of them,
+    which would add fabrication risk without adding information. Versioned
+    the same way WPHProfile is (``is_current`` + a per-solicitation version
+    number) — regenerating creates a new draft version rather than
+    overwriting an already-approved one.
+    """
+
+    __tablename__ = "wph_capture_packages"
+    __table_args__ = (
+        Index("idx_wph_capture_sol", "solicitation_id"),
+        Index("idx_wph_capture_current", "solicitation_id", "is_current"),
+        UniqueConstraint("solicitation_id", "version", name="uq_wph_capture_version"),
+    )
+
+    solicitation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("wph_solicitations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    profile_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("wph_profiles.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    assessment_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("wph_assessments.id", ondelete="SET NULL"), index=True
+    )
+
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    is_current: Mapped[bool] = mapped_column(Boolean, default=True)
+    status: Mapped[str] = mapped_column(String(16), default=CapturePackageStatus.DRAFT)
+
+    # Compiled brief: solicitation snapshot, profile summary, every ranked
+    # contractor's alignment, the target contractor's full assessment, and an
+    # evidence-package summary (document/signal counts) — see
+    # _compile_capture_package in the endpoint module for the exact shape.
+    content: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+
+    reviewed_by: Mapped[uuid.UUID | None] = mapped_column(PG_UUID(as_uuid=True))
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    review_notes: Mapped[str | None] = mapped_column(Text)
+
+    # Set once "Publish to Knowledge Vault" runs — tracks the link without
+    # duplicating storage; the vault document is the searchable copy, this
+    # row stays the source of truth.
+    knowledge_vault_document_id: Mapped[uuid.UUID | None] = mapped_column(PG_UUID(as_uuid=True))
