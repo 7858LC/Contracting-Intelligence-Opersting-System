@@ -60,6 +60,7 @@ async def _async_scan_company(
     tenant_id: uuid.UUID,
     scan_config: dict,
 ) -> dict:
+    from cios.config import settings
     from cios.core.database import AsyncSessionLocal
     from cios.models.pir import PIRCompany
     from cios.scanners import JobBoardScanner, SAMGovScanner, USASpendingScanner
@@ -74,12 +75,15 @@ async def _async_scan_company(
         signals_created = 0
         errors: list[str] = []
 
-        # Run all scanners
+        # SAMGovScanner/USASpendingScanner hit proper public APIs; JobBoardScanner
+        # scrapes third-party sites unauthenticated and is gated off by default
+        # (see Settings.enable_job_board_scanning) pending legal review.
         scanners = [
             SAMGovScanner(),
             USASpendingScanner(),
-            JobBoardScanner(),
         ]
+        if settings.enable_job_board_scanning:
+            scanners.append(JobBoardScanner())
 
         for scanner in scanners:
             async with scanner:

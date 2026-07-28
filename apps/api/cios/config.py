@@ -59,6 +59,13 @@ class Settings(BaseSettings):
     # External APIs
     sam_gov_api_key: str = ""
     usaspending_api_key: str = ""
+    # JobBoardScanner (cios/scanners/jobs.py) scrapes Indeed, ClearanceJobs,
+    # ZipRecruiter, and LinkedIn's public job search via unauthenticated HTML
+    # scraping — none of those platforms' Terms of Service permit this, and
+    # LinkedIn specifically has a history of pursuing legal action over it.
+    # Defaults off pending a legal decision; SAM.gov/USASpending (proper public
+    # APIs) are unaffected by this flag.
+    enable_job_board_scanning: bool = False
 
     # Encryption
     encryption_key: str = Field(..., min_length=64, description="32-byte hex key")
