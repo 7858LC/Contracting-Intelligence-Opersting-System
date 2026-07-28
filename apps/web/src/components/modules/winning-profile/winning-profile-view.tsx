@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import {
   Crosshair, Plus, Sparkles, Play, FileText, Trophy, Gauge,
   AlertTriangle, ChevronDown, ChevronUp, ShieldCheck, Target, Layers,
-  Upload, CheckCircle2, X, ClipboardCheck, BookOpen, RefreshCw,
+  Upload, CheckCircle2, X, ClipboardCheck, BookOpen, RefreshCw, Building2,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -163,6 +163,7 @@ export function WinningProfileView() {
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [showAddContractor, setShowAddContractor] = useState(false);
 
   const { data: solList, isLoading } = useQuery({
     queryKey: ["wph-solicitations"],
@@ -200,6 +201,11 @@ export function WinningProfileView() {
             className="flex items-center gap-2 px-3 py-2 border border-border rounded-md text-sm hover:bg-secondary transition-colors disabled:opacity-50">
             <Sparkles className="w-4 h-4" />
             {seedMutation.isPending ? "Seeding…" : "Load Sample"}
+          </button>
+          <button onClick={() => setShowAddContractor(true)}
+            className="flex items-center gap-2 px-3 py-2 border border-border rounded-md text-sm hover:bg-secondary transition-colors">
+            <Building2 className="w-4 h-4" />
+            Add Contractor
           </button>
           <button onClick={() => setShowCreate(true)}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">
@@ -256,6 +262,13 @@ export function WinningProfileView() {
           )}
         </div>
       </div>
+
+      {showAddContractor && (
+        <AddContractorModal
+          onClose={() => setShowAddContractor(false)}
+          onCreated={() => setShowAddContractor(false)}
+        />
+      )}
 
       {showCreate && (
         <CreateSolicitationModal
@@ -887,6 +900,143 @@ function AddDocumentModal({
             <button type="submit" disabled={addMutation.isPending}
               className="flex-1 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">
               {addMutation.isPending ? "Adding…" : "Add Document"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Contractor modal ─────────────────────────────────────────────────────────────
+
+function AddContractorModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
+    name: "", description: "", is_self: false, is_incumbent: false,
+    business_size: "", naics_codes: "", certifications: "", set_asides: "",
+    clearances: "", capabilities: "",
+  });
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const split = (s: string) => (s ? s.split(",").map((x) => x.trim()).filter(Boolean) : []);
+      // "Range Operations:85, TADSS Maintenance:70" -> [{name, level}]
+      const capabilities = split(form.capabilities)
+        .map((pair) => {
+          const [name, level] = pair.split(":").map((p) => p.trim());
+          const parsedLevel = parseFloat(level);
+          return name && !Number.isNaN(parsedLevel)
+            ? { name, level: Math.min(100, Math.max(0, parsedLevel)) }
+            : null;
+        })
+        .filter((c): c is { name: string; level: number } => c !== null);
+
+      await api.createWphContractor({
+        name: form.name,
+        description: form.description || null,
+        is_self: form.is_self,
+        is_incumbent: form.is_incumbent,
+        business_size: form.business_size || null,
+        naics_codes: split(form.naics_codes),
+        certifications: split(form.certifications),
+        set_asides: split(form.set_asides),
+        clearances: split(form.clearances),
+        capabilities,
+      });
+      toast.success("Contractor added");
+      onCreated();
+    } catch {
+      toast.error("Failed to add contractor");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-card border border-border rounded-xl w-full max-w-lg p-6 my-4">
+        <h2 className="font-semibold text-lg mb-1">Add Contractor</h2>
+        <p className="text-xs text-muted-foreground mb-4">
+          Score a candidate contractor (your own company or a competitor) against a solicitation&apos;s
+          Winning Profile Hypothesis.
+        </p>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium mb-1 text-muted-foreground">Company Name *</label>
+            <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="Acme Government Solutions" />
+          </div>
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={form.is_self}
+                onChange={(e) => setForm({ ...form, is_self: e.target.checked })} />
+              This is our own company
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={form.is_incumbent}
+                onChange={(e) => setForm({ ...form, is_incumbent: e.target.checked })} />
+              Incumbent
+            </label>
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1 text-muted-foreground">Business Size</label>
+            <select value={form.business_size} onChange={(e) => setForm({ ...form, business_size: e.target.value })}
+              className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none">
+              <option value="">Unknown</option>
+              <option value="small">Small</option>
+              <option value="large">Large</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1 text-muted-foreground">Description</label>
+            <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
+              rows={3} className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="What this contractor does, relevant experience, differentiators…" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1 text-muted-foreground">
+              Capabilities (name:level, comma separated — level 0-100)
+            </label>
+            <input value={form.capabilities} onChange={(e) => setForm({ ...form, capabilities: e.target.value })}
+              className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="Range Operations:85, TADSS Maintenance:70" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1 text-muted-foreground">NAICS Codes (comma separated)</label>
+            <input value={form.naics_codes} onChange={(e) => setForm({ ...form, naics_codes: e.target.value })}
+              className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="541330, 541611" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1 text-muted-foreground">Certifications (comma separated)</label>
+            <input value={form.certifications} onChange={(e) => setForm({ ...form, certifications: e.target.value })}
+              className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="ISO 9001, CMMI Level 3" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1 text-muted-foreground">Set-Asides (comma separated)</label>
+            <input value={form.set_asides} onChange={(e) => setForm({ ...form, set_asides: e.target.value })}
+              className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="SDVOSB, 8(a)" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1 text-muted-foreground">Clearances (comma separated)</label>
+            <input value={form.clearances} onChange={(e) => setForm({ ...form, clearances: e.target.value })}
+              className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="Secret, TS/SCI" />
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose}
+              className="flex-1 py-2 border border-border rounded-md text-sm hover:bg-secondary transition-colors">
+              Cancel
+            </button>
+            <button type="submit" disabled={loading}
+              className="flex-1 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">
+              {loading ? "Adding…" : "Add Contractor"}
             </button>
           </div>
         </form>
