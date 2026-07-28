@@ -102,17 +102,31 @@ async def _async_generate_brief(period_label: str | None) -> dict:
                     )
                     errors.extend(aggregate.get("errors", []))
 
-                    pattern = AgencyBuyingPattern(
-                        agency_id=agency.id,
-                        period_start=period_start,
-                        period_end=period_end,
-                        total_obligated_amount=aggregate["total_obligated_amount"],
-                        award_count=aggregate["award_count"],
-                        recompete_count=0,  # TODO: needs same-PIID-base award history tracking
-                        top_naics_breakdown=aggregate["top_naics_breakdown"],
-                        source_evidence=aggregate["source_evidence"],
-                    )
-                    db.add(pattern)
+                    # Rerunning generation for a period already covered (e.g. a
+                    # retry after fixing a bad query) must refresh the existing
+                    # row rather than insert a duplicate — uq_agency_period
+                    # enforces one row per (agency, period).
+                    pattern = (
+                        await db.execute(
+                            select(AgencyBuyingPattern).where(
+                                AgencyBuyingPattern.agency_id == agency.id,
+                                AgencyBuyingPattern.period_start == period_start,
+                                AgencyBuyingPattern.period_end == period_end,
+                            )
+                        )
+                    ).scalar_one_or_none()
+                    if pattern is None:
+                        pattern = AgencyBuyingPattern(
+                            agency_id=agency.id,
+                            period_start=period_start,
+                            period_end=period_end,
+                        )
+                        db.add(pattern)
+                    pattern.total_obligated_amount = aggregate["total_obligated_amount"]
+                    pattern.award_count = aggregate["award_count"]
+                    pattern.recompete_count = 0  # TODO: needs same-PIID-base award history tracking
+                    pattern.top_naics_breakdown = aggregate["top_naics_breakdown"]
+                    pattern.source_evidence = aggregate["source_evidence"]
 
                     agent = ResearchAnalystAgent()
                     ctx = AgentContext(tenant_id=uuid.uuid4(), user_id=uuid.uuid4())
