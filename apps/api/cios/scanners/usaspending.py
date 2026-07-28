@@ -14,15 +14,19 @@ logger = logging.getLogger(__name__)
 
 _BASE = "https://api.usaspending.gov/api/v2"
 
-# Contract type code → signal type
+# Contract type code → signal type. Must match USASpending's actual
+# award_type_codes enum for the spending_by_award endpoint — 'E'/'F'/'G' are
+# NOT valid procurement codes there (confirmed live: the API 400s on them,
+# listing only 'A'/'B'/'C'/'D', the 'IDV_*' family, and the numeric/F0xx
+# assistance codes as valid). Passing them silently zeroed out every result
+# in this dict-keys-derived filter, in both this module's aggregate query and
+# the existing daily PIR radar scan's _scan_recent_awards, since _post()
+# treats a 400 the same as an empty response.
 _AWARD_TYPE_SIGNAL: dict[str, str] = {
     "A": SignalType.FEDERAL_CONTRACT_AWARD,  # BPA Call
     "B": SignalType.FEDERAL_CONTRACT_AWARD,  # Purchase Order
     "C": SignalType.FEDERAL_CONTRACT_AWARD,  # Delivery Order
     "D": SignalType.IDIQ_AWARD,  # Definitive Contract
-    "E": SignalType.FEDERAL_CONTRACT_AWARD,
-    "F": SignalType.FEDERAL_CONTRACT_AWARD,
-    "G": SignalType.GWAC_AWARD,  # Grants/cooperative
     "IDV_A": SignalType.IDIQ_AWARD,  # GWAC
     "IDV_B": SignalType.IDIQ_AWARD,  # IDC
     "IDV_B_A": SignalType.IDIQ_AWARD,  # BPA
