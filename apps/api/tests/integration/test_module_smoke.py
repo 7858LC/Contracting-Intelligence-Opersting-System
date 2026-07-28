@@ -279,6 +279,78 @@ async def test_winning_profile_module_smoke(client: AsyncClient):
     body = resp.json()
     assert body["profile"] is not None
     assert body["rankings"]
+    assert body["assessment"] is not None
+
+
+@pytest.mark.anyio
+async def test_wph_capture_package_module_smoke(client: AsyncClient):
+    """Capture package build -> review -> approve -> publish-to-vault, on top
+    of the same seeded/run sample used by the winning-profile smoke test."""
+    headers = await _register(client)
+    seeded = await client.post(
+        "/api/v1/winning-profile/sample", headers=headers, params={"run": "true"}
+    )
+    assert seeded.status_code == 201, seeded.text
+    sol_id = seeded.json()["solicitation_id"]
+
+    # Generating before any package exists creates version 1, draft.
+    built = await client.post(
+        f"/api/v1/winning-profile/solicitations/{sol_id}/capture-package", headers=headers
+    )
+    assert built.status_code == 200, built.text
+    package = built.json()
+    assert package["version"] == 1
+    assert package["status"] == "draft"
+    assert package["content"]["solicitation"]["title"]
+    assert package["content"]["target_assessment"] is not None
+    assert package["content"]["contractor_rankings"]
+
+    fetched = await client.get(
+        f"/api/v1/winning-profile/solicitations/{sol_id}/capture-package", headers=headers
+    )
+    assert fetched.status_code == 200, fetched.text
+    assert fetched.json()["id"] == package["id"]
+
+    # Regenerating bumps the version and supersedes the prior one.
+    rebuilt = await client.post(
+        f"/api/v1/winning-profile/solicitations/{sol_id}/capture-package", headers=headers
+    )
+    assert rebuilt.status_code == 200, rebuilt.text
+    assert rebuilt.json()["version"] == 2
+
+    history = await client.get(
+        f"/api/v1/winning-profile/solicitations/{sol_id}/capture-package/history",
+        headers=headers,
+    )
+    assert history.status_code == 200, history.text
+    assert len(history.json()["items"]) == 2
+
+    # Publishing before approval is rejected.
+    early_publish = await client.post(
+        f"/api/v1/winning-profile/solicitations/{sol_id}/capture-package/publish-to-vault",
+        headers=headers,
+    )
+    assert early_publish.status_code == 409, early_publish.text
+
+    approved = await client.post(
+        f"/api/v1/winning-profile/solicitations/{sol_id}/capture-package/approve",
+        headers=headers,
+        json={"review_notes": "Looks accurate, approved for the exec review."},
+    )
+    assert approved.status_code == 200, approved.text
+    assert approved.json()["status"] == "approved"
+    assert approved.json()["reviewed_by"]
+
+    published = await client.post(
+        f"/api/v1/winning-profile/solicitations/{sol_id}/capture-package/publish-to-vault",
+        headers=headers,
+    )
+    assert published.status_code == 200, published.text
+    assert published.json()["knowledge_vault_document_id"]
+
+    vault = await client.get("/api/v1/knowledge-vault", headers=headers)
+    assert vault.status_code == 200, vault.text
+    assert any(d["document_type"] == "capture_package" for d in vault.json()["items"])
 
 
 @pytest.mark.anyio
