@@ -15,6 +15,7 @@ from .endpoints import (
     opportunities,
     past_performance,
     pir,
+    research,
     subscriptions,
     teaming,
     tenants,
@@ -82,3 +83,6 @@ api_router.include_router(pir.router, prefix="/radar", tags=["Procurement Intell
 api_router.include_router(
     winning_profile.router, prefix="/winning-profile", tags=["Winning Profile Hypothesis"]
 )
+
+# Research — Executive Council report access
+api_router.include_router(research.router, prefix="/research", tags=["Research"])

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import random
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 from httpx import AsyncClient
@@ -301,3 +302,83 @@ async def test_admin_landlord_module_smoke(client: AsyncClient):
     tenant_headers = await _register(client)
     denied = await client.get("/api/v1/admin/stats", headers=tenant_headers)
     assert denied.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_research_module_smoke(client: AsyncClient):
+    """Module: research (Executive Council report access, Phase 1 —
+    Agency Intelligence Brief). Phase 1's tables have no tenant-facing write
+    endpoints — AgencyProfile/AgencyBuyingPattern/ResearchReport are only
+    ever populated by the generate_agency_intelligence_brief Celery task —
+    so seed them directly, same as the admin smoke test does for
+    PlatformAdmin. Also proves is_council_member actually gates access, in
+    both directions, through the real grant/revoke admin endpoints."""
+    from cios.core.database import async_session_factory
+    from cios.core.security import hash_password
+    from cios.models.research import AgencyProfile, ReportStatus, ResearchReport
+    from cios.models.tenant import PlatformAdmin
+
+    tenant_headers = await _register(client)
+    profile = await client.get("/api/v1/tenants/profile", headers=tenant_headers)
+    assert profile.status_code == 200, profile.text
+    tenant_id = profile.json()["id"]
+
+    suffix = uuid.uuid4().hex[:10]
+    admin_email = f"smoke-research-admin-{suffix}@cios.ai"
+    async with async_session_factory() as db:
+        db.add(
+            AgencyProfile(name=f"Smoke Agency {suffix}", usaspending_toptier_code="097")
+        )
+        report = ResearchReport(
+            report_type="agency_intelligence_brief",
+            period_label="2026-Q3",
+            status=ReportStatus.PUBLISHED.value,
+            title="Smoke Test Agency Intelligence Brief — 2026-Q3",
+            summary="Smoke test summary.",
+            published_at=datetime.now(UTC),
+        )
+        db.add(report)
+        db.add(
+            PlatformAdmin(
+                email=admin_email,
+                password_hash=hash_password("SmokeAdmin123!"),
+                full_name="Smoke Research Admin",
+                role="admin",
+            )
+        )
+        await db.commit()
+        report_id = str(report.id)
+
+    # Not a Council member yet — reports are forbidden, not just empty.
+    denied = await client.get("/api/v1/research/reports", headers=tenant_headers)
+    assert denied.status_code == 403, denied.text
+
+    admin_login = await client.post(
+        "/api/v1/admin/auth/login",
+        json={"email": admin_email, "password": "SmokeAdmin123!"},
+    )
+    assert admin_login.status_code == 200, admin_login.text
+    admin_headers = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
+
+    grant = await client.post(
+        f"/api/v1/admin/tenants/{tenant_id}/council/grant", headers=admin_headers
+    )
+    assert grant.status_code == 200, grant.text
+    assert grant.json()["is_council_member"] is True
+
+    reports = await client.get("/api/v1/research/reports", headers=tenant_headers)
+    assert reports.status_code == 200, reports.text
+    assert any(r["id"] == report_id for r in reports.json()["items"])
+
+    one = await client.get(f"/api/v1/research/reports/{report_id}", headers=tenant_headers)
+    assert one.status_code == 200, one.text
+    assert one.json()["title"] == "Smoke Test Agency Intelligence Brief — 2026-Q3"
+
+    revoke = await client.post(
+        f"/api/v1/admin/tenants/{tenant_id}/council/revoke", headers=admin_headers
+    )
+    assert revoke.status_code == 200, revoke.text
+    assert revoke.json()["is_council_member"] is False
+
+    denied_again = await client.get("/api/v1/research/reports", headers=tenant_headers)
+    assert denied_again.status_code == 403, denied_again.text

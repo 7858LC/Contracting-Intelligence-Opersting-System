@@ -303,6 +303,32 @@ async def activate_tenant(tenant_id: uuid.UUID, db: DB, admin: PlatformOperatorA
     return {"id": str(tenant.id), "is_active": True}
 
 
+@router.post("/tenants/{tenant_id}/council/grant", response_model=dict)
+async def grant_council_membership(
+    tenant_id: uuid.UUID, db: DB, admin: PlatformOperatorAuth
+) -> dict:
+    tenant = await _get_tenant(db, tenant_id)
+    if tenant.is_council_member:
+        return {"id": str(tenant.id), "is_council_member": True}
+    tenant.is_council_member = True
+    await _write_audit(db, tenant_id, admin, "tenant.council_membership_granted")
+    await db.commit()
+    return {"id": str(tenant.id), "is_council_member": True}
+
+
+@router.post("/tenants/{tenant_id}/council/revoke", response_model=dict)
+async def revoke_council_membership(
+    tenant_id: uuid.UUID, db: DB, admin: PlatformOperatorAuth
+) -> dict:
+    tenant = await _get_tenant(db, tenant_id)
+    if not tenant.is_council_member:
+        return {"id": str(tenant.id), "is_council_member": False}
+    tenant.is_council_member = False
+    await _write_audit(db, tenant_id, admin, "tenant.council_membership_revoked")
+    await db.commit()
+    return {"id": str(tenant.id), "is_council_member": False}
+
+
 @router.get("/tenants/{tenant_id}/audit-log", response_model=dict)
 async def tenant_audit_log(tenant_id: uuid.UUID, db: DB, admin: PlatformAuth, pages: Pages) -> dict:
     await _get_tenant(db, tenant_id)

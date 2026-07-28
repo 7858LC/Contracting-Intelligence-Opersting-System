@@ -24,9 +24,9 @@ def _run(coro: Any) -> Any:
 
 
 async def _get_db():
-    from cios.core.database import AsyncSessionLocal
+    from cios.core.database import async_session_factory
 
-    async with AsyncSessionLocal() as session:
+    async with async_session_factory() as session:
         return session
 
 
@@ -61,11 +61,11 @@ async def _async_scan_company(
     scan_config: dict,
 ) -> dict:
     from cios.config import settings
-    from cios.core.database import AsyncSessionLocal
+    from cios.core.database import async_session_factory
     from cios.models.pir import PIRCompany
     from cios.scanners import JobBoardScanner, SAMGovScanner, USASpendingScanner
 
-    async with AsyncSessionLocal() as db:
+    async with async_session_factory() as db:
         company = await db.get(PIRCompany, company_id)
         if not company:
             return {"error": f"Company {company_id} not found"}
@@ -186,11 +186,11 @@ async def _async_bulk_scan(
     company_ids: list[str] | None,
     scan_config: dict,
 ) -> dict:
-    from cios.core.database import AsyncSessionLocal
+    from cios.core.database import async_session_factory
     from cios.models.pir import PIRCompany
 
     tid = uuid.UUID(tenant_id)
-    async with AsyncSessionLocal() as db:
+    async with async_session_factory() as db:
         if company_ids:
             cids = [uuid.UUID(c) for c in company_ids]
             rows = await db.execute(
@@ -233,11 +233,11 @@ def score_company(self, company_id: str, tenant_id: str) -> dict:
 
 
 async def _async_score_company(company_id: uuid.UUID, tenant_id: uuid.UUID) -> dict:
-    from cios.core.database import AsyncSessionLocal
+    from cios.core.database import async_session_factory
     from cios.models.pir import PIRCompany, PIRSignal
     from cios.scoring import SignalScorer
 
-    async with AsyncSessionLocal() as db:
+    async with async_session_factory() as db:
         company = await db.get(PIRCompany, company_id)
         if not company:
             return {"error": "not found"}
@@ -311,10 +311,10 @@ async def _async_analyze_company(
     user_id: uuid.UUID | None,
 ) -> dict:
     from cios.agents.pir_analyst_agent import run_pir_analysis
-    from cios.core.database import AsyncSessionLocal
+    from cios.core.database import async_session_factory
     from cios.models.pir import PIRAIAnalysis, PIRCompany, PIRSignal
 
-    async with AsyncSessionLocal() as db:
+    async with async_session_factory() as db:
         analysis = await db.get(PIRAIAnalysis, analysis_id)
         if not analysis:
             return {"error": "Analysis record not found"}
@@ -378,10 +378,10 @@ def daily_radar_scan() -> dict:
 async def _async_daily_scan() -> dict:
     from sqlalchemy import distinct
 
-    from cios.core.database import AsyncSessionLocal
+    from cios.core.database import async_session_factory
     from cios.models.pir import PIRCompany
 
-    async with AsyncSessionLocal() as db:
+    async with async_session_factory() as db:
         result = await db.execute(
             select(distinct(PIRCompany.tenant_id)).where(PIRCompany.is_active.is_(True))
         )
