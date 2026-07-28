@@ -112,7 +112,11 @@ class USASpendingScanner(BaseScanner):
 
             for page in range(1, max_pages + 1):
                 payload["page"] = page
-                resp = await self._post(f"{_BASE}/search/spending_by_award/", json=payload)
+                resp = await self._post(
+                    f"{_BASE}/search/spending_by_award/",
+                    json=payload,
+                    headers={"Accept": "application/json"},
+                )
                 if not resp:
                     errors.append(
                         f"{agency_name}: no response on page {page} ({type_codes[0]} group)"
@@ -123,7 +127,8 @@ class USASpendingScanner(BaseScanner):
                     data = resp.json()
                 except Exception:
                     errors.append(
-                        f"{agency_name}: invalid JSON on page {page} ({type_codes[0]} group)"
+                        f"{agency_name}: invalid JSON on page {page} ({type_codes[0]} group) — "
+                        f"body starts with: {resp.text[:200]!r}"
                     )
                     break
 
@@ -212,7 +217,11 @@ class USASpendingScanner(BaseScanner):
             if naics_codes:
                 payload["filters"]["naics_codes"] = naics_codes[:20]
 
-            resp = await self._post(f"{_BASE}/search/spending_by_award/", json=payload)
+            resp = await self._post(
+                f"{_BASE}/search/spending_by_award/",
+                json=payload,
+                headers={"Accept": "application/json"},
+            )
             if not resp:
                 result.add_error(
                     f"USASpending award search returned no response ({type_codes[0]} group)"
@@ -222,7 +231,10 @@ class USASpendingScanner(BaseScanner):
             try:
                 data = resp.json()
             except Exception:
-                result.add_error(f"USASpending: invalid JSON response ({type_codes[0]} group)")
+                result.add_error(
+                    f"USASpending: invalid JSON response ({type_codes[0]} group) — "
+                    f"body starts with: {resp.text[:200]!r}"
+                )
                 continue
 
             for award in data.get("results", []):
@@ -305,7 +317,11 @@ class USASpendingScanner(BaseScanner):
             "subawards": False,
         }
 
-        resp = await self._post(f"{_BASE}/search/spending_by_award/", json=payload)
+        resp = await self._post(
+            f"{_BASE}/search/spending_by_award/",
+            json=payload,
+            headers={"Accept": "application/json"},
+        )
         if not resp:
             return
 
