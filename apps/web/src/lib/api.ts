@@ -304,6 +304,18 @@ class CIOSApiClient {
     return data;
   }
 
+  // ── Executive Council Research ───────────────────────────────────────────
+
+  async getResearchReports() {
+    const { data } = await this.client.get("/research/reports");
+    return data;
+  }
+
+  async getResearchReport(id: string) {
+    const { data } = await this.client.get(`/research/reports/${id}`);
+    return data;
+  }
+
   // ── Procurement Intelligence Radar™ (PIR) ───────────────────────────────
 
   async getRadarDashboard() {

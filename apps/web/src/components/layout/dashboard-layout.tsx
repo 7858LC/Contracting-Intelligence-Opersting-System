@@ -11,6 +11,7 @@ import {
   Building2,
   Crosshair,
   Home,
+  Landmark,
   LogOut,
   Radio,
   Settings,
@@ -50,6 +51,10 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { href: "/dashboard/capabilities", label: "Capabilities & Gaps", icon: Brain, feature: Feature.Capabilities },
   { href: "/dashboard/teaming", label: "Teaming", icon: Users, feature: Feature.Teaming },
   { href: "/dashboard/competitors", label: "Competitors", icon: Building2, feature: Feature.Competitors },
+  // Gated server-side by Tenant.is_council_member (403, not a tier feature),
+  // so this stays visible for everyone — the page itself shows the
+  // "Council access required" state for non-members.
+  { href: "/dashboard/research", label: "Executive Council™", icon: Landmark, feature: null },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, feature: null },
 ];
 
