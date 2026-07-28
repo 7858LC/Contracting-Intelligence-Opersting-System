@@ -31,6 +31,10 @@ class Tenant(Base, UUIDMixin, TimestampMixin):
     employee_count_band: Mapped[str | None] = mapped_column(String(32))
     primary_jurisdictions: Mapped[list] = mapped_column(JSONB, default=list)
     encryption_key_reference: Mapped[str | None] = mapped_column(String(256))
+    # Manual flag, not a reviewed application workflow (that's a later phase if
+    # ever needed) — set via the platform-admin grant/revoke endpoints in
+    # admin.py, same audited pattern as suspend/activate.
+    is_council_member: Mapped[bool] = mapped_column(Boolean, default=False)
 
     members: Mapped[list["TenantMember"]] = relationship(back_populates="tenant")
     audit_logs: Mapped[list["AuditLog"]] = relationship(back_populates="tenant")

@@ -1,6 +1,7 @@
 """Celery task workers for async processing."""
 
 from celery import Celery
+from celery.schedules import crontab
 
 from cios.config import settings
 
@@ -22,6 +23,7 @@ celery_app = Celery(
         "cios.tasks.onboarding",
         "cios.tasks.pir",
         "cios.tasks.winning_profile",
+        "cios.tasks.research",
     ],
 )
 
@@ -45,6 +47,10 @@ celery_app.conf.update(
         "pir-daily-radar-scan": {
             "task": "cios.tasks.pir.daily_radar_scan",
             "schedule": 86400,  # every 24 hours
+        },
+        "quarterly-agency-intelligence-brief": {
+            "task": "cios.tasks.research.generate_agency_intelligence_brief",
+            "schedule": crontab(minute=0, hour=6, day_of_month=1, month_of_year="1,4,7,10"),
         },
     },
 )

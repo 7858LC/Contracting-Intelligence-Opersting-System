@@ -38,6 +38,115 @@ class USASpendingScanner(BaseScanner):
     source_name = SignalSource.USASPENDING
     _rate_limit_delay = 0.3
 
+    async def aggregate_agency_period(
+        self,
+        agency_name: str,
+        period_start: datetime,
+        period_end: datetime,
+        naics_codes: list[str] | None = None,
+        max_pages: int = 5,
+    ) -> dict[str, Any]:
+        """Aggregate award activity for one agency over one period, for the
+        research module's AgencyBuyingPattern (cios/models/research.py).
+
+        NOTE: this is a bounded top-N aggregate, not a complete Treasury-grade
+        total — it pages through ``spending_by_award`` (the same endpoint/
+        payload shape ``_scan_recent_awards`` already uses successfully) up to
+        ``max_pages`` pages of 100 results each, ordered by award amount
+        descending, and sums what it sees. A large agency (DoD) has far more
+        awards per quarter than max_pages*100 can cover completely. Getting a
+        complete total would mean using USASpending's dedicated aggregate
+        endpoints (spending_over_time / spending_by_category), which this
+        environment could not reach to verify their exact request/response
+        schema before shipping — do a live check against a real quarter's
+        published Treasury totals before trusting this for anything but a
+        directional "top awards this quarter" narrative.
+        """
+        payload: dict[str, Any] = {
+            "filters": {
+                "time_period": [
+                    {
+                        "start_date": period_start.strftime("%Y-%m-%d"),
+                        "end_date": period_end.strftime("%Y-%m-%d"),
+                    }
+                ],
+                "award_type_codes": list(_AWARD_TYPE_SIGNAL.keys()),
+                "agencies": [{"type": "awarding", "tier": "toptier", "name": agency_name}],
+            },
+            "fields": [
+                "Award ID",
+                "Recipient Name",
+                "Award Amount",
+                "Award Type",
+                "NAICS Code",
+                "Action Date",
+                "Awarding Sub Agency",
+            ],
+            "sort": "Award Amount",
+            "order": "desc",
+            "limit": 100,
+            "page": 1,
+        }
+        if naics_codes:
+            payload["filters"]["naics_codes"] = naics_codes[:20]
+
+        total_obligated = 0.0
+        award_count = 0
+        naics_totals: dict[str, float] = {}
+        evidence: list[dict[str, Any]] = []
+        errors: list[str] = []
+
+        for page in range(1, max_pages + 1):
+            payload["page"] = page
+            resp = await self._post(f"{_BASE}/search/spending_by_award/", json=payload)
+            if not resp:
+                errors.append(f"{agency_name}: no response on page {page}")
+                break
+
+            try:
+                data = resp.json()
+            except Exception:
+                errors.append(f"{agency_name}: invalid JSON on page {page}")
+                break
+
+            results = data.get("results", [])
+            if not results:
+                break
+
+            for award in results:
+                amount = award.get("Award Amount") or 0
+                total_obligated += amount
+                award_count += 1
+                naics = str(award.get("NAICS Code") or "")
+                if naics:
+                    naics_totals[naics] = naics_totals.get(naics, 0.0) + amount
+                if len(evidence) < 25:
+                    evidence.append(
+                        {
+                            "award_id": award.get("Award ID", ""),
+                            "recipient_name": award.get("Recipient Name", ""),
+                            "amount": amount,
+                            "naics": naics,
+                            "action_date": award.get("Action Date", ""),
+                            "source_url": (
+                                f"https://www.usaspending.gov/award/{award.get('Award ID', '')}"
+                            ),
+                        }
+                    )
+
+            if not data.get("page_metadata", {}).get("hasNext", False):
+                break
+
+        top_naics = dict(sorted(naics_totals.items(), key=lambda kv: kv[1], reverse=True)[:10])
+
+        return {
+            "total_obligated_amount": total_obligated,
+            "award_count": award_count,
+            "top_naics_breakdown": top_naics,
+            "source_evidence": evidence,
+            "errors": errors,
+        }
+
     async def scan(self, keywords: list[str], **kwargs: Any) -> ScanResult:
         result = ScanResult(source=self.source_name)
         t0 = datetime.now(UTC)
