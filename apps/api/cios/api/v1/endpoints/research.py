@@ -55,7 +55,6 @@ async def list_reports(db: DB, user: Auth) -> dict:
                 "period_label": r.period_label,
                 "title": r.title,
                 "summary": r.summary,
-                "storage_url": r.storage_url,
                 "published_at": r.published_at.isoformat() if r.published_at else None,
             }
             for r in rows
@@ -78,6 +77,6 @@ async def get_report(report_id: uuid.UUID, db: DB, user: Auth) -> dict:
         "period_label": report.period_label,
         "title": report.title,
         "summary": report.summary,
-        "storage_url": report.storage_url,
+        "content": report.content,
         "published_at": report.published_at.isoformat() if report.published_at else None,
     }

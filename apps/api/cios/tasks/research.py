@@ -5,21 +5,21 @@ platform-owned, public-data-derived tables (cios/models/research.py) — never
 touches any tenant's data, consistent with that module's tenant-isolation
 exception being the other direction (public data made available to every
 Council-member tenant, not tenant data made available platform-wide).
+
+Report content is stored directly in research_reports.content (JSONB) rather
+than rendered to a file and uploaded to S3 — no object-storage account
+needed at this scale (a handful of small quarterly reports).
 """
 
 from __future__ import annotations
 
 import asyncio
-import io
 import uuid
 from datetime import UTC, datetime
 
-import boto3
 import structlog
-from docx import Document
 from sqlalchemy import select
 
-from cios.config import settings
 from cios.tasks import celery_app
 
 log = structlog.get_logger(__name__)
@@ -132,16 +132,13 @@ async def _async_generate_brief(period_label: str | None) -> dict:
         if not sections:
             return {"error": "All agency sections failed", "errors": errors}
 
-        doc_bytes = _render_docx(label, sections)
-        storage_url = _upload_to_s3(doc_bytes, label)
-
         report = ResearchReport(
             report_type="agency_intelligence_brief",
             period_label=label,
             status=ReportStatus.PUBLISHED.value,
             title=f"Agency Intelligence Brief — {label}",
             summary=sections[0]["brief"]["executive_summary"] if sections else None,
-            storage_url=storage_url,
+            content=sections,
             published_at=now,
         )
         db.add(report)
@@ -153,53 +150,3 @@ async def _async_generate_brief(period_label: str | None) -> dict:
             "agencies_covered": [s["agency"] for s in sections],
             "errors": errors,
         }
-
-
-def _render_docx(period_label: str, sections: list[dict]) -> bytes:
-    doc = Document()
-    doc.add_heading(f"Agency Intelligence Brief — {period_label}", level=0)
-
-    for section in sections:
-        brief = section["brief"]
-        doc.add_heading(section["agency"], level=1)
-        doc.add_paragraph(brief["executive_summary"])
-
-        doc.add_heading("Key Findings", level=2)
-        for finding in brief["key_findings"]:
-            doc.add_paragraph(finding, style="List Bullet")
-
-        if brief["priority_sectors"]:
-            doc.add_heading("Priority Sectors", level=2)
-            for sector in brief["priority_sectors"]:
-                if isinstance(sector, dict):
-                    doc.add_paragraph(
-                        f"{sector.get('naics', '')}: {sector.get('rationale', '')}",
-                        style="List Bullet",
-                    )
-
-        doc.add_heading("Capture Implications", level=2)
-        doc.add_paragraph(brief["capture_implications"])
-
-        doc.add_paragraph(f"Data note: {brief['data_limitations']}").italic = True
-
-    buf = io.BytesIO()
-    doc.save(buf)
-    return buf.getvalue()
-
-
-def _upload_to_s3(doc_bytes: bytes, period_label: str) -> str:
-    client = boto3.client(
-        "s3",
-        endpoint_url=settings.s3_endpoint,
-        aws_access_key_id=settings.s3_access_key_id,
-        aws_secret_access_key=settings.s3_secret_access_key,
-        region_name=settings.s3_region,
-    )
-    key = f"research/agency-intelligence-brief/{period_label}.docx"
-    client.put_object(
-        Bucket=settings.s3_bucket_exports,
-        Key=key,
-        Body=doc_bytes,
-        ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    )
-    return f"s3://{settings.s3_bucket_exports}/{key}"
