@@ -124,10 +124,36 @@ async def test_bid_decisions_module_smoke(client: AsyncClient):
     opp_id = await _create_opportunity(client, headers)
 
     resp = await client.post(
-        "/api/v1/bid-decisions", headers=headers, json={"opportunity_id": opp_id}
+        "/api/v1/bid-decisions",
+        headers=headers,
+        json={"opportunity_id": opp_id, "go_no_go_threshold": 70},
     )
     assert resp.status_code == 202, resp.text
     assert resp.json()["status"] == "queued"
+
+    # The frontend (bid-decision-view.tsx) depends on this exact response
+    # shape — decision/overall_score/capability_score/risk_factors/rationale
+    # are all deliberately different names from this model's own columns
+    # (recommendation/composite_score/etc.), and go_no_go_threshold/
+    # analyzed_at were dropped by a schema-drift migration and restored in
+    # 015. A field-name mismatch here is exactly what crashed the page
+    # ("u.filter is not a function") since the wrapper key didn't match either.
+    listed = await client.get("/api/v1/bid-decisions", headers=headers)
+    assert listed.status_code == 200, listed.text
+    items = listed.json()["items"]
+    assert len(items) == 1
+    item = items[0]
+    assert item["opportunity_title"]
+    assert item["go_no_go_threshold"] == 70
+    expected_keys = (
+        "decision", "overall_score", "capability_score", "risk_factors", "rationale", "analyzed_at",
+    )
+    for key in expected_keys:
+        assert key in item
+
+    detail = await client.get(f"/api/v1/bid-decisions/{item['id']}", headers=headers)
+    assert detail.status_code == 200, detail.text
+    assert detail.json()["opportunity_title"] == item["opportunity_title"]
 
 
 @pytest.mark.anyio

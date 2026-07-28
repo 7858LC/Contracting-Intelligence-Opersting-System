@@ -1,9 +1,10 @@
 """Bid/No-Bid Engine model — Module 2."""
 
 import uuid
+from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Float, ForeignKey, Index, String, Text
+from sqlalchemy import DateTime, Float, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -45,6 +46,12 @@ class BidDecision(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin):
     scoring_weights: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     alternatives: Mapped[list[dict]] = mapped_column(JSONB, default=list)
     risks: Mapped[list[dict]] = mapped_column(JSONB, default=list)
+
+    # Restored by migration 015 — dropped by 012's schema-drift reconciliation
+    # because this model never declared them, even though the frontend
+    # (components/modules/bid-decision/bid-decision-view.tsx) depends on both.
+    go_no_go_threshold: Mapped[float | None] = mapped_column(Float, default=65.0)
+    analyzed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     factors: Mapped[list["BidDecisionFactor"]] = relationship(back_populates="decision")
 
