@@ -335,6 +335,7 @@ async def test_research_module_smoke(client: AsyncClient):
             status=ReportStatus.PUBLISHED.value,
             title="Smoke Test Agency Intelligence Brief — 2026-Q3",
             summary="Smoke test summary.",
+            content=[{"agency": "Smoke Agency", "brief": {"executive_summary": "Smoke summary."}}],
             published_at=datetime.now(UTC),
         )
         db.add(report)
@@ -373,6 +374,7 @@ async def test_research_module_smoke(client: AsyncClient):
     one = await client.get(f"/api/v1/research/reports/{report_id}", headers=tenant_headers)
     assert one.status_code == 200, one.text
     assert one.json()["title"] == "Smoke Test Agency Intelligence Brief — 2026-Q3"
+    assert one.json()["content"][0]["agency"] == "Smoke Agency"
 
     revoke = await client.post(
         f"/api/v1/admin/tenants/{tenant_id}/council/revoke", headers=admin_headers

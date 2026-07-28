@@ -94,6 +94,10 @@ class ResearchReport(Base, UUIDMixin, TimestampMixin):
     visibility: Mapped[str] = mapped_column(String(16), default=ReportVisibility.COUNCIL_ONLY.value)
     title: Mapped[str] = mapped_column(String(256), nullable=False)
     summary: Mapped[str | None] = mapped_column(Text)
+    # Full structured report content (list of {"agency": ..., "brief": {...}}
+    # sections) stored directly rather than rendered to a file and uploaded
+    # to external storage — no S3/object-storage account needed for this.
+    content: Mapped[list] = mapped_column(JSONB, default=list)
     storage_url: Mapped[str | None] = mapped_column(String(512))
     generated_by_agent_run_id: Mapped[uuid.UUID | None] = mapped_column(PG_UUID(as_uuid=True))
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
