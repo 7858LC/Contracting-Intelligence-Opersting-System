@@ -110,7 +110,7 @@ class CIOSApiClient {
 
   async getBidDecisions(params?: Record<string, unknown>) {
     const { data } = await this.client.get("/bid-decisions", { params });
-    return data.bid_decisions ?? data.decisions ?? data;
+    return data.items ?? data.bid_decisions ?? data.decisions ?? data;
   }
 
   async createBidDecision(payload: { opportunity_id: string; go_no_go_threshold?: number; scoring_weights?: Record<string, number> }) {
