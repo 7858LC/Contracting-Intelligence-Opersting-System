@@ -68,3 +68,6 @@ logs/
 
 # Local Redis snapshots (dev/test runs)
 *.rdb
+
+# Celery Beat local schedule state (dev/test runs)
+celerybeat-schedule*

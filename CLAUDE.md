@@ -32,8 +32,24 @@ uvicorn cios.main:app --reload --port 8000
 # Frontend
 cd apps/web && npm install && npm run dev
 
-# Worker
-celery -A cios.tasks worker --loglevel=info
+# Worker — the -Q list must match every queue in cios/tasks/__init__.py's
+# task_routes plus any task's own queue= override (grep the tasks/ package
+# for `queue=` if you add a new one); omitting a queue here means Celery
+# silently never runs the tasks routed to it — this exact gap went
+# undetected for a long time because "celery" (Celery's real default queue)
+# had been misnamed "default" here, which doesn't exist.
+#
+# CIOS_WORKER_PROCESS=1 is required on any process running task bodies —
+# it switches core/database.py to NullPool, since every task calls
+# asyncio.run() (a fresh event loop per task) and a real connection pool
+# would hand out a connection bound to a previous, already-closed loop.
+# Never set this on the API process (uvicorn) — it keeps one long-lived
+# loop and should keep real pooling.
+CIOS_WORKER_PROCESS=1 celery -A cios.tasks worker --loglevel=info -Q celery,simulations,ingestion,analysis,email,pir_scan,research
+
+# Scheduler (required for the daily PIR scan and quarterly research brief
+# to actually fire — a worker alone does not run scheduled tasks)
+CIOS_WORKER_PROCESS=1 celery -A cios.tasks beat --loglevel=info
 ```
 
 ## Environment

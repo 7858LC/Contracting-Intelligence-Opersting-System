@@ -11,7 +11,7 @@ log = structlog.get_logger(__name__)
 
 @celery_app.task(bind=True, max_retries=3)
 def handle_stripe_event(self, event_type: str, event_data: dict) -> dict:
-    return asyncio.get_event_loop().run_until_complete(_handle_async(event_type, event_data))
+    return asyncio.run(_handle_async(event_type, event_data))
 
 
 async def _handle_async(event_type: str, event_data: dict) -> dict:

@@ -26,7 +26,7 @@ log = structlog.get_logger(__name__)
 
 
 def _run(coro):  # noqa: ANN001, ANN201
-    return asyncio.get_event_loop().run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 @celery_app.task(

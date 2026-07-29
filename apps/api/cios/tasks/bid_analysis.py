@@ -8,7 +8,7 @@ from cios.tasks import celery_app
 
 @celery_app.task(bind=True, max_retries=2, soft_time_limit=300)
 def run_bid_analysis(self, tenant_id: str, user_id: str, decision_id: str) -> dict:
-    return asyncio.get_event_loop().run_until_complete(_run_async(tenant_id, user_id, decision_id))
+    return asyncio.run(_run_async(tenant_id, user_id, decision_id))
 
 
 async def _run_async(tenant_id: str, user_id: str, decision_id: str) -> dict:
