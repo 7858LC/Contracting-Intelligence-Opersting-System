@@ -16,6 +16,7 @@ the exact same cached session the route handler receives, independent of
 parameter order.
 """
 
+import os
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -26,6 +27,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import NullPool
 
 from cios.config import settings
 
@@ -37,13 +39,36 @@ class Base(DeclarativeBase):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 
-engine: AsyncEngine = create_async_engine(
-    settings.database_url,
-    pool_size=settings.database_pool_size,
-    max_overflow=settings.database_max_overflow,
-    echo=settings.debug,
-    pool_pre_ping=True,
-)
+# Celery task bodies each call asyncio.run(...) (see cios/tasks/*.py), which
+# creates and tears down a brand-new event loop per task. asyncpg connections
+# are bound to the event loop that opened them, so a connection pool that
+# hands the same physical connection back out across two different
+# asyncio.run() calls fails with "attached to a different loop" the moment a
+# worker process handles a second task — this isn't hypothetical, it's the
+# actual failure observed the first time a real worker process ran more than
+# one task. NullPool opens a fresh physical connection per checkout instead
+# of reusing one across calls, which is the correct fix for an async engine
+# shared across multiple short-lived event loops in the same process.
+# CIOS_WORKER_PROCESS is set on the Celery worker's environment only (Render
+# worker service, docker-compose worker/scheduler services) — never on the
+# FastAPI web process, which keeps one long-lived event loop and should keep
+# real connection pooling.
+_IS_WORKER_PROCESS = os.environ.get("CIOS_WORKER_PROCESS") == "1"
+
+if _IS_WORKER_PROCESS:
+    engine: AsyncEngine = create_async_engine(
+        settings.database_url,
+        echo=settings.debug,
+        poolclass=NullPool,
+    )
+else:
+    engine = create_async_engine(
+        settings.database_url,
+        pool_size=settings.database_pool_size,
+        max_overflow=settings.database_max_overflow,
+        echo=settings.debug,
+        pool_pre_ping=True,
+    )
 
 async_session_factory = async_sessionmaker(
     engine,

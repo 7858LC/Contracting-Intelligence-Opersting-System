@@ -24,3 +24,54 @@ services:
         sync: false
       - key: APP_URL
         sync: false
+
+  # Every async feature — Knowledge Vault ingestion/vectorization, bid
+  # analysis scoring, PIR scans, WPH capture-package vault publishing, the
+  # quarterly Executive Council brief — is a Celery task queued via .delay().
+  # Without this service those tasks queue into Redis and nothing ever
+  # processes them; the API call itself still returns success, so the
+  # failure is invisible until someone notices the result never arrives.
+  #
+  # -B embeds Celery Beat (the scheduler) in this same process, which is only
+  # safe with exactly one instance of this service. If this ever needs to
+  # scale beyond one instance, split beat into its own single-instance
+  # service first — running -B on more than one worker double-fires every
+  # scheduled task (the daily PIR scan, the quarterly research brief).
+  #
+  # -Q must list every queue any task actually routes to (see
+  # cios/tasks/__init__.py's task_routes, plus each task's own queue=
+  # override) — grep cios/tasks/*.py for `queue=` before adding a new task
+  # module, and add its queue here if it's a new one. Missing one here means
+  # Celery silently never runs the tasks routed to it.
+  - type: worker
+    name: cios-worker
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: infra/docker/Dockerfile.api
+    dockerContext: apps/api
+    dockerCommand: >-
+      celery -A cios.tasks worker -B --loglevel=info --concurrency=2
+      -Q celery,simulations,ingestion,analysis,email,pir_scan,research
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: APP_URL
+        sync: false
+      # Tells cios/core/database.py to use NullPool instead of a real
+      # connection pool — required because every task body calls
+      # asyncio.run() (a fresh event loop per task), and asyncpg connections
+      # can't be reused across different event loops. Never set this on
+      # cios-api above.
+      - key: CIOS_WORKER_PROCESS
+        value: "1"

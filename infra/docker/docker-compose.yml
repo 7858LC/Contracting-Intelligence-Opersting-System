@@ -93,11 +93,21 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       JWT_SECRET: ${JWT_SECRET:-dev_secret_change_in_production_32chars}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+      # Tells cios/core/database.py to use NullPool — required whenever a
+      # process calls asyncio.run() per task (see database.py's comment);
+      # never set this on the API web service.
+      CIOS_WORKER_PROCESS: "1"
     depends_on:
       - api
     volumes:
       - ../../apps/api:/app
-    command: celery -A cios.tasks worker --loglevel=info --concurrency=4 -Q default,simulations,ingestion,analysis,email,pir_scan
+    # Queue list must cover every queue any task actually routes to — both the
+    # task_routes patterns and each task's own explicit queue= override in
+    # cios/tasks/*.py — plus "celery", Celery's real default queue name (NOT
+    # "default"; that queue doesn't exist and was silently swallowing every
+    # unrouted task — bid analysis, billing, competitive intel, gap analysis,
+    # onboarding, scoring, teaming — until this fix).
+    command: celery -A cios.tasks worker --loglevel=info --concurrency=4 -Q celery,simulations,ingestion,analysis,email,pir_scan,research
 
   # ── Celery Beat (Scheduler) ────────────────────────────────────────────────
   scheduler:
@@ -111,6 +121,7 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       JWT_SECRET: ${JWT_SECRET:-dev_secret_change_in_production_32chars}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+      CIOS_WORKER_PROCESS: "1"
     depends_on:
       - redis
     volumes:
