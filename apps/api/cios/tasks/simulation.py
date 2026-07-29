@@ -13,7 +13,7 @@ from cios.tasks import celery_app
 log = structlog.get_logger(__name__)
 
 
-@celery_app.task(bind=True, max_retries=2, soft_time_limit=300)
+@celery_app.task(bind=True, max_retries=2, default_retry_delay=60, soft_time_limit=300)
 def run_award_simulation(
     self,
     tenant_id: str,
@@ -21,11 +21,31 @@ def run_award_simulation(
     simulation_id: str,
     proposal_content: dict,
 ) -> dict:
-    return asyncio.run(_run_simulation_async(tenant_id, user_id, simulation_id, proposal_content))
+    try:
+        return asyncio.run(
+            _run_simulation_async(tenant_id, user_id, simulation_id, proposal_content)
+        )
+    except Exception as exc:
+        # Without this, max_retries was dead configuration: a single transient
+        # failure (Claude timeout/rate limit, a malformed-JSON response) would
+        # permanently fail the simulation with no retry, unlike e.g.
+        # cios/tasks/research.py's equivalent task. _run_simulation_async's own
+        # except block already marks the row "failed" with an error_message
+        # before re-raising, so a retry re-enters cleanly from "failed".
+        raise self.retry(exc=exc)
 
 
 def _parse_claude_json(raw: str) -> dict:
-    """Extract JSON from Claude's response, stripping markdown fences if present."""
+    """Extract JSON from Claude's response, stripping markdown fences if present.
+
+    Raises ValueError if no valid JSON object can be extracted. Previously
+    this returned {"raw": text[:5000]} on failure, which downstream code
+    read with .get(...) — every field silently came back None/empty, the
+    simulation was marked "completed", and the actual raw Claude output was
+    discarded entirely (never stored anywhere). Raising instead routes a
+    parse failure through the same "failed" + error_message + retry path as
+    any other simulation failure, and preserves what Claude actually said.
+    """
     text = raw.strip()
     # Strip ```json ... ``` or ``` ... ``` fences
     fence = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
@@ -41,7 +61,10 @@ def _parse_claude_json(raw: str) -> dict:
                 return json.loads(match.group(0))
             except (json.JSONDecodeError, ValueError):
                 pass
-    return {"raw": text[:5000]}
+    raise ValueError(
+        f"Claude response was not valid JSON — simulation cannot be scored. "
+        f"First 500 chars of raw response: {text[:500]!r}"
+    )
 
 
 async def _run_simulation_async(

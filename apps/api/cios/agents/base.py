@@ -128,8 +128,19 @@ class BaseAgent(ABC):
         user_message: str,
         tools: list[dict] | None = None,
         model: str | None = None,
+        raise_on_truncation: bool = False,
     ) -> str:
-        """Invoke Claude with structured prompting."""
+        """Invoke Claude with structured prompting.
+
+        raise_on_truncation: when True, raises RuntimeError if the response was
+        cut off by hitting max_tokens rather than a natural stop. A truncated
+        response is usually invalid JSON/incomplete output and must not be
+        silently treated as a valid result (see award_simulator_agent.py,
+        where an undetected truncation fed directly into a simulation being
+        marked "completed" with every field empty). Opt-in rather than the
+        default so existing callers' behavior doesn't change without their
+        own verification pass.
+        """
         messages = [{"role": "user", "content": user_message}]
 
         kwargs: dict[str, Any] = {
@@ -143,6 +154,11 @@ class BaseAgent(ABC):
             kwargs["tools"] = tools
 
         response = await self._client.messages.create(**kwargs)
+        if raise_on_truncation and response.stop_reason == "max_tokens":
+            raise RuntimeError(
+                f"{self.name}: Claude response truncated at max_tokens={self.max_tokens} "
+                "(stop_reason=max_tokens) — output is incomplete and cannot be used."
+            )
         return response.content[0].text if response.content else ""
 
     def _build_evidence_block(self, evidence: list[dict]) -> str:
