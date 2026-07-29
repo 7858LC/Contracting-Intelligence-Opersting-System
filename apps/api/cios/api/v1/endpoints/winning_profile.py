@@ -170,6 +170,287 @@ class AssessRequest(BaseModel):
     target_contractor_id: uuid.UUID | None = None  # None → self, else top-ranked
 
 
+# ── Response schemas ─────────────────────────────────────────────────────────────
+#
+# These mirror the dict payloads the helper functions below already build
+# (str(uuid) / .isoformat() conversions and all) — response_model validates
+# the existing dicts against these rather than requiring any change to how
+# the payloads are constructed. Every field here was previously invisible to
+# the OpenAPI schema (response_model=dict), which is what let the frontend's
+# hand-written types drift from reality undetected — see the confirmed drift
+# on CapturePackageResponse below (frontend was missing 5 real fields and
+# had over-narrowed status to a 2-value literal).
+
+
+class SolicitationListResponse(BaseModel):
+    items: list[SolicitationResponse]
+    total: int
+    page: int
+    page_size: int
+
+
+class ExtractSignalsResponse(BaseModel):
+    signal_count: int
+    pipeline_status: str
+
+
+class SignalResponse(BaseModel):
+    id: str
+    category: str
+    evidence_text: str | None
+    interpretation: str | None
+    strength: float | None
+    confidence: float | None
+    source_document_type: str | None
+    source_ref: str | None
+    keywords: list
+
+
+class SignalListResponse(BaseModel):
+    total: int
+    by_category: dict[str, int]
+    items: list[SignalResponse]
+
+
+# The recurring [{text, source}] shape documented on InferredAttribute,
+# ShapingRiskFlag, VehicleContestabilityFlag, and TaskOrderFairOpportunityFlag
+# in cios/wph/schemas.py — one real shape, reused everywhere it's used.
+class EvidenceItem(BaseModel):
+    text: str
+    source: str
+
+
+class ProfileAttributeResponse(BaseModel):
+    name: str
+    category: str | None
+    description: str | None
+    importance_weight: float | None
+    evidence_confidence: float | None
+    confidence_level: str | None
+    required_level: float | None
+    supporting_evidence: list[EvidenceItem]
+    evidence_source_refs: list[str]
+    reasoning: str | None = None
+    unknown_factors: list[str] | None = None
+
+
+# Mirrors cios/wph/schemas.py's ShapingRiskFlag/VehicleContestabilityFlag/
+# TaskOrderFairOpportunityFlag .to_dict() output exactly — these are real
+# structured dataclasses, not freeform JSON, despite living in a JSONB column.
+class ShapingRiskResponse(BaseModel):
+    risk_level: str
+    signal_count: int
+    supporting_evidence: list[EvidenceItem]
+    source_refs: list[str]
+    narrative: str
+
+
+class VehicleContestabilityResponse(BaseModel):
+    contestability: str
+    open_signal_count: int
+    narrow_signal_count: int
+    open_evidence: list[EvidenceItem]
+    narrow_evidence: list[EvidenceItem]
+    source_refs: list[str]
+    narrative: str
+
+
+class TaskOrderFairOpportunityResponse(BaseModel):
+    fair_opportunity_status: str
+    competed_signal_count: int
+    directed_signal_count: int
+    competed_evidence: list[EvidenceItem]
+    directed_evidence: list[EvidenceItem]
+    source_refs: list[str]
+    narrative: str
+
+
+class ProfileResponse(BaseModel):
+    id: str
+    version: int
+    is_current: bool
+    summary: str | None
+    narrative: str | None
+    overall_confidence: float | None
+    evidence_strength: float | None
+    attribute_count: int | None
+    unknown_factors: list[str]
+    shaping_risk: ShapingRiskResponse
+    vehicle_contestability: VehicleContestabilityResponse
+    task_order_fair_opportunity: TaskOrderFairOpportunityResponse
+    model_used: str | None
+    created_at: str | None
+    attributes: list[ProfileAttributeResponse]
+
+
+# Mirrors AttributeAlignment/CapabilityGap/GapClosure .to_dict() in
+# cios/wph/schemas.py.
+class AttributeAlignmentItem(BaseModel):
+    attribute_key: str
+    attribute_name: str
+    category: str
+    importance_weight: float
+    required_level: float
+    contractor_level: float
+    alignment: float
+    contribution: float
+    evidence: str
+    reasoning: str
+
+
+class CapabilityGapItem(BaseModel):
+    attribute_key: str
+    attribute_name: str
+    category: str
+    severity: str
+    importance_weight: float
+    required_level: float
+    contractor_level: float
+    gap_size: float
+    impact: str
+
+
+class GapClosureItem(BaseModel):
+    gap_attribute_key: str
+    gap_attribute_name: str
+    recommendation: str
+    action_type: str
+    effort: str
+    timeline_months: int
+    feasibility: str
+    cost_band: str
+    closes_gap_to: float
+
+
+# Assessment.recommended_actions reuses GapClosure.to_dict() (see
+# GapClosureItem above) but PDQEngine._actions() also inserts one synthetic
+# item for the MONITOR recommendation that has no source gap to attribute to
+# — hence gap_attribute_key/name/closes_gap_to are optional here, unlike on
+# GapClosureItem itself.
+class RecommendedActionItem(BaseModel):
+    gap_attribute_key: str | None = None
+    gap_attribute_name: str | None = None
+    recommendation: str
+    action_type: str
+    effort: str
+    timeline_months: int
+    feasibility: str
+    cost_band: str
+    closes_gap_to: float | None = None
+
+
+class DecisionFactorItem(BaseModel):
+    factor: str
+    value: str
+
+
+class RiskItem(BaseModel):
+    risk: str
+    severity: str
+    mitigation: str
+
+
+class AlignmentResponse(BaseModel):
+    id: str
+    contractor_id: str
+    contractor_name: str | None
+    overall_alignment_score: float | None
+    rank: int | None
+    attribute_alignments: list[AttributeAlignmentItem]
+    gaps: list[CapabilityGapItem]
+    gap_closures: list[GapClosureItem]
+    strengths: list[str]
+    weaknesses: list[str]
+    summary: str | None
+
+
+class AlignRunResponse(BaseModel):
+    count: int
+    rankings: list[AlignmentResponse]
+
+
+class AssessmentResponse(BaseModel):
+    id: str
+    target_contractor_id: str | None
+    target_contractor_name: str | None
+    pdq_score: float | None
+    win_positioning_score: float | None
+    competitive_rank: int | None
+    candidate_pool_size: int | None
+    recommendation: str | None
+    executive_summary: str | None
+    narrative: str | None
+    key_findings: list[str]
+    decision_factors: list[DecisionFactorItem]
+    critical_gaps: list[CapabilityGapItem]
+    recommended_actions: list[RecommendedActionItem]
+    risks: list[RiskItem]
+    assumptions: list[str]
+    created_at: str | None
+
+
+class PipelineRunResponse(BaseModel):
+    pipeline_status: str
+    signal_count: int
+    profile: ProfileResponse
+    rankings: list[AlignmentResponse]
+    assessment: AssessmentResponse | None
+
+
+class IntelligenceResponse(BaseModel):
+    solicitation: SolicitationResponse
+    profile: ProfileResponse | None
+    rankings: list[AlignmentResponse]
+    assessment: AssessmentResponse | None
+
+
+class EvidenceSummary(BaseModel):
+    document_count: int
+    signal_count: int
+
+
+class CapturePackageContent(BaseModel):
+    solicitation: SolicitationResponse
+    profile: ProfileResponse
+    contractor_rankings: list[AlignmentResponse]
+    target_assessment: AssessmentResponse | None
+    evidence_summary: EvidenceSummary
+
+
+class CapturePackageResponse(BaseModel):
+    id: str
+    solicitation_id: str
+    version: int
+    is_current: bool
+    status: CapturePackageStatus
+    content: CapturePackageContent
+    reviewed_by: str | None
+    reviewed_at: str | None
+    review_notes: str | None
+    knowledge_vault_document_id: str | None
+    created_at: str | None
+
+
+class CapturePackageListResponse(BaseModel):
+    items: list[CapturePackageResponse]
+
+
+class PublishToVaultResponse(BaseModel):
+    capture_package_id: str
+    knowledge_vault_document_id: str
+    task_id: str
+    status: str
+
+
+class SeedSampleResponse(BaseModel):
+    solicitation_id: str
+    pipeline_status: str
+    signal_count: int | None = None
+    profile: ProfileResponse | None = None
+    rankings: list[AlignmentResponse] | None = None
+    assessment: AssessmentResponse | None = None
+
+
 # ── Helpers ──────────────────────────────────────────────────────────────────────
 
 
@@ -310,7 +591,7 @@ async def create_solicitation(payload: SolicitationCreate, user: Auth, db: DB) -
     return sol
 
 
-@router.get("/solicitations", response_model=dict)
+@router.get("/solicitations", response_model=SolicitationListResponse)
 async def list_solicitations(
     user: Auth, db: DB, pages: Pages, pipeline_status: str | None = Query(None)
 ) -> dict:
@@ -394,14 +675,14 @@ async def list_documents(sol_id: uuid.UUID, user: Auth, db: DB) -> list[WPHEvide
 # ── Signal extraction ────────────────────────────────────────────────────────────
 
 
-@router.post("/solicitations/{sol_id}/extract-signals", response_model=dict)
+@router.post("/solicitations/{sol_id}/extract-signals", response_model=ExtractSignalsResponse)
 async def extract_signals(sol_id: uuid.UUID, user: Auth, db: DB) -> dict:
     sol = await _get_solicitation(db, sol_id, user.tenant_id)
     signals = await WPHService(db).extract_signals(sol, user.tenant_id)
     return {"signal_count": len(signals), "pipeline_status": sol.pipeline_status}
 
 
-@router.get("/solicitations/{sol_id}/signals", response_model=dict)
+@router.get("/solicitations/{sol_id}/signals", response_model=SignalListResponse)
 async def list_signals(
     sol_id: uuid.UUID, user: Auth, db: DB, category: str | None = Query(None)
 ) -> dict:
@@ -437,7 +718,7 @@ async def list_signals(
 # ── Winning Profile Hypothesis™ ──────────────────────────────────────────────────
 
 
-@router.post("/solicitations/{sol_id}/generate-profile", response_model=dict)
+@router.post("/solicitations/{sol_id}/generate-profile", response_model=ProfileResponse)
 async def generate_profile(
     sol_id: uuid.UUID,
     user: Auth,
@@ -478,7 +759,7 @@ async def generate_profile(
     return await _profile_payload(db, profile, user.tenant_id)
 
 
-@router.get("/solicitations/{sol_id}/profile", response_model=dict)
+@router.get("/solicitations/{sol_id}/profile", response_model=ProfileResponse)
 async def get_profile(sol_id: uuid.UUID, user: Auth, db: DB) -> dict:
     await _get_solicitation(db, sol_id, user.tenant_id)
     profile = await _current_profile(db, sol_id, user.tenant_id)
@@ -545,7 +826,7 @@ async def delete_contractor(contractor_id: uuid.UUID, user: Auth, db: DB) -> Non
 # ── Alignment + ranking ──────────────────────────────────────────────────────────
 
 
-@router.post("/solicitations/{sol_id}/align", response_model=dict)
+@router.post("/solicitations/{sol_id}/align", response_model=AlignRunResponse)
 async def align(sol_id: uuid.UUID, payload: AlignRequest, user: Auth, db: DB) -> dict:
     sol = await _get_solicitation(db, sol_id, user.tenant_id)
     profile = await _current_profile(db, sol_id, user.tenant_id)
@@ -559,7 +840,7 @@ async def align(sol_id: uuid.UUID, payload: AlignRequest, user: Auth, db: DB) ->
     return {"count": len(rows), "rankings": [_alignment_payload(r) for r in rows]}
 
 
-@router.get("/solicitations/{sol_id}/alignments", response_model=dict)
+@router.get("/solicitations/{sol_id}/alignments", response_model=AlignRunResponse)
 async def list_alignments(sol_id: uuid.UUID, user: Auth, db: DB) -> dict:
     await _get_solicitation(db, sol_id, user.tenant_id)
     profile = await _current_profile(db, sol_id, user.tenant_id)
@@ -579,7 +860,7 @@ async def list_alignments(sol_id: uuid.UUID, user: Auth, db: DB) -> dict:
     return {"count": len(rows), "rankings": [_alignment_payload(r) for r in rows]}
 
 
-@router.get("/solicitations/{sol_id}/alignments/{contractor_id}", response_model=dict)
+@router.get("/solicitations/{sol_id}/alignments/{contractor_id}", response_model=AlignmentResponse)
 async def get_alignment(sol_id: uuid.UUID, contractor_id: uuid.UUID, user: Auth, db: DB) -> dict:
     profile = await _current_profile(db, sol_id, user.tenant_id)
     row = (
@@ -599,7 +880,7 @@ async def get_alignment(sol_id: uuid.UUID, contractor_id: uuid.UUID, user: Auth,
 # ── Executive assessment ─────────────────────────────────────────────────────────
 
 
-@router.post("/solicitations/{sol_id}/assess", response_model=dict)
+@router.post("/solicitations/{sol_id}/assess", response_model=AssessmentResponse)
 async def assess(sol_id: uuid.UUID, payload: AssessRequest, user: Auth, db: DB) -> dict:
     sol = await _get_solicitation(db, sol_id, user.tenant_id)
     profile = await _current_profile(db, sol_id, user.tenant_id)
@@ -614,7 +895,7 @@ async def assess(sol_id: uuid.UUID, payload: AssessRequest, user: Auth, db: DB) 
     return _assessment_payload(assessment)
 
 
-@router.get("/solicitations/{sol_id}/assessment", response_model=dict)
+@router.get("/solicitations/{sol_id}/assessment", response_model=AssessmentResponse)
 async def get_assessment(sol_id: uuid.UUID, user: Auth, db: DB) -> dict:
     await _get_solicitation(db, sol_id, user.tenant_id)
     row = (
@@ -635,7 +916,7 @@ async def get_assessment(sol_id: uuid.UUID, user: Auth, db: DB) -> dict:
 # ── Full pipeline (vertical slice) ───────────────────────────────────────────────
 
 
-@router.post("/solicitations/{sol_id}/run", response_model=dict)
+@router.post("/solicitations/{sol_id}/run", response_model=PipelineRunResponse)
 async def run_pipeline(
     sol_id: uuid.UUID,
     user: Auth,
@@ -677,7 +958,7 @@ async def run_pipeline(
     }
 
 
-@router.get("/solicitations/{sol_id}/intelligence", response_model=dict)
+@router.get("/solicitations/{sol_id}/intelligence", response_model=IntelligenceResponse)
 async def get_intelligence(sol_id: uuid.UUID, user: Auth, db: DB) -> dict:
     """Aggregate view: solicitation + current profile + rankings + latest assessment."""
     sol = await _get_solicitation(db, sol_id, user.tenant_id)
@@ -849,7 +1130,7 @@ def _render_capture_package_text(content: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-@router.post("/solicitations/{sol_id}/capture-package", response_model=dict)
+@router.post("/solicitations/{sol_id}/capture-package", response_model=CapturePackageResponse)
 async def generate_capture_package(
     sol_id: uuid.UUID,
     user: Auth,
@@ -899,7 +1180,7 @@ async def generate_capture_package(
     return _capture_package_payload(package)
 
 
-@router.get("/solicitations/{sol_id}/capture-package", response_model=dict)
+@router.get("/solicitations/{sol_id}/capture-package", response_model=CapturePackageResponse)
 async def get_capture_package(sol_id: uuid.UUID, user: Auth, db: DB) -> dict:
     await _get_solicitation(db, sol_id, user.tenant_id)
     package = (
@@ -916,7 +1197,9 @@ async def get_capture_package(sol_id: uuid.UUID, user: Auth, db: DB) -> dict:
     return _capture_package_payload(package)
 
 
-@router.get("/solicitations/{sol_id}/capture-package/history", response_model=dict)
+@router.get(
+    "/solicitations/{sol_id}/capture-package/history", response_model=CapturePackageListResponse
+)
 async def list_capture_package_versions(sol_id: uuid.UUID, user: Auth, db: DB) -> dict:
     await _get_solicitation(db, sol_id, user.tenant_id)
     rows = (
@@ -936,7 +1219,9 @@ async def list_capture_package_versions(sol_id: uuid.UUID, user: Auth, db: DB) -
     return {"items": [_capture_package_payload(p) for p in rows]}
 
 
-@router.post("/solicitations/{sol_id}/capture-package/approve", response_model=dict)
+@router.post(
+    "/solicitations/{sol_id}/capture-package/approve", response_model=CapturePackageResponse
+)
 async def approve_capture_package(
     sol_id: uuid.UUID, payload: ApprovePackageRequest, user: Auth, db: DB
 ) -> dict:
@@ -962,7 +1247,10 @@ async def approve_capture_package(
     return _capture_package_payload(package)
 
 
-@router.post("/solicitations/{sol_id}/capture-package/publish-to-vault", response_model=dict)
+@router.post(
+    "/solicitations/{sol_id}/capture-package/publish-to-vault",
+    response_model=PublishToVaultResponse,
+)
 async def publish_capture_package_to_vault(sol_id: uuid.UUID, user: Auth, db: DB) -> dict:
     """Copies an approved package into Knowledge Vault as a searchable
     document — a separate, explicit action from approval, not automatic."""
@@ -1020,7 +1308,7 @@ async def publish_capture_package_to_vault(sol_id: uuid.UUID, user: Auth, db: DB
 # ── Sample dataset seeding ───────────────────────────────────────────────────────
 
 
-@router.post("/sample", response_model=dict, status_code=status.HTTP_201_CREATED)
+@router.post("/sample", response_model=SeedSampleResponse, status_code=status.HTTP_201_CREATED)
 async def seed_sample(
     user: Auth,
     db: DB,

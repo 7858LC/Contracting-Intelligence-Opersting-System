@@ -85,6 +85,8 @@ pytest tests/ -v --cov=cios
 
 **Production migrations are automated** — `render.yaml`'s `cios-api` service runs `alembic upgrade head` as a `preDeployCommand` on every deploy, before the new release takes traffic. Never run `alembic upgrade head` against production by hand anymore; it happens automatically, and a failing migration now aborts the deploy (keeping the previous release live) instead of shipping code against an unmigrated schema. This replaced the prior manual-only workflow, which is exactly the kind of step that gets forgotten under time pressure.
 
+**Frontend/backend contract enforcement** — every FastAPI route must declare a real Pydantic `response_model` (never `response_model=dict` or no `response_model` at all); `apps/web/src/types/api.generated.ts` is generated from that schema (`npm run generate:api-types` in `apps/web`, requires the API's venv active for `python3` to resolve `cios`) and CI's `web-test` job regenerates it fresh and fails the build if it differs from what's committed — mirrors the `alembic check` gate above, same rationale. Components import types from `apps/web/src/types/api.ts` (hand-written, stable aliases over the generated schema — add new ones there, never hand-write a duplicate interface in a component file). This exists because that's exactly what used to happen: hand-written frontend interfaces silently drifted from the real backend response shape with nothing to catch it, since `response_model=dict` gives FastAPI's own OpenAPI schema nothing to check against either — confirmed drift found and fixed the day this was added (a `CapturePackage` frontend type missing 5 real backend fields, a `status` field over-narrowed to a 2-value literal against a plain `str` backend field, `is_vectorized` missing entirely from a `KnowledgeDocument` type, two nullable backend fields typed as non-nullable). If you add a Pydantic response model with a JSONB/freeform-looking field, check how it's actually populated (e.g. `cios/wph/schemas.py`'s dataclasses for the WPH modules) before typing it `dict[str, Any]` — several fields here looked like structured objects from their DB column comments but are actually `list[str]`, and vice versa; the integration test suite hitting real endpoints (not just `mypy`) is what actually catches a wrong guess, via FastAPI's own response validation.
+
 ## AI Models
 
 - CEO Agent: `claude-opus-4-8`
@@ -96,12 +98,12 @@ pytest tests/ -v --cov=cios
 
 1. Create model in `apps/api/cios/models/`
 2. Add Alembic migration in `apps/api/alembic/versions/`
-3. Create API endpoints in `apps/api/cios/api/v1/endpoints/`
+3. Create API endpoints in `apps/api/cios/api/v1/endpoints/` — every route needs a real Pydantic `response_model`, never `response_model=dict`, see "Frontend/backend contract enforcement" above.
 4. Register router in `apps/api/cios/api/v1/router.py`
 5. Create agent in `apps/api/cios/agents/`
 6. Create Celery task in `apps/api/cios/tasks/`
-7. Add frontend page in `apps/web/src/app/dashboard/`
-8. Add at least one smoke test in `apps/api/tests/integration/` exercising the new endpoint(s) through the real HTTP/DB/Redis stack (see `test_module_smoke.py`) — this is the tier that catches wiring bugs (broken imports, missing router registration, model/migration drift) that unit tests and manual testing both miss.
+7. Add frontend page in `apps/web/src/app/dashboard/` — run `npm run generate:api-types` in `apps/web` and commit the result so the page can import real types from `apps/web/src/types/api.ts` instead of hand-writing them.
+8. Add at least one smoke test in `apps/api/tests/integration/` exercising the new endpoint(s) through the real HTTP/DB/Redis stack (see `test_module_smoke.py`) — this is the tier that catches wiring bugs (broken imports, missing router registration, model/migration drift) that unit tests and manual testing both miss, and it's also what catches a wrong `response_model` field type, via FastAPI's own response validation.
 
 ## Security Rules
 
