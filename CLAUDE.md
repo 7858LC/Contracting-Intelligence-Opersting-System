@@ -83,6 +83,8 @@ pytest tests/ -v --cov=cios
 - Anything hitting `/auth/register` or `/auth/login` needs a distinct `X-Forwarded-For` header per call, or the shared-IP test harness trips the endpoint's own rate limiter (`core/rate_limit.py`).
 - After changing a model, run `alembic check` (also gates CI) before writing a migration by hand — it tells you exactly what's out of sync instead of finding out from a 500 later.
 
+**Production migrations are automated** — `render.yaml`'s `cios-api` service runs `alembic upgrade head` as a `preDeployCommand` on every deploy, before the new release takes traffic. Never run `alembic upgrade head` against production by hand anymore; it happens automatically, and a failing migration now aborts the deploy (keeping the previous release live) instead of shipping code against an unmigrated schema. This replaced the prior manual-only workflow, which is exactly the kind of step that gets forgotten under time pressure.
+
 ## AI Models
 
 - CEO Agent: `claude-opus-4-8`
