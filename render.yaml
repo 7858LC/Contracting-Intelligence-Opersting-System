@@ -7,6 +7,13 @@ services:
     dockerfilePath: infra/docker/Dockerfile.api
     dockerContext: apps/api
     healthCheckPath: /health
+    # Runs once per deploy, in the built image, before this release starts
+    # receiving traffic. A non-zero exit aborts the deploy and keeps the
+    # previous release live — migrations were previously a manual step run
+    # by hand against production, which is exactly the kind of thing that
+    # gets forgotten under time pressure. alembic.ini lives at the image's
+    # WORKDIR (/app) since dockerContext is apps/api, so no cd is needed.
+    preDeployCommand: alembic upgrade head
     envVars:
       - key: PORT
         value: 8000
@@ -23,6 +30,17 @@ services:
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: APP_URL
+        sync: false
+      # Knowledge Vault ingestion dependencies — required for
+      # publish-to-vault / document upload vectorization to succeed. Missing
+      # in production undetected until the first real ingestion attempt;
+      # see QDRANT_URL/QDRANT_API_KEY and VOYAGE_API_KEY below on cios-worker
+      # for the matching comment on why both services need these.
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: VOYAGE_API_KEY
         sync: false
 
   # Every async feature — Knowledge Vault ingestion/vectorization, bid
@@ -75,3 +93,18 @@ services:
       # cios-api above.
       - key: CIOS_WORKER_PROCESS
         value: "1"
+      # ingest_document / vectorize_past_performance call TenantVectorStore,
+      # which needs both a Qdrant instance (per-tenant vector isolation) and
+      # a Voyage AI key (embedding generation). Neither was ever provisioned
+      # for production until the first real publish-to-vault attempt failed
+      # on each of these in turn — cios_worker.ensure_collection() against
+      # an unset QDRANT_URL, then voyageai raising AuthenticationError on an
+      # unset VOYAGE_API_KEY. Local dev gets Qdrant for free from
+      # docker-compose; production needs a real hosted instance (Qdrant
+      # Cloud) and a real Voyage AI key, set here explicitly.
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: VOYAGE_API_KEY
+        sync: false
