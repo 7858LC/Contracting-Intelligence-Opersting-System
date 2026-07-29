@@ -12,83 +12,22 @@ import {
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
+//
+// Generated from the backend's actual Pydantic response models — see
+// src/types/api.ts and `npm run generate:api-types`. Do not hand-write
+// interfaces here; they drift from the real backend shape silently (this
+// file's types used to do exactly that — see PR history).
 
-interface Solicitation {
-  id: string;
-  title: string;
-  agency: string | null;
-  solicitation_number: string | null;
-  set_aside_type: string | null;
-  pipeline_status: string;
-  document_count: number;
-  signal_count: number;
-}
-
-interface EvidenceDocument {
-  id: string;
-  document_type: string;
-  title: string;
-  source_url: string | null;
-  source_ref: string | null;
-  is_extracted: boolean;
-  created_at: string;
-}
-
-interface Attribute {
-  name: string;
-  category: string;
-  description: string | null;
-  importance_weight: number;
-  evidence_confidence: number;
-  confidence_level: string;
-  required_level: number;
-  supporting_evidence: { text: string; source: string }[];
-  reasoning: string | null;
-  unknown_factors: string[];
-}
-
-interface Profile {
-  summary: string | null;
-  narrative: string | null;
-  overall_confidence: number;
-  evidence_strength: number;
-  attribute_count: number;
-  unknown_factors: string[];
-  attributes: Attribute[];
-}
-
-interface Ranking {
-  contractor_id: string;
-  contractor_name: string;
-  overall_alignment_score: number;
-  rank: number;
-  gaps: { attribute_name: string; severity: string; gap_size: number }[];
-  gap_closures: { recommendation: string; timeline_months: number; feasibility: string }[];
-  strengths: string[];
-  summary: string | null;
-}
-
-interface Assessment {
-  target_contractor_name: string | null;
-  pdq_score: number;
-  win_positioning_score: number;
-  competitive_rank: number | null;
-  candidate_pool_size: number;
-  recommendation: string;
-  executive_summary: string | null;
-  key_findings: string[];
-  critical_gaps: { attribute_name: string; severity: string; impact: string }[];
-  recommended_actions: { recommendation: string; timeline_months?: number; feasibility?: string }[];
-  risks: { risk: string; severity: string; mitigation: string }[];
-  assumptions: string[];
-}
-
-interface Intelligence {
-  solicitation: Solicitation;
-  profile: Profile | null;
-  rankings: Ranking[];
-  assessment: Assessment | null;
-}
+import type {
+  Solicitation,
+  EvidenceDocument,
+  ProfileAttribute as Attribute,
+  Profile,
+  Ranking,
+  Assessment,
+  Intelligence,
+  CapturePackage,
+} from "@/types/api";
 
 // ── Small UI helpers ─────────────────────────────────────────────────────────────
 
@@ -362,25 +301,6 @@ function SolicitationDetail({ solicitationId }: { solicitationId: string }) {
 }
 
 // ── Capture Manager Package ────────────────────────────────────────────────────
-
-interface CapturePackage {
-  id: string;
-  version: number;
-  status: "draft" | "approved";
-  content: {
-    solicitation: { title: string };
-    profile: { summary: string | null };
-    target_assessment: {
-      recommendation: string;
-      pdq_score: number;
-      executive_summary: string | null;
-    } | null;
-    contractor_rankings: { rank: number; contractor_name: string; overall_alignment_score: number }[];
-    evidence_summary: { document_count: number; signal_count: number };
-  };
-  review_notes: string | null;
-  knowledge_vault_document_id: string | null;
-}
 
 function CapturePackagePanel({ solicitationId }: { solicitationId: string }) {
   const queryClient = useQueryClient();

@@ -22,27 +22,9 @@ import {
   ScanSearch,
 } from "lucide-react";
 
-interface KnowledgeDocument {
-  id: string;
-  title: string;
-  document_type: string;
-  file_name: string;
-  file_size_bytes: number;
-  vectorization_status: string;
-  tags: string[];
-  description: string | null;
-  created_at: string;
-  chunk_count: number;
-}
-
-interface SearchResult {
-  chunk_id: string;
-  document_id: string;
-  document_title: string;
-  text: string;
-  score: number;
-  metadata: Record<string, unknown>;
-}
+// Generated from the backend's actual Pydantic response models — see
+// src/types/api.ts and `npm run generate:api-types`.
+import type { KnowledgeDocument, SearchResult } from "@/types/api";
 
 const DOC_TYPES = [
   { value: "past_performance", label: "Past Performance", color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },

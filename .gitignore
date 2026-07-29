@@ -30,6 +30,8 @@ htmlcov/
 # Testing
 coverage/
 *.lcov
+.coverage
+coverage.xml
 
 # Python venv
 .venv/

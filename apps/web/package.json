@@ -12,7 +12,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "vitest"
+    "test": "vitest",
+    "generate:api-types": "python3 ../api/scripts/export_openapi.py > /tmp/cios-openapi.json && npx openapi-typescript /tmp/cios-openapi.json -o src/types/api.generated.ts && rm /tmp/cios-openapi.json"
   },
   "dependencies": {
     "next": "14.2.35",
@@ -55,6 +56,7 @@
     "eslint-config-next": "14.2.35",
     "vitest": "^2.1.0",
     "@testing-library/react": "^16.0.0",
-    "@vitejs/plugin-react": "^4.3.0"
+    "@vitejs/plugin-react": "^4.3.0",
+    "openapi-typescript": "^7.4.0"
   }
 }
