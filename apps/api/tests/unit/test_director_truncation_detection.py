@@ -39,8 +39,11 @@ async def test_capture_director_raises_clearly_on_truncated_response():
 
 def test_all_directors_request_a_realistic_token_budget():
     """BaseAgent's default (4096) was too small for what every Director is
-    prompted to produce — this is the regression guard against silently
-    reverting to it."""
+    prompted to produce — and 8192 (the first bump) still wasn't enough,
+    confirmed live in production (RiskDirector truncated at that ceiling).
+    16384 matches AwardSimulatorAgent's already-proven-sufficient budget —
+    this is the regression guard against silently reverting to either
+    smaller value."""
     from cios.agents.directors.capture_director import CaptureDirector
     from cios.agents.directors.competitive_intel_director import CompetitiveIntelDirector
     from cios.agents.directors.compliance_director import ComplianceDirector
@@ -54,4 +57,4 @@ def test_all_directors_request_a_realistic_token_budget():
         CompetitiveIntelDirector,
         ComplianceDirector,
     ):
-        assert director_cls.max_tokens >= 8192, director_cls.__name__
+        assert director_cls.max_tokens >= 16384, director_cls.__name__

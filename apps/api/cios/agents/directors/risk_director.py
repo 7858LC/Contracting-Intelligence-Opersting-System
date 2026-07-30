@@ -33,9 +33,10 @@ OUTPUT: Structured JSON with risk register, risk matrix, and go/no-go risk thres
 
 class RiskDirector(BaseAgent):
     name = "risk_director"
-    # See capture_director.py's identical comment — same under-provisioned
-    # default caused the same truncation-as-invalid-JSON failure here.
-    max_tokens = 8192
+    # See capture_director.py's comment — 8192 was the value that actually
+    # truncated live in production for this agent specifically; 16384
+    # matches AwardSimulatorAgent's already-proven-sufficient budget.
+    max_tokens = 16384
 
     async def _execute(self, context: AgentContext, **kwargs: Any) -> dict[str, Any]:
         opportunity_data: dict = kwargs.get("opportunity_data", {})
