@@ -421,6 +421,12 @@ function SimulationCard({ sim, onClick, expanded }: { sim: Simulation; onClick: 
         )}
       </div>
 
+      {isFailed && sim.error_message && (
+        <div className="px-5 pb-4 -mt-2">
+          <p className="text-xs text-red-400/80 font-mono break-words">{sim.error_message}</p>
+        </div>
+      )}
+
       {expanded && isCompleted && <SimulationReport sim={sim} />}
     </div>
   );
