@@ -153,7 +153,31 @@ class BaseAgent(ABC):
         if tools:
             kwargs["tools"] = tools
 
-        response = await self._client.messages.create(**kwargs)
+        try:
+            response = await self._client.messages.create(**kwargs)
+        except anthropic.BadRequestError as e:
+            # Some models reject an explicit temperature entirely (observed live
+            # in production: claude-opus-4-8 — used by both this agent and
+            # CEOAgent — returns 400 "`temperature` is deprecated for this
+            # model" on every single call, which silently failed every Award
+            # Simulation until the retry/error-preservation fix surfaced it).
+            # Retry once without temperature rather than hardcoding a model
+            # name that will just go stale on the next model change — the API
+            # itself is the source of truth on which models this applies to.
+            body = e.body if isinstance(e.body, dict) else {}
+            error = body.get("error") if isinstance(body.get("error"), dict) else {}
+            message = error.get("message", "") if isinstance(error, dict) else ""
+            if "temperature" in message and "deprecated" in message:
+                self._log.warning(
+                    "temperature_unsupported_retrying",
+                    agent=self.name,
+                    model=kwargs["model"],
+                )
+                kwargs.pop("temperature", None)
+                response = await self._client.messages.create(**kwargs)
+            else:
+                raise
+
         if raise_on_truncation and response.stop_reason == "max_tokens":
             raise RuntimeError(
                 f"{self.name}: Claude response truncated at max_tokens={self.max_tokens} "
