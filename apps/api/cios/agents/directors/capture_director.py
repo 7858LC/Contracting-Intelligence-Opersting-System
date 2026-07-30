@@ -33,6 +33,11 @@ OUTPUT: Structured JSON with scores, rationale, evidence, and action items."""
 
 class CaptureDirector(BaseAgent):
     name = "capture_director"
+    # BaseAgent's default (4096) routinely truncated this prompt's 7-point
+    # comprehensive JSON output mid-object — found live via a bid analysis
+    # stuck retrying forever on "not valid JSON" (a truncated response has no
+    # closing brace, so no amount of fence-stripping can recover it).
+    max_tokens = 8192
 
     async def _execute(self, context: AgentContext, **kwargs: Any) -> dict[str, Any]:
         opportunity_data: dict = kwargs.get("opportunity_data", {})
@@ -68,7 +73,7 @@ Perform complete capture assessment:
 Cite specific FAR/DFARS sections or applicable procurement rules.
 Respond as structured JSON.
 """
-        raw = await self._call_claude(CAPTURE_SYSTEM_PROMPT, user_message)
+        raw = await self._call_claude(CAPTURE_SYSTEM_PROMPT, user_message, raise_on_truncation=True)
 
         return {
             "capture_assessment": raw,
