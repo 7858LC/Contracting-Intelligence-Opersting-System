@@ -98,11 +98,23 @@ class ResearchAnalystAgent(BaseAgent):
             top_naics=top_naics_str,
         )
 
-        raw = await self._call_claude(system_prompt=_SYSTEM_PROMPT, user_message=prompt)
+        raw = await self._call_claude(
+            system_prompt=_SYSTEM_PROMPT, user_message=prompt, raise_on_truncation=True
+        )
         return _parse_brief(raw)
 
 
 def _parse_brief(raw: str) -> dict[str, Any]:
+    """Raises ValueError if no valid JSON object can be extracted. Previously
+    fell back to an empty dict on total parse failure, which every field
+    below reads with .get(...) — the brief section came back with generic
+    placeholder text ("Analysis unavailable.") and was appended to the
+    published ResearchReport as if it were a real result, with no error
+    recorded anywhere. research.py's caller already has an
+    `except Exception as e: errors.append(...)` around this exact call —
+    raising here is what actually routes a parse failure into it instead of
+    silently publishing a fake section.
+    """
     text = raw.strip()
     if text.startswith("```"):
         text = text.split("```")[1]
@@ -114,7 +126,18 @@ def _parse_brief(raw: str) -> dict[str, Any]:
         data = json.loads(text)
     except json.JSONDecodeError:
         start, end = text.find("{"), text.rfind("}")
-        data = json.loads(text[start : end + 1]) if start != -1 and end > start else {}
+        if start == -1 or end <= start:
+            raise ValueError(
+                f"Research brief: Claude response was not valid JSON. "
+                f"First 500 chars of raw response: {text[:500]!r}"
+            ) from None
+        try:
+            data = json.loads(text[start : end + 1])
+        except json.JSONDecodeError:
+            raise ValueError(
+                f"Research brief: Claude response was not valid JSON. "
+                f"First 500 chars of raw response: {text[:500]!r}"
+            ) from None
 
     return {
         "executive_summary": str(data.get("executive_summary", "Analysis unavailable.")),

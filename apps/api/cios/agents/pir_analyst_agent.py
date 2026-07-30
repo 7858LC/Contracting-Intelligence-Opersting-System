@@ -139,13 +139,22 @@ class PIRAnalystAgent(BaseAgent):
             system_prompt=_SYSTEM_PROMPT,
             user_message=prompt,
             model=self.model,
+            raise_on_truncation=True,
         )
 
         return _parse_analysis(raw, company.overall_signal_score)
 
 
 def _parse_analysis(raw: str, overall_score: float) -> dict[str, Any]:
-    """Parse Claude's JSON output with graceful degradation."""
+    """Parse Claude's JSON output. Raises ValueError if no valid JSON object
+    can be extracted at all — pir.py's _async_analyze_company already wraps
+    this whole call in a try/except that marks the analysis status="failed"
+    with an error_message on any exception; previously this function instead
+    fell back to an empty dict on total parse failure, so that handler never
+    fired and a failed analysis was stored as status="completed" with
+    generic placeholder text ("Analysis unavailable.") indistinguishable
+    from a genuinely low-signal result.
+    """
     # Strip markdown fences if present
     text = raw.strip()
     if text.startswith("```"):
@@ -157,7 +166,7 @@ def _parse_analysis(raw: str, overall_score: float) -> dict[str, Any]:
     try:
         data = json.loads(text)
     except json.JSONDecodeError:
-        # Best-effort: extract from partial JSON
+        # Last resort: extract from partial JSON — raises if this also fails.
         data = _extract_partial_json(text)
 
     return {
@@ -187,7 +196,9 @@ def _clamp_float(val: Any) -> float:
 
 
 def _extract_partial_json(text: str) -> dict:
-    """Last-resort: find the first {...} block in the text."""
+    """Last-resort: find the first {...} block in the text. Raises ValueError
+    if even this fails — see _parse_analysis's docstring for why this must
+    not silently return {}."""
     start = text.find("{")
     end = text.rfind("}")
     if start != -1 and end != -1 and end > start:
@@ -195,7 +206,10 @@ def _extract_partial_json(text: str) -> dict:
             return json.loads(text[start : end + 1])
         except json.JSONDecodeError:
             pass
-    return {}
+    raise ValueError(
+        f"PIR analysis: Claude response was not valid JSON. "
+        f"First 500 chars of raw response: {text[:500]!r}"
+    )
 
 
 async def run_pir_analysis(
