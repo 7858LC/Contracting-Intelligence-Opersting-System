@@ -196,7 +196,7 @@ function Section({ title, icon: Icon, children, defaultOpen = false }: {
   return (
     <div className="border border-border rounded-lg overflow-hidden">
       <button
-        onClick={() => setOpen(!open)}
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
         className="w-full flex items-center justify-between px-4 py-3 bg-secondary/30 hover:bg-secondary/50 transition-colors text-left"
       >
         <div className="flex items-center gap-2">
@@ -222,7 +222,7 @@ function SimulationReport({ sim }: { sim: Simulation }) {
   ];
 
   return (
-    <div className="border-t border-border p-5 space-y-5 bg-background/50">
+    <div className="border-t border-border p-5 space-y-5 bg-background/50" onClick={(e) => e.stopPropagation()}>
       {/* Top strip: probability + gate + overall */}
       <div className="flex items-end justify-between gap-6 flex-wrap">
         {sim.award_probability != null && (
