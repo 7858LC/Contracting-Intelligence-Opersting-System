@@ -66,7 +66,15 @@ class OpportunityResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-@router.get("", response_model=dict[str, Any])
+class OpportunityListResponse(BaseModel):
+    items: list[OpportunityResponse]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+@router.get("", response_model=OpportunityListResponse)
 async def list_opportunities(
     db: DB,
     user: Auth,
@@ -79,7 +87,7 @@ async def list_opportunities(
     max_value: float | None = Query(None),
     sort_by: str = Query("created_at"),
     sort_dir: str = Query("desc"),
-) -> dict[str, Any]:
+) -> OpportunityListResponse:
     query = select(Opportunity).where(
         Opportunity.tenant_id == user.tenant_id,
         Opportunity.is_archived == False,  # noqa: E712
@@ -116,13 +124,13 @@ async def list_opportunities(
     query = query.offset(pages.offset).limit(pages.limit)
     items = (await db.execute(query)).scalars().all()
 
-    return {
-        "items": [OpportunityResponse.model_validate(item).model_dump() for item in items],
-        "total": total,
-        "page": pages.page,
-        "page_size": pages.page_size,
-        "pages": -(-total // pages.page_size),
-    }
+    return OpportunityListResponse(
+        items=[OpportunityResponse.model_validate(item) for item in items],
+        total=total,
+        page=pages.page,
+        page_size=pages.page_size,
+        pages=-(-total // pages.page_size),
+    )
 
 
 @router.post("", response_model=OpportunityResponse, status_code=status.HTTP_201_CREATED)
