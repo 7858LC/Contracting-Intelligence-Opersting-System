@@ -35,6 +35,9 @@ def _run(coro):  # noqa: ANN001, ANN201
     bind=True,
     max_retries=2,
     default_retry_delay=300,
+    # Loops over every tracked agency, one Director-tier Claude call each —
+    # unbounded agency count means unbounded worst-case duration without this.
+    soft_time_limit=1800,
 )
 def generate_agency_intelligence_brief(self, period_label: str | None = None) -> dict:
     """Generate one quarter's Agency Intelligence Brief covering every active

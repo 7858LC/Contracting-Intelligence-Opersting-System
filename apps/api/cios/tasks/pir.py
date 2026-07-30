@@ -281,6 +281,7 @@ async def _async_score_company(company_id: uuid.UUID, tenant_id: uuid.UUID) -> d
     bind=True,
     max_retries=2,
     default_retry_delay=30,
+    soft_time_limit=180,
 )
 def analyze_company_ai(
     self,
