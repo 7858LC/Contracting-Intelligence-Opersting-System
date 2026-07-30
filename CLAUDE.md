@@ -72,7 +72,9 @@ Copy `.env.example` to `.env` and populate. Required:
 
 ## Testing Discipline
 
-This project runs on the Damascus Protocol — schema drift, wiring bugs, and cross-module breakage get caught automatically as the codebase evolves, instead of accumulating silently until one big pre-launch sweep finds them all at once (which is exactly what happened here once: a dependency-order bug, a response-type mismatch, and 14 drifted tables all shipped clean through review and sat live until the first real end-to-end test pass hit them). Four mechanisms carry that going forward: the `alembic check` CI gate below, the module checklist's step 8, the shared fixtures in `tests/integration/conftest.py`, and a weekly automated regression sweep against a real Postgres + Redis. None of these are ceremony. Don't skip or bypass one because a change feels too small to bother — that exact reasoning is how each of the three bugs above shipped in the first place.
+This project runs on the Damascus Protocol — schema drift, wiring bugs, and cross-module breakage get caught automatically as the codebase evolves, instead of accumulating silently until one big pre-launch sweep finds them all at once (which is exactly what happened here once: a dependency-order bug, a response-type mismatch, and 14 drifted tables all shipped clean through review and sat live until the first real end-to-end test pass hit them). Five mechanisms carry that going forward: the `alembic check` CI gate below, the module checklist's steps 8–9, the shared fixtures in `tests/integration/conftest.py` and `apps/web/e2e/fixtures.ts`, and a weekly automated regression sweep against a real Postgres + Redis. None of these are ceremony. Don't skip or bypass one because a change feels too small to bother — that exact reasoning is how each of the three bugs above shipped in the first place.
+
+**The backend tiers above only prove the backend works in isolation and that the frontend compiles — neither can catch the frontend misreading a real backend response.** That gap is exactly as real as schema drift and was found the same way: a live walkthrough hit four bugs (a response-shape mismatch, a stale model default the UI silently dropped, an untyped `response_model`, a React event-bubbling bug) that `tsc`, `next build`, and the full backend test suite all passed cleanly through. `apps/web/e2e/` (Playwright, real browser against a real API + Postgres + Redis, see `apps/web/e2e/fixtures.ts`) and CI's `e2e-test` job exist to make that gap visible on every push instead of only when someone happens to click through the UI by hand.
 
 ```bash
 cd apps/api
@@ -104,6 +106,7 @@ pytest tests/ -v --cov=cios
 6. Create Celery task in `apps/api/cios/tasks/`
 7. Add frontend page in `apps/web/src/app/dashboard/` — run `npm run generate:api-types` in `apps/web` and commit the result so the page can import real types from `apps/web/src/types/api.ts` instead of hand-writing them.
 8. Add at least one smoke test in `apps/api/tests/integration/` exercising the new endpoint(s) through the real HTTP/DB/Redis stack (see `test_module_smoke.py`) — this is the tier that catches wiring bugs (broken imports, missing router registration, model/migration drift) that unit tests and manual testing both miss, and it's also what catches a wrong `response_model` field type, via FastAPI's own response validation.
+9. If step 7 wired a page/component to a live endpoint, add one smoke test in `apps/web/e2e/` (see `smoke.spec.ts`) that creates a real record via the real API and asserts it actually renders — not an empty/zero state. This is the tier that catches the frontend silently misreading a real backend response shape, which `tsc`/`next build`/step 8 all structurally cannot see.
 
 ## Security Rules
 

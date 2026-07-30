@@ -32,6 +32,10 @@ coverage/
 *.lcov
 .coverage
 coverage.xml
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
 
 # Python venv
 .venv/
