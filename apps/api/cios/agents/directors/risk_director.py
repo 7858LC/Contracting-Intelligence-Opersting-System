@@ -33,6 +33,9 @@ OUTPUT: Structured JSON with risk register, risk matrix, and go/no-go risk thres
 
 class RiskDirector(BaseAgent):
     name = "risk_director"
+    # See capture_director.py's identical comment — same under-provisioned
+    # default caused the same truncation-as-invalid-JSON failure here.
+    max_tokens = 8192
 
     async def _execute(self, context: AgentContext, **kwargs: Any) -> dict[str, Any]:
         opportunity_data: dict = kwargs.get("opportunity_data", {})
@@ -65,5 +68,5 @@ Rate overall risk level: LOW / MEDIUM / HIGH / VERY HIGH
 Include risk-adjusted win probability modifier.
 Respond as structured JSON.
 """
-        raw = await self._call_claude(RISK_SYSTEM_PROMPT, user_message)
+        raw = await self._call_claude(RISK_SYSTEM_PROMPT, user_message, raise_on_truncation=True)
         return {"risk_assessment": raw, "agent": self.name}
