@@ -4,14 +4,22 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select
 
 from cios.core.dependencies import DB, Auth, Pages
+from cios.core.rate_limit import tenant_rate_limiter
 from cios.models.opportunity import JurisdictionType, Opportunity, OpportunityNote, OpportunityWatch
 
 router = APIRouter()
+
+# Fans out to 6 live Claude calls per request (CEO Agent + all 5 Directors,
+# see tasks/analysis.py) — see tenant_rate_limiter's docstring for why this
+# needed a bound.
+_analyze_rate_limit = Depends(
+    tenant_rate_limiter("opportunity_analyze", max_requests=10, window_seconds=3600)
+)
 
 
 class OpportunityCreate(BaseModel):
@@ -169,7 +177,11 @@ async def archive_opportunity(opportunity_id: uuid.UUID, db: DB, user: Auth) -> 
     opp.is_archived = True
 
 
-@router.post("/{opportunity_id}/analyze", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/{opportunity_id}/analyze",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[_analyze_rate_limit],
+)
 async def trigger_opportunity_analysis(
     opportunity_id: uuid.UUID, db: DB, user: Auth
 ) -> dict[str, str]:

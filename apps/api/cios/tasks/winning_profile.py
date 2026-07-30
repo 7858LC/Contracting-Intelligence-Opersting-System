@@ -29,6 +29,7 @@ def _run(coro: Any) -> Any:
     bind=True,
     max_retries=2,
     default_retry_delay=30,
+    soft_time_limit=600,
 )
 def run_pipeline(
     self,
