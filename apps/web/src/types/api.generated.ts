@@ -2586,6 +2586,19 @@ export interface components {
              */
             procurement_rule_pack: string;
         };
+        /** OpportunityListResponse */
+        OpportunityListResponse: {
+            /** Items */
+            items: components["schemas"]["OpportunityResponse"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Pages */
+            pages: number;
+        };
         /** OpportunityResponse */
         OpportunityResponse: {
             /**
@@ -3897,9 +3910,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["OpportunityListResponse"];
                 };
             };
             /** @description Validation Error */

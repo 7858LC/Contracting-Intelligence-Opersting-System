@@ -60,11 +60,12 @@ export function OpportunityView() {
   const [showAdd, setShowAdd] = useState(false);
   const [selected, setSelected] = useState<Opportunity | null>(null);
 
-  const { data: opportunities = [], isLoading } = useQuery({
+  const { data: oppsData, isLoading } = useQuery({
     queryKey: ["opportunities", search, stageFilter],
-    queryFn: () => api.getOpportunities({ search: search || undefined, pipeline_stage: stageFilter || undefined }),
+    queryFn: () => api.getOpportunities({ search: search || undefined, pipeline_stage: stageFilter || undefined, page_size: 100 }),
     refetchInterval: 30_000,
   });
+  const opportunities = oppsData?.items ?? [];
 
   const analyzeMutation = useMutation({
     mutationFn: (id: string) => api.analyzeOpportunity(id),
@@ -78,8 +79,8 @@ export function OpportunityView() {
   const pipeline: Record<string, Opportunity[]> = {};
   PIPELINE_STAGES.forEach((s) => { pipeline[s] = []; });
   (opportunities as Opportunity[]).forEach((o) => {
-    const stage = o.pipeline_stage || "tracking";
-    if (pipeline[stage]) pipeline[stage].push(o);
+    const stage = pipeline[o.pipeline_stage] ? o.pipeline_stage : "tracking";
+    pipeline[stage].push(o);
   });
 
   if (selected) {

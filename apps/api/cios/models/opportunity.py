@@ -71,7 +71,7 @@ class Opportunity(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin):
 
     # CIOS Intelligence
     status: Mapped[str] = mapped_column(String(32), default="active")
-    pipeline_stage: Mapped[str] = mapped_column(String(32), default="identified")
+    pipeline_stage: Mapped[str] = mapped_column(String(32), default="tracking")
     award_probability_score: Mapped[float | None] = mapped_column(Float)
     bid_no_bid_recommendation: Mapped[str | None] = mapped_column(String(16))
     proposal_readiness_score: Mapped[float | None] = mapped_column(Float)

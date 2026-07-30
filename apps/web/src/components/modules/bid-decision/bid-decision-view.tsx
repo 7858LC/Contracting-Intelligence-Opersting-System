@@ -232,10 +232,11 @@ function AddBidDecisionModal({ onClose, onCreated }: { onClose: () => void; onCr
   const [opportunityId, setOpportunityId] = useState("");
   const [threshold, setThreshold] = useState("65");
 
-  const { data: opportunities = [] } = useQuery({
+  const { data: oppsData } = useQuery({
     queryKey: ["opportunities-list"],
-    queryFn: () => api.getOpportunities(),
+    queryFn: () => api.getOpportunities({ page_size: 100 }),
   });
+  const opportunities = oppsData?.items ?? [];
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
