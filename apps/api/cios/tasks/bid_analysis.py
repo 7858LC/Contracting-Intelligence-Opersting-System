@@ -6,9 +6,16 @@ import uuid
 from cios.tasks import celery_app
 
 
-@celery_app.task(bind=True, max_retries=2, soft_time_limit=300)
+@celery_app.task(bind=True, max_retries=2, default_retry_delay=30, soft_time_limit=300)
 def run_bid_analysis(self, tenant_id: str, user_id: str, decision_id: str) -> dict:
-    return asyncio.run(_run_async(tenant_id, user_id, decision_id))
+    try:
+        return asyncio.run(_run_async(tenant_id, user_id, decision_id))
+    except Exception as exc:
+        # Previously unwired — max_retries was declared but nothing ever
+        # called self.retry(), so a transient failure (or, before the JSON
+        # parsing fix below, every single run) just completed silently with
+        # every score left blank instead of actually retrying.
+        raise self.retry(exc=exc)
 
 
 async def _run_async(tenant_id: str, user_id: str, decision_id: str) -> dict:
@@ -51,13 +58,16 @@ async def _run_async(tenant_id: str, user_id: str, decision_id: str) -> dict:
         )
         risk_out = await risk.run(context, opportunity_data=opportunity_data, knowledge_context=[])
 
-        import json
+        from cios.agents.json_parsing import extract_claude_json
 
-        try:
-            c = json.loads(capture_out.get("result", {}).get("capture_assessment", "{}") or "{}")
-            r = json.loads(risk_out.get("result", {}).get("risk_assessment", "{}") or "{}")
-        except Exception:
-            c, r = {}, {}
+        c = extract_claude_json(
+            capture_out.get("result", {}).get("capture_assessment", "") or "",
+            context="Bid analysis (capture)",
+        )
+        r = extract_claude_json(
+            risk_out.get("result", {}).get("risk_assessment", "") or "",
+            context="Bid analysis (risk)",
+        )
 
         decision.strategic_fit_score = c.get("strategic_fit_score")
         decision.win_probability_score = c.get("win_probability_score")
