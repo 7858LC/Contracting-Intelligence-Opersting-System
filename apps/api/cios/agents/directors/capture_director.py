@@ -36,8 +36,11 @@ class CaptureDirector(BaseAgent):
     # BaseAgent's default (4096) routinely truncated this prompt's 7-point
     # comprehensive JSON output mid-object — found live via a bid analysis
     # stuck retrying forever on "not valid JSON" (a truncated response has no
-    # closing brace, so no amount of fence-stripping can recover it).
-    max_tokens = 8192
+    # closing brace, so no amount of fence-stripping can recover it). Bumping
+    # to 8192 wasn't enough either — the sibling RiskDirector still truncated
+    # at that ceiling in production. 16384 matches AwardSimulatorAgent's
+    # already-proven-sufficient budget for comparably comprehensive output.
+    max_tokens = 16384
 
     async def _execute(self, context: AgentContext, **kwargs: Any) -> dict[str, Any]:
         opportunity_data: dict = kwargs.get("opportunity_data", {})
