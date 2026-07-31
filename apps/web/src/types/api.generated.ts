@@ -579,8 +579,54 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Analyze Competitive Landscape */
+        /**
+         * Analyze Competitive Landscape
+         * @description Derive the competitive landscape for an opportunity from its Winning
+         *     Profile alignment ranking — front-runner + next tiers, enriched with
+         *     tracked Competitor intel. Requires Winning Profile analysis (and
+         *     contractor alignment) to have already run for this opportunity; the
+         *     task reports why via status="failed" + error_message if not, rather
+         *     than completing with nothing.
+         */
         post: operations["analyze_competitive_landscape_api_v1_competitors_analyze_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/competitors/analyze/{analysis_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Competitive Landscape Analysis */
+        get: operations["get_competitive_landscape_analysis_api_v1_competitors_analyze__analysis_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/competitors/analyze/by-opportunity/{opportunity_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Latest Competitive Landscape Analysis
+         * @description Most recent analysis run for an opportunity — the polling target
+         *     after POST /analyze without needing to hold onto the returned id.
+         */
+        get: operations["get_latest_competitive_landscape_analysis_api_v1_competitors_analyze_by_opportunity__opportunity_id__get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1513,6 +1559,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/winning-profile/contractors/{contractor_id}/link-competitor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Link Contractor Competitor
+         * @description Manually link (or unlink, with competitor_id: null) a contractor to a
+         *     tracked Competitor — the fallback for when auto-match on cage_code at
+         *     creation time didn't find one (different cage_code on file, or none
+         *     entered) but the tenant knows it's the same company.
+         */
+        post: operations["link_contractor_competitor_api_v1_winning_profile_contractors__contractor_id__link_competitor_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/winning-profile/contractors/{contractor_id}": {
         parameters: {
             query?: never;
@@ -2044,7 +2113,10 @@ export interface components {
         };
         /** AnalyzeCompetitiveLandscapeRequest */
         AnalyzeCompetitiveLandscapeRequest: {
-            /** Opportunity Id */
+            /**
+             * Opportunity Id
+             * Format: uuid
+             */
             opportunity_id: string;
         };
         /** AnalyzeOpportunityResponse */
@@ -2055,13 +2127,6 @@ export interface components {
             status: string;
             /** Opportunity Id */
             opportunity_id: string;
-        };
-        /** AnalyzeQueuedResponse */
-        AnalyzeQueuedResponse: {
-            /** Task Id */
-            task_id: string;
-            /** Status */
-            status: string;
         };
         /** ApiKeyCreate */
         ApiKeyCreate: {
@@ -2571,6 +2636,42 @@ export interface components {
             /** Is Active */
             is_active?: boolean | null;
         };
+        /** CompetitiveLandscapeAnalysisResponse */
+        CompetitiveLandscapeAnalysisResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Opportunity Id
+             * Format: uuid
+             */
+            opportunity_id: string;
+            /** Solicitation Id */
+            solicitation_id: string | null;
+            /** Status */
+            status: string;
+            /** Error Message */
+            error_message: string | null;
+            front_runner: components["schemas"]["LandscapeContenderItem"] | null;
+            /** Next Tiers */
+            next_tiers: components["schemas"]["LandscapeContenderItem"][];
+            /** Candidate Pool Size */
+            candidate_pool_size: number | null;
+            /** Generated At */
+            generated_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** CompetitorCreate */
         CompetitorCreate: {
             /** Company Name */
@@ -2813,6 +2914,8 @@ export interface components {
             samgov_uei: string | null;
             /** Cage Code */
             cage_code: string | null;
+            /** Competitor Id */
+            competitor_id: string | null;
             /** Is Self */
             is_self: boolean;
             /** Is Incumbent */
@@ -3057,6 +3160,34 @@ export interface components {
          * @enum {string}
          */
         JurisdictionType: "federal" | "state" | "local" | "tribal" | "international";
+        /** LandscapeContenderItem */
+        LandscapeContenderItem: {
+            /** Contractor Id */
+            contractor_id: string;
+            /** Contractor Name */
+            contractor_name: string | null;
+            /** Alignment Score */
+            alignment_score: number | null;
+            /** Rank */
+            rank: number | null;
+            /** Competitor Id */
+            competitor_id: string | null;
+            /** Threat Level */
+            threat_level: string | null;
+            /** Pricing Tendency */
+            pricing_tendency: string | null;
+            /** Known Strengths */
+            known_strengths: unknown[];
+            /** Known Weaknesses */
+            known_weaknesses: unknown[];
+            /** Notes */
+            notes: string | null;
+        };
+        /** LinkCompetitorRequest */
+        LinkCompetitorRequest: {
+            /** Competitor Id */
+            competitor_id: string | null;
+        };
         /** LoginRequest */
         LoginRequest: {
             /**
@@ -5709,12 +5840,74 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompetitiveLandscapeAnalysisResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_competitive_landscape_analysis_api_v1_competitors_analyze__analysis_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                analysis_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AnalyzeQueuedResponse"];
+                    "application/json": components["schemas"]["CompetitiveLandscapeAnalysisResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_latest_competitive_landscape_analysis_api_v1_competitors_analyze_by_opportunity__opportunity_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompetitiveLandscapeAnalysisResponse"];
                 };
             };
             /** @description Validation Error */
@@ -7658,6 +7851,41 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    link_contractor_competitor_api_v1_winning_profile_contractors__contractor_id__link_competitor_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contractor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkCompetitorRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
