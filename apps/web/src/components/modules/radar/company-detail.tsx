@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { toast } from "sonner";
 import {
   Activity,
   AlertCircle,
@@ -13,6 +14,7 @@ import {
   Calendar,
   ChevronRight,
   Clock,
+  Copy,
   ExternalLink,
   Loader2,
   RefreshCw,
@@ -217,6 +219,32 @@ export function CompanyDetail({ companyId }: { companyId: string }) {
       qc.invalidateQueries({ queryKey: ["radar-analyses", companyId] });
     },
   });
+
+  function copyAnalysis(a: AIAnalysis, companyName: string) {
+    const lines = [
+      `${companyName} — AI Analysis`,
+      a.executive_summary ? `\nExecutive Summary:\n${a.executive_summary}` : null,
+      a.buying_probability != null
+        ? `\nBuying Probability: ${Math.round(a.buying_probability * 100)}%${
+            a.confidence_explanation ? ` — ${a.confidence_explanation}` : ""
+          }`
+        : null,
+      a.pain_points.length
+        ? `\nPain Points / Gaps:\n${a.pain_points.map((p, i) => `${i + 1}. ${p}`).join("\n")}`
+        : null,
+      a.potential_stakeholders.length
+        ? `\nPotential Stakeholders:\n${a.potential_stakeholders
+            .map((s) => `- ${s.title} — ${s.reason}`)
+            .join("\n")}`
+        : null,
+      a.recommended_outreach ? `\nRecommended Outreach:\n${a.recommended_outreach}` : null,
+      a.suggested_messaging.length
+        ? `\nSuggested Messaging:\n${a.suggested_messaging.map((m) => `- ${m}`).join("\n")}`
+        : null,
+    ].filter(Boolean);
+    navigator.clipboard.writeText(lines.join("\n"));
+    toast.success("Copied to clipboard");
+  }
 
   if (isLoading) {
     return (
@@ -433,18 +461,30 @@ export function CompanyDetail({ companyId }: { companyId: string }) {
             <p className="text-sm text-muted-foreground">
               Claude-powered analysis based on {signals.length} detected signals.
             </p>
-            <button
-              onClick={() => analyzeMutation.mutate()}
-              disabled={analyzeMutation.isPending || latestAnalysis?.status === "running"}
-              className="flex items-center gap-2 px-3 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50"
-            >
-              {analyzeMutation.isPending ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Sparkles className="w-3.5 h-3.5" />
+            <div className="flex items-center gap-2">
+              {latestAnalysis?.status === "completed" && (
+                <button
+                  onClick={() => copyAnalysis(latestAnalysis, company.name)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-md border border-border text-sm hover:bg-secondary transition-colors"
+                  title="Copy analysis to clipboard"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  Copy
+                </button>
               )}
-              {latestAnalysis ? "Re-analyze" : "Run Analysis"}
-            </button>
+              <button
+                onClick={() => analyzeMutation.mutate()}
+                disabled={analyzeMutation.isPending || latestAnalysis?.status === "running"}
+                className="flex items-center gap-2 px-3 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50"
+              >
+                {analyzeMutation.isPending ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5" />
+                )}
+                {latestAnalysis ? "Re-analyze" : "Run Analysis"}
+              </button>
+            </div>
           </div>
 
           {latestAnalysis?.status === "running" && (
