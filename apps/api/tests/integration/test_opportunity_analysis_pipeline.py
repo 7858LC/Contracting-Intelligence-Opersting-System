@@ -41,9 +41,11 @@ _CEO_JSON = """```json
   "gate_review_recommendation": "BID",
   "award_probability": 0.62,
   "confidence_score": 0.71,
-  "strategic_recommendation": "Pursue — strong past performance overlap and a defensible technical approach.",
-  "key_decision_factors": ["Incumbent has a mixed CPARS record", "Our small-business set-aside eligibility"],
-  "critical_risks": [{"risk": "Aggressive 30-day proposal turnaround.", "mitigation": "Start volume leads this week."}],
+  "strategic_recommendation": "Pursue — strong past performance overlap and a defensible approach.",
+  "key_decision_factors": ["Incumbent has a mixed CPARS record", "Our set-aside eligibility"],
+  "critical_risks": [
+    {"risk": "Aggressive 30-day proposal turnaround.", "mitigation": "Start volume leads now."}
+  ],
   "alternatives": ["Team with a past performance partner to backfill the one gap."],
   "regulation_citations": ["FAR 15.305"]
 }
