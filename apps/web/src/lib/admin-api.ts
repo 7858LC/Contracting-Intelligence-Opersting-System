@@ -87,6 +87,15 @@ class CIOSAdminApiClient {
     const { data } = await this.client.get(`/tenants/${id}/audit-log`, { params });
     return data;
   }
+
+  async listResearchReports() {
+    const { data } = await this.client.get("/research/reports");
+    return data;
+  }
+
+  async deleteResearchReport(id: string) {
+    await this.client.delete(`/research/reports/${id}`);
+  }
 }
 
 export const adminApi = new CIOSAdminApiClient();
