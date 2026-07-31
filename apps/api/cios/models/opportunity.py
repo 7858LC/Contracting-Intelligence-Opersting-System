@@ -76,6 +76,11 @@ class Opportunity(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin):
     bid_no_bid_recommendation: Mapped[str | None] = mapped_column(String(16))
     proposal_readiness_score: Mapped[float | None] = mapped_column(Float)
     competitive_intensity: Mapped[str | None] = mapped_column(String(16))
+    # Set only on a completed run_opportunity_analysis task — same
+    # "pending vs. never-run" signal as bid_decisions.analyzed_at, since
+    # award_probability_score/bid_no_bid_recommendation being null is
+    # otherwise indistinguishable from "analysis never triggered."
+    analyzed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Extracted intelligence
     evaluation_criteria: Mapped[list] = mapped_column(JSONB, default=list)

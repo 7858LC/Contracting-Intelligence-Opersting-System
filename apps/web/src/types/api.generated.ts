@@ -1878,6 +1878,15 @@ export interface components {
             /** Summary */
             summary: string | null;
         };
+        /** AnalyzeOpportunityResponse */
+        AnalyzeOpportunityResponse: {
+            /** Task Id */
+            task_id: string;
+            /** Status */
+            status: string;
+            /** Opportunity Id */
+            opportunity_id: string;
+        };
         /** ApiKeyCreate */
         ApiKeyCreate: {
             /** Name */
@@ -2691,6 +2700,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Analyzed At */
+            analyzed_at: string | null;
         };
         /** OpportunityUpdate */
         OpportunityUpdate: {
@@ -4115,9 +4126,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
+                    "application/json": components["schemas"]["AnalyzeOpportunityResponse"];
                 };
             };
             /** @description Validation Error */
