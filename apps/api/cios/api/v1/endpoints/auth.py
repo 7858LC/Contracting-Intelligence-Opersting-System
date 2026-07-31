@@ -4,8 +4,8 @@ import uuid
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import select
+from pydantic import BaseModel, EmailStr, Field, field_validator
+from sqlalchemy import func, select
 
 from cios.core.dependencies import DB, Auth
 from cios.core.rate_limit import rate_limiter
@@ -36,10 +36,28 @@ class RegisterRequest(BaseModel):
     company_name: str = Field(..., min_length=1)
     company_slug: str | None = None
 
+    # Nothing normalized email case anywhere in this file (or tenants.py's
+    # invite flow) — a user who registered as "Jane@Company.com" and later
+    # typed "jane@company.com" at login got rejected with "Invalid
+    # credentials", indistinguishable from an actually-wrong password,
+    # because the DB lookup was an exact case-sensitive match. Normalizing
+    # here means every future row is written lowercase; login's query below
+    # also matches case-insensitively so this covers rows already stored
+    # with mixed case, not just new ones.
+    @field_validator("email", mode="after")
+    @classmethod
+    def _lowercase_email(cls, v: str) -> str:
+        return v.lower()
+
 
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+    @field_validator("email", mode="after")
+    @classmethod
+    def _lowercase_email(cls, v: str) -> str:
+        return v.lower()
 
 
 class TokenResponse(BaseModel):
@@ -186,7 +204,9 @@ async def accept_invite(body: AcceptInviteRequest, db: DB) -> TokenResponse:
 @router.post("/login", response_model=TokenResponse, dependencies=[_login_rate_limit])
 async def login(body: LoginRequest, db: DB) -> TokenResponse:
     result = await db.execute(
-        select(TenantMember).where(TenantMember.email == body.email, TenantMember.is_active == True)  # noqa: E712
+        select(TenantMember).where(
+            func.lower(TenantMember.email) == body.email, TenantMember.is_active == True  # noqa: E712
+        )
     )
     member = result.scalar_one_or_none()
 

@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy import select
 
 from cios.core.dependencies import DB, AdminAuth, Auth
@@ -55,6 +55,15 @@ class TenantProfileResponse(BaseModel):
 class InviteMemberRequest(BaseModel):
     email: EmailStr
     role: str = "member"
+
+    # See auth.py's RegisterRequest/LoginRequest for why this matters — the
+    # invited member's row must be written lowercase too, or a future login
+    # attempt (case-insensitive on that side) still has to match something
+    # here in the first place.
+    @field_validator("email", mode="after")
+    @classmethod
+    def _lowercase_email(cls, v: str) -> str:
+        return v.lower()
 
 
 class InviteMemberResponse(BaseModel):

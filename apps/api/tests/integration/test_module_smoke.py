@@ -99,6 +99,46 @@ async def test_auth_register_and_login_round_trip(client: AsyncClient):
 
 
 @pytest.mark.anyio
+async def test_login_is_case_insensitive_on_email(client: AsyncClient):
+    """Regression test: registering with mixed-case email and logging in
+    with different case (or vice versa) must not be rejected as "Invalid
+    credentials" — the DB comparison used to be exact-match, so an email
+    typed with different capitalization than it was stored with looked
+    identical to a wrong password."""
+    suffix = uuid.uuid4().hex[:10]
+    mixed_case_email = f"Mixed.Case.{suffix}@Example.COM"
+    ip_header = {"X-Forwarded-For": _fake_client_ip()}
+
+    register = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": mixed_case_email,
+            "password": "CaseTest123!",
+            "full_name": "Case Test",
+            "company_name": f"Case Test Co {suffix}",
+        },
+        headers=ip_header,
+    )
+    assert register.status_code == 201, register.text
+    # Written lowercase regardless of how it was typed.
+    assert register.json()["user_id"]
+
+    login_uppercase = await client.post(
+        "/api/v1/auth/login",
+        json={"email": mixed_case_email.upper(), "password": "CaseTest123!"},
+        headers=ip_header,
+    )
+    assert login_uppercase.status_code == 200, login_uppercase.text
+
+    login_lowercase = await client.post(
+        "/api/v1/auth/login",
+        json={"email": mixed_case_email.lower(), "password": "CaseTest123!"},
+        headers=ip_header,
+    )
+    assert login_lowercase.status_code == 200, login_lowercase.text
+
+
+@pytest.mark.anyio
 async def test_tenants_module_smoke(client: AsyncClient):
     headers = await _register(client)
     resp = await client.get("/api/v1/tenants/profile", headers=headers)
