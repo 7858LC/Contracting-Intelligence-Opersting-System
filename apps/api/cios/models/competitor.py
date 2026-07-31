@@ -1,8 +1,9 @@
 """Competitive Intelligence models — Module 8."""
 
 import uuid
+from datetime import datetime
 
-from sqlalchemy import Boolean, Float, Index, String, Text
+from sqlalchemy import Boolean, DateTime, Float, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -47,3 +48,32 @@ class CompetitorIntelligence(Base, UUIDMixin, TimestampMixin, TenantMixin, Evide
     source_url: Mapped[str | None] = mapped_column(String(2048))
     relevance_score: Mapped[float | None] = mapped_column(Float)
     is_verified: Mapped[bool | None] = mapped_column(Boolean)
+
+
+class CompetitiveLandscapeAnalysis(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin):
+    """Computed output of run_competitive_analysis for one opportunity —
+    the front-runner (highest WPHAlignment rank, excluding is_self) plus the
+    next tiers, each enriched with the tenant's tracked Competitor intel
+    where a link exists (see WPHContractor.competitor_id, migration 020).
+
+    status/error_message follow the same "never run" vs. "ran and failed"
+    vs. "completed" distinction as award_simulations/pir_ai_analyses —
+    without it, a missing WPH solicitation/profile/alignment for this
+    opportunity and a genuine analysis failure would both just look like an
+    opportunity with no landscape data.
+    """
+
+    __tablename__ = "competitive_landscape_analyses"
+    __table_args__ = (Index("idx_cla_tenant_opp", "tenant_id", "opportunity_id"),)
+
+    opportunity_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
+    solicitation_id: Mapped[uuid.UUID | None] = mapped_column(PG_UUID(as_uuid=True))
+    status: Mapped[str] = mapped_column(String(32), default="pending")
+    error_message: Mapped[str | None] = mapped_column(Text)
+    # Each of front_runner/next_tiers items: {contractor_id, contractor_name,
+    # alignment_score, rank, competitor_id, threat_level, pricing_tendency,
+    # known_strengths, known_weaknesses, notes}
+    front_runner: Mapped[dict | None] = mapped_column(JSONB)
+    next_tiers: Mapped[list] = mapped_column(JSONB, default=list)
+    candidate_pool_size: Mapped[int | None] = mapped_column(Integer)
+    generated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

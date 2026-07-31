@@ -247,8 +247,8 @@ async def test_competitors_module_smoke(client: AsyncClient):
     analyze = await client.post(
         "/api/v1/competitors/analyze", headers=headers, json={"opportunity_id": opp_id}
     )
-    assert analyze.status_code == 200, analyze.text
-    assert analyze.json()["status"] == "queued"
+    assert analyze.status_code == 202, analyze.text
+    assert analyze.json()["status"] == "pending"
 
 
 @pytest.mark.anyio

@@ -273,6 +273,14 @@ class WPHContractor(Base, UUIDMixin, TimestampMixin, TenantMixin):
     samgov_uei: Mapped[str | None] = mapped_column(String(12))
     cage_code: Mapped[str | None] = mapped_column(String(10))
 
+    # Links this scoring subject to the tenant's tracked competitive-intel
+    # dossier on the same real-world company (see migration 020 for why
+    # these stayed two tables instead of one). Never set for is_self rows —
+    # you don't track yourself as a competitor.
+    competitor_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("competitors.id", ondelete="SET NULL"), index=True
+    )
+
     is_self: Mapped[bool] = mapped_column(Boolean, default=False)  # the customer's own org
     is_incumbent: Mapped[bool] = mapped_column(Boolean, default=False)
     business_size: Mapped[str | None] = mapped_column(String(16))  # small | large

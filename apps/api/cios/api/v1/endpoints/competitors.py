@@ -3,12 +3,12 @@
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 
 from cios.core.dependencies import DB, Auth
-from cios.models.competitor import Competitor, CompetitorIntelligence
+from cios.models.competitor import CompetitiveLandscapeAnalysis, Competitor, CompetitorIntelligence
 
 router = APIRouter()
 
@@ -87,12 +87,36 @@ class CompetitorIntelResponse(BaseModel):
 
 
 class AnalyzeCompetitiveLandscapeRequest(BaseModel):
-    opportunity_id: str
+    opportunity_id: uuid.UUID
 
 
-class AnalyzeQueuedResponse(BaseModel):
-    task_id: str
+class LandscapeContenderItem(BaseModel):
+    contractor_id: str
+    contractor_name: str | None
+    alignment_score: float | None
+    rank: int | None
+    competitor_id: str | None
+    threat_level: str | None
+    pricing_tendency: str | None
+    known_strengths: list
+    known_weaknesses: list
+    notes: str | None
+
+
+class CompetitiveLandscapeAnalysisResponse(BaseModel):
+    id: uuid.UUID
+    opportunity_id: uuid.UUID
+    solicitation_id: uuid.UUID | None
     status: str
+    error_message: str | None
+    front_runner: LandscapeContenderItem | None
+    next_tiers: list[LandscapeContenderItem]
+    candidate_pool_size: int | None
+    generated_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 @router.get("", response_model=CompetitorListResponse)
@@ -142,13 +166,71 @@ async def add_competitor_intel(
     return intel
 
 
-@router.post("/analyze", response_model=AnalyzeQueuedResponse)
+@router.post(
+    "/analyze",
+    response_model=CompetitiveLandscapeAnalysisResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
 async def analyze_competitive_landscape(
     body: AnalyzeCompetitiveLandscapeRequest, db: DB, user: Auth
-) -> dict:
+) -> CompetitiveLandscapeAnalysis:
+    """Derive the competitive landscape for an opportunity from its Winning
+    Profile alignment ranking — front-runner + next tiers, enriched with
+    tracked Competitor intel. Requires Winning Profile analysis (and
+    contractor alignment) to have already run for this opportunity; the
+    task reports why via status="failed" + error_message if not, rather
+    than completing with nothing."""
+    analysis = CompetitiveLandscapeAnalysis(
+        tenant_id=user.tenant_id,
+        opportunity_id=body.opportunity_id,
+        status="pending",
+    )
+    db.add(analysis)
+    await db.commit()
+    await db.refresh(analysis)
+
     from cios.tasks.competitive_intel import run_competitive_analysis
 
-    task = run_competitive_analysis.delay(
-        str(user.tenant_id), str(user.user_id), body.opportunity_id
+    run_competitive_analysis.delay(
+        str(user.tenant_id), str(user.user_id), str(body.opportunity_id), str(analysis.id)
     )
-    return {"task_id": task.id, "status": "queued"}
+    return analysis
+
+
+@router.get("/analyze/{analysis_id}", response_model=CompetitiveLandscapeAnalysisResponse)
+async def get_competitive_landscape_analysis(
+    analysis_id: uuid.UUID, db: DB, user: Auth
+) -> CompetitiveLandscapeAnalysis:
+    result = await db.execute(
+        select(CompetitiveLandscapeAnalysis).where(
+            CompetitiveLandscapeAnalysis.id == analysis_id,
+            CompetitiveLandscapeAnalysis.tenant_id == user.tenant_id,
+        )
+    )
+    analysis = result.scalar_one_or_none()
+    if not analysis:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    return analysis
+
+
+@router.get(
+    "/analyze/by-opportunity/{opportunity_id}",
+    response_model=CompetitiveLandscapeAnalysisResponse,
+)
+async def get_latest_competitive_landscape_analysis(
+    opportunity_id: uuid.UUID, db: DB, user: Auth
+) -> CompetitiveLandscapeAnalysis:
+    """Most recent analysis run for an opportunity — the polling target
+    after POST /analyze without needing to hold onto the returned id."""
+    result = await db.execute(
+        select(CompetitiveLandscapeAnalysis)
+        .where(
+            CompetitiveLandscapeAnalysis.opportunity_id == opportunity_id,
+            CompetitiveLandscapeAnalysis.tenant_id == user.tenant_id,
+        )
+        .order_by(CompetitiveLandscapeAnalysis.created_at.desc())
+    )
+    analysis = result.scalars().first()
+    if not analysis:
+        raise HTTPException(status_code=404, detail="No analysis found for this opportunity")
+    return analysis

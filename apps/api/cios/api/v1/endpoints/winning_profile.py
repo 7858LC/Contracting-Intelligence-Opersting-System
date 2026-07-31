@@ -147,6 +147,7 @@ class ContractorResponse(BaseModel):
     description: str | None
     samgov_uei: str | None
     cage_code: str | None
+    competitor_id: uuid.UUID | None
     is_self: bool
     is_incumbent: bool
     business_size: str | None
@@ -160,6 +161,10 @@ class ContractorResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class LinkCompetitorRequest(BaseModel):
+    competitor_id: uuid.UUID | None  # None unlinks
 
 
 class AlignRequest(BaseModel):
@@ -771,6 +776,8 @@ async def get_profile(sol_id: uuid.UUID, user: Auth, db: DB) -> dict:
 
 @router.post("/contractors", response_model=ContractorResponse, status_code=status.HTTP_201_CREATED)
 async def create_contractor(payload: ContractorCreate, user: Auth, db: DB) -> WPHContractor:
+    from cios.models.competitor import Competitor
+
     existing = (
         await db.execute(
             select(WPHContractor).where(
@@ -785,8 +792,65 @@ async def create_contractor(payload: ContractorCreate, user: Auth, db: DB) -> WP
     data["capabilities"] = [
         c.model_dump() if hasattr(c, "model_dump") else c for c in payload.capabilities
     ]
-    contractor = WPHContractor(tenant_id=user.tenant_id, **data)
+
+    # Auto-link to an existing tracked Competitor by cage_code — the same
+    # real-world company scored here for alignment may already have a
+    # competitive-intel dossier (threat_level, pricing history, notes) that
+    # Competitive Intelligence's /analyze should surface alongside the
+    # ranking, rather than the tenant re-entering the same company twice.
+    # Never for is_self — you don't track yourself as a competitor.
+    competitor_id = None
+    if not payload.is_self and payload.cage_code:
+        matched = (
+            await db.execute(
+                select(Competitor.id).where(
+                    Competitor.tenant_id == user.tenant_id,
+                    Competitor.cage_code == payload.cage_code,
+                )
+            )
+        ).scalar_one_or_none()
+        competitor_id = matched
+
+    contractor = WPHContractor(tenant_id=user.tenant_id, competitor_id=competitor_id, **data)
     db.add(contractor)
+    await db.commit()
+    await db.refresh(contractor)
+    return contractor
+
+
+@router.post("/contractors/{contractor_id}/link-competitor", response_model=ContractorResponse)
+async def link_contractor_competitor(
+    contractor_id: uuid.UUID, payload: LinkCompetitorRequest, user: Auth, db: DB
+) -> WPHContractor:
+    """Manually link (or unlink, with competitor_id: null) a contractor to a
+    tracked Competitor — the fallback for when auto-match on cage_code at
+    creation time didn't find one (different cage_code on file, or none
+    entered) but the tenant knows it's the same company."""
+    from cios.models.competitor import Competitor
+
+    contractor = (
+        await db.execute(
+            select(WPHContractor).where(
+                WPHContractor.id == contractor_id, WPHContractor.tenant_id == user.tenant_id
+            )
+        )
+    ).scalar_one_or_none()
+    if not contractor:
+        raise HTTPException(status_code=404, detail="Contractor not found")
+
+    if payload.competitor_id is not None:
+        exists = (
+            await db.execute(
+                select(Competitor.id).where(
+                    Competitor.id == payload.competitor_id,
+                    Competitor.tenant_id == user.tenant_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not exists:
+            raise HTTPException(status_code=404, detail="Competitor not found")
+
+    contractor.competitor_id = payload.competitor_id
     await db.commit()
     await db.refresh(contractor)
     return contractor
