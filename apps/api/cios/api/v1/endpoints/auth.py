@@ -203,17 +203,32 @@ async def accept_invite(body: AcceptInviteRequest, db: DB) -> TokenResponse:
 
 @router.post("/login", response_model=TokenResponse, dependencies=[_login_rate_limit])
 async def login(body: LoginRequest, db: DB) -> TokenResponse:
+    # TenantMember.email has no unique constraint — case-varying duplicates
+    # were always possible at the DB level, but the previous exact-match
+    # query never surfaced them as duplicates to *this* query. Matching
+    # case-insensitively (added alongside the email-normalization fix) can
+    # now legitimately return more than one active row — e.g. someone who
+    # hit that exact bug and re-registered with different casing as a
+    # workaround. scalar_one_or_none() throws MultipleResultsFound in that
+    # case (a 500, live-confirmed), rather than a real "wrong password".
+    # Check the submitted password against every match instead of assuming
+    # there's exactly one — the password itself is what actually
+    # disambiguates which account was meant.
     result = await db.execute(
         select(TenantMember).where(
             func.lower(TenantMember.email) == body.email, TenantMember.is_active == True  # noqa: E712
         )
     )
-    member = result.scalar_one_or_none()
-
-    valid_password = member and member.password_hash and verify_password(
-        body.password, member.password_hash
+    candidates = result.scalars().all()
+    member = next(
+        (
+            c
+            for c in candidates
+            if c.password_hash and verify_password(body.password, c.password_hash)
+        ),
+        None,
     )
-    if not valid_password:
+    if not member:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     tenant_result = await db.execute(select(Tenant).where(Tenant.id == member.tenant_id))
