@@ -5,8 +5,10 @@ import uuid
 
 from cios.tasks import celery_app
 
+_VALID_RECOMMENDATIONS = {"BID", "NO_BID", "CONDITIONAL_BID"}
 
-@celery_app.task(bind=True, max_retries=2, default_retry_delay=30, soft_time_limit=300)
+
+@celery_app.task(bind=True, max_retries=2, default_retry_delay=30, soft_time_limit=600)
 def run_bid_analysis(self, tenant_id: str, user_id: str, decision_id: str) -> dict:
     try:
         return asyncio.run(_run_async(tenant_id, user_id, decision_id))
@@ -85,7 +87,30 @@ async def _run_async(tenant_id: str, user_id: str, decision_id: str) -> dict:
         decision.past_performance_score = c.get("past_performance_score")
         decision.capability_match_score = c.get("capability_match_score")
         decision.risk_score = r.get("risk_score")
-        decision.recommendation = c.get("bid_no_bid_recommendation")
+
+        # Prompt now pins this to a plain "BID"/"NO_BID"/"CONDITIONAL_BID"
+        # string (see capture_director.py), but a nested object — or any
+        # other off-schema value — slipping through anyway must not crash the
+        # write and lose every other score in the same commit, which it did
+        # live (DataError: "expected str, got dict") because this used to
+        # assign the raw value straight into a String column with no shape
+        # check at all. Only ever accept one of the three known values;
+        # anything else (a stray free-text phrase pulled out of a nested
+        # object, for instance) becomes None rather than corrupting a column
+        # the frontend treats as a closed enum for icon/color lookups.
+        recommendation = c.get("bid_no_bid_recommendation")
+        if isinstance(recommendation, dict):
+            recommendation = (
+                recommendation.get("recommendation")
+                or recommendation.get("decision")
+                or recommendation.get("value")
+            )
+        if isinstance(recommendation, str):
+            normalized = recommendation.strip().upper().replace(" ", "_").replace("-", "_")
+            recommendation = normalized if normalized in _VALID_RECOMMENDATIONS else None
+        else:
+            recommendation = None
+        decision.recommendation = recommendation
         decision.recommendation_rationale = c.get("recommendation_rationale")
         decision.risks = r.get("risks", [])
         decision.evidence = {"capture": str(c)[:1000], "risk": str(r)[:1000]}

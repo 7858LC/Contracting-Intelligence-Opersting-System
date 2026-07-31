@@ -74,7 +74,21 @@ Perform complete capture assessment:
 7. Risk factors with mitigation strategies
 
 Cite specific FAR/DFARS sections or applicable procurement rules.
-Respond as structured JSON.
+
+## Required Output (JSON)
+Return a JSON object with exactly these top-level fields:
+{{
+  "strategic_fit_score": 0,
+  "win_probability_score": 0,
+  "past_performance_score": 0,
+  "capability_match_score": 0,
+  "bid_no_bid_recommendation": "BID",
+  "recommendation_rationale": "2-4 sentence rationale for the recommendation above",
+  "confidence_score": 0.0
+}}
+"bid_no_bid_recommendation" must be exactly one of the plain strings "BID", "NO_BID", or
+"CONDITIONAL_BID" — never an object, never a longer phrase. Put all supporting narrative,
+caveats, and conditions in "recommendation_rationale" instead.
 """
         raw = await self._call_claude(CAPTURE_SYSTEM_PROMPT, user_message, raise_on_truncation=True)
 

@@ -67,7 +67,19 @@ Produce comprehensive risk register:
 
 Rate overall risk level: LOW / MEDIUM / HIGH / VERY HIGH
 Include risk-adjusted win probability modifier.
-Respond as structured JSON.
+
+## Required Output (JSON)
+Return a JSON object with exactly these top-level fields:
+{{
+  "risk_score": 0,
+  "risks": [
+    {{"description": "specific risk #1, plain sentence", "severity": "high"}},
+    {{"description": "specific risk #2", "severity": "medium"}}
+  ]
+}}
+"risk_score" is a single number 0-100 (higher = riskier). Each entry in "risks" is a flat
+object with a "description" string and a "severity" string ("low"/"medium"/"high"/"very_high")
+— never a nested risk register grouped by taxonomy category.
 """
         raw = await self._call_claude(RISK_SYSTEM_PROMPT, user_message, raise_on_truncation=True)
         return {"risk_assessment": raw, "agent": self.name}
