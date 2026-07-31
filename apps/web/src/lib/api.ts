@@ -126,6 +126,11 @@ class CIOSApiClient {
     return data;
   }
 
+  async deleteBidDecision(id: string) {
+    await this.client.delete(`/bid-decisions/${id}`);
+    return { deleted: true };
+  }
+
   // ── Award Simulations (Module 13 — flagship) ────────────────────────────
 
   async getSimulations(params?: Record<string, unknown>) {

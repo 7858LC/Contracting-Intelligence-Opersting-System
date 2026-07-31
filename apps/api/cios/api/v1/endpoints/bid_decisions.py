@@ -68,7 +68,10 @@ async def list_bid_decisions(db: DB, user: Auth) -> dict[str, Any]:
     result = await db.execute(
         select(BidDecision, Opportunity.title)
         .outerjoin(Opportunity, Opportunity.id == BidDecision.opportunity_id)
-        .where(BidDecision.tenant_id == user.tenant_id)
+        .where(
+            BidDecision.tenant_id == user.tenant_id,
+            BidDecision.is_archived == False,  # noqa: E712
+        )
         .order_by(BidDecision.created_at.desc())
         .limit(100)
     )
@@ -114,6 +117,15 @@ async def record_human_decision(
     decision.human_rationale = body.human_rationale
     decision.decided_by = user.user_id
     return {"status": "recorded", "decision_id": str(decision.id)}
+
+
+@router.delete("/{decision_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_bid_decision(decision_id: uuid.UUID, db: DB, user: Auth) -> None:
+    """Soft-delete — sets is_archived rather than removing the row, so this
+    stays recoverable directly from the database. Excluded from
+    list_bid_decisions immediately either way."""
+    decision = await _get_decision(db, user.tenant_id, decision_id)
+    decision.is_archived = True
 
 
 async def _get_decision(db: Any, tenant_id: uuid.UUID, decision_id: uuid.UUID) -> BidDecision:
