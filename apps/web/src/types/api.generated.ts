@@ -1875,6 +1875,136 @@ export interface components {
             /** Role */
             role: string;
         };
+        /** AgentRunDetailResponse */
+        AgentRunDetailResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Agent Type */
+            agent_type: string;
+            /** Agent Name */
+            agent_name: string;
+            /** Resource Type */
+            resource_type: string;
+            /** Resource Id */
+            resource_id: string | null;
+            /** Triggered By */
+            triggered_by: string | null;
+            /** Status */
+            status: string;
+            /** Started At */
+            started_at: string | null;
+            /** Completed At */
+            completed_at: string | null;
+            /** Duration Ms */
+            duration_ms: number | null;
+            /** Model Used */
+            model_used: string | null;
+            /** Prompt Tokens */
+            prompt_tokens: number | null;
+            /** Completion Tokens */
+            completion_tokens: number | null;
+            /** Total Cost Usd */
+            total_cost_usd: number | null;
+            /** Output */
+            output: {
+                [key: string]: unknown;
+            } | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Rule Pack */
+            rule_pack: string | null;
+            /** Rule Citations */
+            rule_citations: unknown[];
+            /** Input Snapshot */
+            input_snapshot: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Steps */
+            steps: components["schemas"]["AgentRunStepResponse"][];
+        };
+        /** AgentRunListResponse */
+        AgentRunListResponse: {
+            /** Items */
+            items: components["schemas"]["AgentRunSummaryResponse"][];
+        };
+        /** AgentRunStepResponse */
+        AgentRunStepResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Step Index */
+            step_index: number;
+            /** Step Name */
+            step_name: string;
+            /** Agent Name */
+            agent_name: string;
+            /** Status */
+            status: string;
+            /** Input Data */
+            input_data: {
+                [key: string]: unknown;
+            } | null;
+            /** Output Data */
+            output_data: {
+                [key: string]: unknown;
+            } | null;
+            /** Reasoning */
+            reasoning: string | null;
+            /** Duration Ms */
+            duration_ms: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** AgentRunSummaryResponse */
+        AgentRunSummaryResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Agent Type */
+            agent_type: string;
+            /** Agent Name */
+            agent_name: string;
+            /** Status */
+            status: string;
+            /** Resource Type */
+            resource_type: string;
+            /** Resource Id */
+            resource_id: string | null;
+            /** Duration Ms */
+            duration_ms: number | null;
+            /** Model Used */
+            model_used: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** AlignRequest */
         AlignRequest: {
             /** Contractor Ids */
@@ -1912,6 +2042,11 @@ export interface components {
             /** Summary */
             summary: string | null;
         };
+        /** AnalyzeCompetitiveLandscapeRequest */
+        AnalyzeCompetitiveLandscapeRequest: {
+            /** Opportunity Id */
+            opportunity_id: string;
+        };
         /** AnalyzeOpportunityResponse */
         AnalyzeOpportunityResponse: {
             /** Task Id */
@@ -1921,10 +2056,46 @@ export interface components {
             /** Opportunity Id */
             opportunity_id: string;
         };
+        /** AnalyzeQueuedResponse */
+        AnalyzeQueuedResponse: {
+            /** Task Id */
+            task_id: string;
+            /** Status */
+            status: string;
+        };
         /** ApiKeyCreate */
         ApiKeyCreate: {
             /** Name */
             name: string;
+        };
+        /** ApiKeyCreatedResponse */
+        ApiKeyCreatedResponse: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Key Prefix */
+            key_prefix: string;
+            /** Plaintext Key */
+            plaintext_key: string;
+            /** Created At */
+            created_at: string;
+        };
+        /** ApiKeyListResponse */
+        ApiKeyListResponse: {
+            /** Api Keys */
+            api_keys: components["schemas"]["ApiKeySummaryResponse"][];
+        };
+        /** ApiKeySummaryResponse */
+        ApiKeySummaryResponse: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Key Prefix */
+            key_prefix: string;
+            /** Created At */
+            created_at: string;
         };
         /** ApprovePackageRequest */
         ApprovePackageRequest: {
@@ -2086,6 +2257,57 @@ export interface components {
             /** Impact */
             impact: string;
         };
+        /** CapabilityGapListResponse */
+        CapabilityGapListResponse: {
+            /** Gaps */
+            gaps: components["schemas"]["CapabilityGapResponse"][];
+        };
+        /** CapabilityGapResponse */
+        CapabilityGapResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Opportunity Id */
+            opportunity_id: string | null;
+            /** Gap Name */
+            gap_name: string;
+            /** Category */
+            category: string;
+            /** Severity */
+            severity: string;
+            /** Description */
+            description: string | null;
+            /** Remediation Options */
+            remediation_options: unknown[];
+            /** Estimated Cost To Close */
+            estimated_cost_to_close: number | null;
+            /** Estimated Time To Close Days */
+            estimated_time_to_close_days: number | null;
+            /** Teaming Recommendation */
+            teaming_recommendation: string | null;
+            /** Status */
+            status: string;
+            /** Evidence */
+            evidence: {
+                [key: string]: unknown;
+            } | null;
+            /** Confidence Score */
+            confidence_score: number | null;
+            /** Ai Model Version */
+            ai_model_version: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** CapabilityItem */
         CapabilityItem: {
             /** Name */
@@ -2094,6 +2316,65 @@ export interface components {
             level: number;
             /** Evidence */
             evidence?: string | null;
+        };
+        /** CapabilityListResponse */
+        CapabilityListResponse: {
+            /** Capabilities */
+            capabilities: components["schemas"]["CapabilityResponse"][];
+        };
+        /** CapabilityResponse */
+        CapabilityResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Category */
+            category: string;
+            /** Description */
+            description: string | null;
+            /** Proficiency Level */
+            proficiency_level: number | null;
+            /** Proficiency Score */
+            proficiency_score: number | null;
+            /** Maturity Level */
+            maturity_level: string | null;
+            /** Is Certified */
+            is_certified: boolean;
+            /** Certifications */
+            certifications: unknown[];
+            /** Gap Score */
+            gap_score: number | null;
+            /** Gap Analysis */
+            gap_analysis: {
+                [key: string]: unknown;
+            } | null;
+            /** Improvement Plan */
+            improvement_plan: string | null;
+            /** Supporting Evidence */
+            supporting_evidence: unknown[];
+            /** Naics Codes */
+            naics_codes: unknown[];
+            /** Psc Codes */
+            psc_codes: unknown[];
+            /** Tools And Technologies */
+            tools_and_technologies: unknown[];
+            /** Team Members Count */
+            team_members_count: number | null;
+            /** Last Demonstrated */
+            last_demonstrated: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** CapturePackageContent */
         CapturePackageContent: {
@@ -2137,6 +2418,15 @@ export interface components {
          * @enum {string}
          */
         CapturePackageStatus: "draft" | "approved";
+        /** CheckoutSessionResponse */
+        CheckoutSessionResponse: {
+            /** Url */
+            url: string;
+            /** Checkout Url */
+            checkout_url: string;
+            /** Session Id */
+            session_id: string;
+        };
         /** CompanyCreate */
         CompanyCreate: {
             /** Name */
@@ -2347,6 +2637,110 @@ export interface components {
             /** Source Url */
             source_url?: string | null;
         };
+        /** CompetitorIntelResponse */
+        CompetitorIntelResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Competitor Id
+             * Format: uuid
+             */
+            competitor_id: string;
+            /** Opportunity Id */
+            opportunity_id: string | null;
+            /** Intel Type */
+            intel_type: string;
+            /** Content */
+            content: string;
+            /** Source */
+            source: string | null;
+            /** Source Url */
+            source_url: string | null;
+            /** Relevance Score */
+            relevance_score: number | null;
+            /** Is Verified */
+            is_verified: boolean | null;
+            /** Evidence */
+            evidence: {
+                [key: string]: unknown;
+            } | null;
+            /** Confidence Score */
+            confidence_score: number | null;
+            /** Ai Model Version */
+            ai_model_version: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** CompetitorListResponse */
+        CompetitorListResponse: {
+            /** Competitors */
+            competitors: components["schemas"]["CompetitorResponse"][];
+        };
+        /** CompetitorResponse */
+        CompetitorResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Company Name */
+            company_name: string;
+            /** Cage Code */
+            cage_code: string | null;
+            /** Duns Number */
+            duns_number: string | null;
+            /** Naics Codes */
+            naics_codes: unknown[];
+            /** Capabilities Summary */
+            capabilities_summary: string | null;
+            /** Known Strengths */
+            known_strengths: unknown[];
+            /** Known Weaknesses */
+            known_weaknesses: unknown[];
+            /** Win Rate Estimate */
+            win_rate_estimate: number | null;
+            /** Annual Contract Volume */
+            annual_contract_volume: number | null;
+            /** Past Awards */
+            past_awards: unknown[];
+            /** Agency Relationships */
+            agency_relationships: unknown[];
+            /** Pricing Tendency */
+            pricing_tendency: string | null;
+            /** Threat Level */
+            threat_level: string;
+            /** Socioeconomic Statuses */
+            socioeconomic_statuses: unknown[];
+            /** Active Clearances */
+            active_clearances: unknown[];
+            /** Certifications */
+            certifications: unknown[];
+            /** Notes */
+            notes: string | null;
+            /** Tags */
+            tags: unknown[];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** ContractorCreate */
         ContractorCreate: {
             /** Name */
@@ -2493,6 +2887,11 @@ export interface components {
             /** Value */
             value: string;
         };
+        /** DeletedResponse */
+        DeletedResponse: {
+            /** Deleted */
+            deleted: boolean;
+        };
         /** DocumentCreate */
         DocumentCreate: {
             document_type: components["schemas"]["EvidenceDocumentType"];
@@ -2536,6 +2935,18 @@ export interface components {
             signal_count: number;
             /** Pipeline Status */
             pipeline_status: string;
+        };
+        /** GapAnalysisQueuedResponse */
+        GapAnalysisQueuedResponse: {
+            /** Task Id */
+            task_id: string;
+            /** Status */
+            status: string;
+        };
+        /** GapAnalysisRequest */
+        GapAnalysisRequest: {
+            /** Opportunity Id */
+            opportunity_id: string;
         };
         /** GapClosureItem */
         GapClosureItem: {
@@ -2600,6 +3011,47 @@ export interface components {
             /** Invite Url */
             invite_url: string;
         };
+        /** InvoiceListResponse */
+        InvoiceListResponse: {
+            /** Invoices */
+            invoices: components["schemas"]["InvoiceResponse"][];
+        };
+        /** InvoiceResponse */
+        InvoiceResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Stripe Invoice Id */
+            stripe_invoice_id: string;
+            /** Amount Due */
+            amount_due: number;
+            /** Amount Paid */
+            amount_paid: number | null;
+            /** Currency */
+            currency: string;
+            /** Status */
+            status: string;
+            /** Invoice Pdf Url */
+            invoice_pdf_url: string | null;
+            /** Period Start */
+            period_start: string | null;
+            /** Period End */
+            period_end: string | null;
+            /** Paid At */
+            paid_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /**
          * JurisdictionType
          * @enum {string}
@@ -2615,6 +3067,53 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** MeResponse */
+        MeResponse: {
+            /** User Id */
+            user_id: string;
+            /** Tenant Id */
+            tenant_id: string;
+            /** Email */
+            email: string;
+            /** Role */
+            role: string;
+            /** Plan */
+            plan: string;
+        };
+        /** MemberListResponse */
+        MemberListResponse: {
+            /** Members */
+            members: components["schemas"]["MemberResponse"][];
+        };
+        /** MemberResponse */
+        MemberResponse: {
+            /** Id */
+            id: string;
+            /** Email */
+            email: string;
+            /** Full Name */
+            full_name: string | null;
+            /** Role */
+            role: string;
+        };
+        /** OnboardingCompleteResponse */
+        OnboardingCompleteResponse: {
+            /** Status */
+            status: string;
+            /** Task Id */
+            task_id: string;
+        };
+        /** OnboardingStatusResponse */
+        OnboardingStatusResponse: {
+            /** Steps */
+            steps: string[];
+            /** Completed Steps */
+            completed_steps: string[];
+            /** Completion Percentage */
+            completion_percentage: number;
+            /** Next Step */
+            next_step: string | null;
+        };
         /** OnboardingStep */
         OnboardingStep: {
             /** Step */
@@ -2623,6 +3122,15 @@ export interface components {
             data: {
                 [key: string]: unknown;
             };
+        };
+        /** OnboardingStepResponse */
+        OnboardingStepResponse: {
+            /** Step */
+            step: string;
+            /** Status */
+            status: string;
+            /** Next Step */
+            next_step: string | null;
         };
         /** OpportunityCreate */
         OpportunityCreate: {
@@ -2806,6 +3314,97 @@ export interface components {
             /** Poc Email */
             poc_email?: string | null;
         };
+        /** PastPerformanceListResponse */
+        PastPerformanceListResponse: {
+            /** Items */
+            items: components["schemas"]["PastPerformanceResponse"][];
+        };
+        /** PastPerformanceResponse */
+        PastPerformanceResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Contract Number */
+            contract_number: string | null;
+            /** Contract Title */
+            contract_title: string;
+            /** Customer Name */
+            customer_name: string;
+            /** Customer Agency */
+            customer_agency: string | null;
+            /** Contract Type */
+            contract_type: string | null;
+            /** Contract Value */
+            contract_value: number | null;
+            /** Currency */
+            currency: string;
+            /** Period Start */
+            period_start: string | null;
+            /** Period End */
+            period_end: string | null;
+            /** Scope Of Work */
+            scope_of_work: string | null;
+            /** Key Accomplishments */
+            key_accomplishments: unknown[];
+            /** Challenges Overcome */
+            challenges_overcome: unknown[];
+            /** Outcomes */
+            outcomes: unknown[];
+            /** Metrics */
+            metrics: unknown[];
+            /** Relevance Score */
+            relevance_score: number | null;
+            /** Relevance Factors */
+            relevance_factors: unknown[];
+            /** Naics Codes */
+            naics_codes: unknown[];
+            /** Psc Codes */
+            psc_codes: unknown[];
+            /** Cpars Rating */
+            cpars_rating: string | null;
+            /** Quality Rating */
+            quality_rating: number | null;
+            /** Schedule Rating */
+            schedule_rating: number | null;
+            /** Cost Rating */
+            cost_rating: number | null;
+            /** Management Rating */
+            management_rating: number | null;
+            /** Poc Name */
+            poc_name: string | null;
+            /** Poc Email */
+            poc_email: string | null;
+            /** Poc Phone */
+            poc_phone: string | null;
+            /** Prime Or Sub */
+            prime_or_sub: string;
+            /** Teaming Partners */
+            teaming_partners: unknown[];
+            /** Is Verified */
+            is_verified: boolean;
+            /** Is Confidential */
+            is_confidential: boolean;
+            /** Evidence */
+            evidence: {
+                [key: string]: unknown;
+            } | null;
+            /** Confidence Score */
+            confidence_score: number | null;
+            /** Ai Model Version */
+            ai_model_version: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** PipelineRunResponse */
         PipelineRunResponse: {
             /** Pipeline Status */
@@ -2824,6 +3423,13 @@ export interface components {
              * @default /dashboard/settings
              */
             return_url: string;
+        };
+        /** PortalSessionResponse */
+        PortalSessionResponse: {
+            /** Url */
+            url: string;
+            /** Portal Url */
+            portal_url: string;
         };
         /**
          * PriorityTier
@@ -2896,6 +3502,13 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** RecommendQueuedResponse */
+        RecommendQueuedResponse: {
+            /** Task Id */
+            task_id: string;
+            /** Status */
+            status: string;
+        };
         /** RecommendedActionItem */
         RecommendedActionItem: {
             /** Gap Attribute Key */
@@ -2937,6 +3550,18 @@ export interface components {
             company_name: string;
             /** Company Slug */
             company_slug?: string | null;
+        };
+        /** RelevanceQueuedResponse */
+        RelevanceQueuedResponse: {
+            /** Task Id */
+            task_id: string;
+            /** Status */
+            status: string;
+        };
+        /** RevokedResponse */
+        RevokedResponse: {
+            /** Revoked */
+            revoked: boolean;
         };
         /** RiskItem */
         RiskItem: {
@@ -3356,6 +3981,41 @@ export interface components {
              */
             updated_at: string;
         };
+        /** SubscriptionResponse */
+        SubscriptionResponse: {
+            /** Id */
+            id?: string | null;
+            /** Tenant Id */
+            tenant_id?: string | null;
+            /** Plan */
+            plan: string;
+            /** Status */
+            status: string;
+            /** Stripe Customer Id */
+            stripe_customer_id?: string | null;
+            /** Stripe Subscription Id */
+            stripe_subscription_id?: string | null;
+            /** Stripe Price Id */
+            stripe_price_id?: string | null;
+            /** Current Period Start */
+            current_period_start?: string | null;
+            /** Current Period End */
+            current_period_end?: string | null;
+            /** Trial End */
+            trial_end?: string | null;
+            /** Cancel At Period End */
+            cancel_at_period_end?: boolean | null;
+            /** Seats */
+            seats?: number | null;
+            /** Features */
+            features: {
+                [key: string]: unknown;
+            };
+            /** Created At */
+            created_at?: string | null;
+            /** Updated At */
+            updated_at?: string | null;
+        };
         /** TaskOrderFairOpportunityResponse */
         TaskOrderFairOpportunityResponse: {
             /** Fair Opportunity Status */
@@ -3412,6 +4072,167 @@ export interface components {
             poc_email?: string | null;
             /** Notes */
             notes?: string | null;
+        };
+        /** TeamingPartnerListResponse */
+        TeamingPartnerListResponse: {
+            /** Partners */
+            partners: components["schemas"]["TeamingPartnerResponse"][];
+        };
+        /** TeamingPartnerResponse */
+        TeamingPartnerResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Company Name */
+            company_name: string;
+            /** Cage Code */
+            cage_code: string | null;
+            /** Duns Number */
+            duns_number: string | null;
+            /** Sam Unique Id */
+            sam_unique_id: string | null;
+            /** Website */
+            website: string | null;
+            /** Naics Codes */
+            naics_codes: unknown[];
+            /** Psc Codes */
+            psc_codes: unknown[];
+            /** Capabilities */
+            capabilities: unknown[];
+            /** Socioeconomic Status */
+            socioeconomic_status: unknown[];
+            /** Past Performance Rating */
+            past_performance_rating: number | null;
+            /** Active Agreements */
+            active_agreements: boolean;
+            /** Relationship Strength */
+            relationship_strength: number;
+            /** Poc Name */
+            poc_name: string | null;
+            /** Poc Email */
+            poc_email: string | null;
+            /** Notes */
+            notes: string | null;
+            /** Ai Compatibility Score */
+            ai_compatibility_score: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** TeamingRecommendationListResponse */
+        TeamingRecommendationListResponse: {
+            /** Recommendations */
+            recommendations: components["schemas"]["TeamingRecommendationResponse"][];
+        };
+        /** TeamingRecommendationResponse */
+        TeamingRecommendationResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Opportunity Id
+             * Format: uuid
+             */
+            opportunity_id: string;
+            /** Prime Or Sub */
+            prime_or_sub: string;
+            /** Rationale */
+            rationale: string | null;
+            /** Team Structure */
+            team_structure: {
+                [key: string]: unknown;
+            };
+            /** Capability Gaps Addressed */
+            capability_gaps_addressed: unknown[];
+            /** Recommended Partners */
+            recommended_partners: unknown[];
+            /** Risk Assessment */
+            risk_assessment: {
+                [key: string]: unknown;
+            } | null;
+            /** Win Probability Impact */
+            win_probability_impact: number | null;
+            /** Risks */
+            risks: unknown[];
+            /** Status */
+            status: string;
+            /** Evidence */
+            evidence: {
+                [key: string]: unknown;
+            } | null;
+            /** Confidence Score */
+            confidence_score: number | null;
+            /** Ai Model Version */
+            ai_model_version: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** TenantProfileResponse */
+        TenantProfileResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+            /** Plan */
+            plan: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Settings */
+            settings: {
+                [key: string]: unknown;
+            };
+            /** Naics Codes */
+            naics_codes: unknown[];
+            /** Cage Code */
+            cage_code: string | null;
+            /** Duns Number */
+            duns_number: string | null;
+            /** Sam Unique Id */
+            sam_unique_id: string | null;
+            /** Small Business Designations */
+            small_business_designations: unknown[];
+            /** Annual Revenue Band */
+            annual_revenue_band: string | null;
+            /** Employee Count Band */
+            employee_count_band: string | null;
+            /** Primary Jurisdictions */
+            primary_jurisdictions: unknown[];
+            /** Is Council Member */
+            is_council_member: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** TenantProfileUpdate */
         TenantProfileUpdate: {
@@ -3534,6 +4355,11 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** WebhookReceivedResponse */
+        WebhookReceivedResponse: {
+            /** Status */
+            status: string;
         };
         /** DocumentResponse */
         cios__api__v1__endpoints__knowledge_vault__DocumentResponse: {
@@ -3806,9 +4632,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["MeResponse"];
                 };
             };
         };
@@ -3828,9 +4652,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["TenantProfileResponse"];
                 };
             };
         };
@@ -3854,9 +4676,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["TenantProfileResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3885,9 +4705,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["MemberListResponse"];
                 };
             };
         };
@@ -3940,9 +4758,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ApiKeyListResponse"];
                 };
             };
         };
@@ -3966,9 +4782,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ApiKeyCreatedResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3999,9 +4813,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["RevokedResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4459,9 +5271,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CapabilityListResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4494,9 +5304,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CapabilityResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4527,9 +5335,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["DeletedResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4552,9 +5358,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
+                "application/json": components["schemas"]["GapAnalysisRequest"];
             };
         };
         responses: {
@@ -4564,9 +5368,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["GapAnalysisQueuedResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4595,9 +5397,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CapabilityGapListResponse"];
                 };
             };
         };
@@ -4617,9 +5417,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["PastPerformanceListResponse"];
                 };
             };
         };
@@ -4643,9 +5441,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["PastPerformanceResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4678,9 +5474,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["RelevanceQueuedResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4709,9 +5503,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["TeamingPartnerListResponse"];
                 };
             };
         };
@@ -4735,9 +5527,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["TeamingPartnerResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4772,9 +5562,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["RecommendQueuedResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4803,9 +5591,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["TeamingRecommendationListResponse"];
                 };
             };
         };
@@ -4827,9 +5613,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CompetitorListResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4862,9 +5646,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CompetitorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4899,9 +5681,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CompetitorIntelResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4924,9 +5704,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
+                "application/json": components["schemas"]["AnalyzeCompetitiveLandscapeRequest"];
             };
         };
         responses: {
@@ -4936,9 +5714,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["AnalyzeQueuedResponse"];
                 };
             };
             /** @description Validation Error */
@@ -5220,9 +5996,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["AgentRunListResponse"];
                 };
             };
         };
@@ -5244,9 +6018,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["AgentRunDetailResponse"];
                 };
             };
             /** @description Validation Error */
@@ -5275,9 +6047,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["SubscriptionResponse"];
                 };
             };
         };
@@ -5301,9 +6071,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CheckoutSessionResponse"];
                 };
             };
             /** @description Validation Error */
@@ -5336,9 +6104,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["PortalSessionResponse"];
                 };
             };
             /** @description Validation Error */
@@ -5367,9 +6133,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["InvoiceListResponse"];
                 };
             };
         };
@@ -5389,9 +6153,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["OnboardingStatusResponse"];
                 };
             };
         };
@@ -5417,9 +6179,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["OnboardingStepResponse"];
                 };
             };
             /** @description Validation Error */
@@ -5448,9 +6208,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["OnboardingCompleteResponse"];
                 };
             };
         };
@@ -5472,9 +6230,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["WebhookReceivedResponse"];
                 };
             };
             /** @description Validation Error */

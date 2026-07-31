@@ -25,7 +25,25 @@ ONBOARDING_STEPS = [
 ]
 
 
-@router.get("/status")
+class OnboardingStatusResponse(BaseModel):
+    steps: list[str]
+    completed_steps: list[str]
+    completion_percentage: int
+    next_step: str | None
+
+
+class OnboardingStepResponse(BaseModel):
+    step: str
+    status: str
+    next_step: str | None
+
+
+class OnboardingCompleteResponse(BaseModel):
+    status: str
+    task_id: str
+
+
+@router.get("/status", response_model=OnboardingStatusResponse)
 async def get_onboarding_status(user: Auth) -> dict:
     """Return onboarding completion status."""
     return {
@@ -36,7 +54,7 @@ async def get_onboarding_status(user: Auth) -> dict:
     }
 
 
-@router.post("/steps/{step_name}")
+@router.post("/steps/{step_name}", response_model=OnboardingStepResponse)
 async def complete_onboarding_step(
     step_name: str, body: OnboardingStep, db: DB, user: Auth
 ) -> dict:
@@ -48,7 +66,7 @@ async def complete_onboarding_step(
     return {"step": step_name, "status": "completed", "next_step": _next_step(step_name)}
 
 
-@router.post("/complete")
+@router.post("/complete", response_model=OnboardingCompleteResponse)
 async def complete_onboarding(db: DB, user: AdminAuth) -> dict:
     """Mark onboarding complete and trigger initial AI analysis."""
     from cios.tasks.onboarding import run_initial_analysis

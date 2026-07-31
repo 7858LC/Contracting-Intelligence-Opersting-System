@@ -2,6 +2,7 @@
 
 import structlog
 from fastapi import APIRouter, Header, HTTPException, Request
+from pydantic import BaseModel
 
 from cios.config import settings
 
@@ -9,7 +10,11 @@ log = structlog.get_logger(__name__)
 router = APIRouter()
 
 
-@router.post("/stripe")
+class WebhookReceivedResponse(BaseModel):
+    status: str
+
+
+@router.post("/stripe", response_model=WebhookReceivedResponse)
 async def stripe_webhook(request: Request, stripe_signature: str = Header(None)) -> dict:
     if not settings.stripe_webhook_secret:
         raise HTTPException(status_code=503, detail="Webhook not configured")

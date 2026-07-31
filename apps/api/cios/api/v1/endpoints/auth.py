@@ -63,6 +63,14 @@ class AcceptInviteRequest(BaseModel):
     password: str = Field(..., min_length=8)
 
 
+class MeResponse(BaseModel):
+    user_id: str
+    tenant_id: str
+    email: str
+    role: str
+    plan: str
+
+
 @router.post(
     "/register",
     response_model=TokenResponse,
@@ -264,7 +272,7 @@ async def refresh_token(body: RefreshRequest, db: DB) -> TokenResponse:
     )
 
 
-@router.get("/me")
+@router.get("/me", response_model=MeResponse)
 async def get_me(user: Auth) -> dict:
     return {
         "user_id": str(user.user_id),
