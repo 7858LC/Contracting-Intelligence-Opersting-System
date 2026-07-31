@@ -133,6 +133,107 @@ async def test_bid_analysis_populates_real_scores_from_fenced_claude_output():
         assert row.composite_score is not None
 
 
+@pytest.mark.anyio
+async def test_bid_analysis_holds_no_db_connection_across_the_claude_calls():
+    """Same invariant as the opportunity pipeline's version of this test, for
+    the same reason — see test_opportunity_analysis_pipeline.py for the full
+    account of the production failure.
+
+    This task never had that failure attributed to it, but it had the identical
+    shape: two Director calls of ~130-180s each of pure external HTTP wrapped
+    in one session whose transaction stayed open the whole time. That parks the
+    connection idle-in-transaction for minutes, which managed Postgres hosts
+    drop, surfacing only at the deferred commit as "connection is closed". The
+    window was shorter than the opportunity task's, which is the only reason it
+    hadn't been observed yet.
+
+    Tracked via engine-level checkout/checkin events rather than
+    pool.checkedout() — see test_opportunity_analysis_pipeline.py's identical
+    test for why: that accessor only exists on QueuePool (what this suite
+    gets without CIOS_WORKER_PROCESS set) and raises AttributeError on
+    NullPool (what the production worker actually uses, and what this test
+    gets when run with CIOS_WORKER_PROCESS=1 to match it), while the events
+    fire identically on both.
+    """
+    from sqlalchemy import event as sa_event
+
+    from cios.core.database import engine
+    from cios.tasks.bid_analysis import _run_async
+
+    sync_engine = engine.sync_engine
+    active = [0]
+    checkouts_during_claude_calls: list[int] = []
+
+    def _on_checkout(*_args: object) -> None:
+        active[0] += 1
+
+    def _on_checkin(*_args: object) -> None:
+        active[0] -= 1
+
+    async with async_session_factory() as db:
+        tenant = Tenant(
+            name="Bid Analysis Idle Txn Test", slug=f"bid-analysis-idletxn-{uuid.uuid4().hex[:8]}"
+        )
+        db.add(tenant)
+        await db.flush()
+        await _set_tenant(db, tenant.id)
+
+        opp = Opportunity(
+            tenant_id=tenant.id,
+            title="Bid Analysis Idle Txn Test Opportunity",
+            agency="Test Agency",
+            source="manual",
+        )
+        db.add(opp)
+        await db.flush()
+
+        decision = BidDecision(
+            tenant_id=tenant.id,
+            opportunity_id=opp.id,
+            created_by=uuid.uuid4(),
+            scoring_weights={"strategic_fit": 0.5, "win_probability": 0.5},
+        )
+        db.add(decision)
+        await db.commit()
+        decision_id = str(decision.id)
+        tenant_id = str(tenant.id)
+
+    # Registered fresh for this test and removed in the finally below, so a
+    # connection some earlier or concurrent test holds never pollutes this
+    # test's count — only events fired after registration are seen at all.
+    sa_event.listen(sync_engine, "checkout", _on_checkout)
+    sa_event.listen(sync_engine, "checkin", _on_checkin)
+
+    async def fake_call_claude(system_prompt: str, *args, **kwargs) -> str:
+        # Sampled with no session of its own open, so the reading reflects
+        # only what the task under test is holding at this instant.
+        checkouts_during_claude_calls.append(active[0])
+        return await _fake_call_claude(system_prompt, *args, **kwargs)
+
+    try:
+        with patch.object(BaseAgent, "_call_claude", new=AsyncMock(side_effect=fake_call_claude)):
+            result = await _run_async(tenant_id, str(uuid.uuid4()), decision_id)
+    finally:
+        sa_event.remove(sync_engine, "checkout", _on_checkout)
+        sa_event.remove(sync_engine, "checkin", _on_checkin)
+
+    assert checkouts_during_claude_calls, "the mocked Claude call never ran"
+    assert max(checkouts_during_claude_calls) == 0, (
+        "task held a pooled DB connection while waiting on Claude "
+        f"(samples {checkouts_during_claude_calls})"
+    )
+    assert result["status"] == "completed"
+
+    async with async_session_factory() as db:
+        await _set_tenant(db, uuid.UUID(tenant_id))
+        row = (
+            await db.execute(select(BidDecision).where(BidDecision.id == uuid.UUID(decision_id)))
+        ).scalar_one()
+        assert row.analyzed_at is not None
+        assert row.strategic_fit_score == 82
+        assert row.recommendation == "BID"
+
+
 _CAPTURE_JSON_NESTED_RECOMMENDATION = """```json
 {
   "strategic_fit_score": 55,

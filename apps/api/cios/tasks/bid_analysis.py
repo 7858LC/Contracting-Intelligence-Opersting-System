@@ -32,6 +32,17 @@ async def _run_async(tenant_id: str, user_id: str, decision_id: str) -> dict:
     from cios.models.bid_decision import BidDecision
     from cios.models.opportunity import Opportunity
 
+    # Two short-lived sessions with the Director calls in between, never one
+    # session wrapping the whole task — see tasks/analysis.py for the full
+    # rationale and the reproduction. Short version: the two Director calls
+    # below are ~130-180s each of pure external HTTP to the Anthropic API
+    # with no DB access, and an AsyncSession holds its transaction open from
+    # its first statement until commit. Spanning them with one session leaves
+    # the Postgres connection state='idle in transaction' for minutes;
+    # managed hosts drop those, and the process only finds out at the
+    # deferred commit, as "asyncpg InterfaceError: connection is closed",
+    # after every Claude call has already been paid for. analysis.py hit this
+    # in production; this task has the same shape with a shorter window.
     async with async_session_factory() as db:
         # bid_decisions and opportunities both FORCE ROW LEVEL SECURITY
         # (migration 007). app.current_tenant is normally set by
@@ -51,84 +62,111 @@ async def _run_async(tenant_id: str, user_id: str, decision_id: str) -> dict:
         if not decision:
             return {"error": "decision not found"}
 
+        # Snapshot what the Director calls need while the rows are still
+        # attached, so nothing below this block touches a live session.
+        decision_opportunity_id = decision.opportunity_id
+
         o_result = await db.execute(
-            select(Opportunity).where(Opportunity.id == decision.opportunity_id)
+            select(Opportunity).where(Opportunity.id == decision_opportunity_id)
         )
         opp = o_result.scalar_one_or_none()
         opportunity_data = opp.to_dict() if opp else {}
 
-        context = AgentContext(
-            tenant_id=uuid.UUID(tenant_id),
-            user_id=uuid.UUID(user_id),
-            opportunity_id=decision.opportunity_id,
+    context = AgentContext(
+        tenant_id=uuid.UUID(tenant_id),
+        user_id=uuid.UUID(user_id),
+        opportunity_id=decision_opportunity_id,
+    )
+
+    capture = CaptureDirector()
+    risk = RiskDirector()
+
+    capture_out = await capture.run(
+        context, opportunity_data=opportunity_data, knowledge_context=[]
+    )
+    risk_out = await risk.run(context, opportunity_data=opportunity_data, knowledge_context=[])
+
+    from cios.agents.json_parsing import extract_claude_json
+
+    # require_any_of: a response that parses as JSON but matches none of
+    # the schema keys must FAIL (and retry) here, not sail through — every
+    # .get() below would return None, and the row would commit as
+    # "analyzed" with every score, the recommendation, and the rationale
+    # all silently null. That exact all-null-but-analyzed row shape
+    # shipped live from this task once already (when parse failures were
+    # swallowed into {}); this guard closes the last remaining path to it.
+    # Parsing happens before the write session is opened so a parse failure
+    # raises without a connection checked out.
+    c = extract_claude_json(
+        capture_out.get("result", {}).get("capture_assessment", "") or "",
+        context="Bid analysis (capture)",
+        require_any_of=frozenset(
+            {
+                "strategic_fit_score",
+                "win_probability_score",
+                "past_performance_score",
+                "capability_match_score",
+                "bid_no_bid_recommendation",
+                "recommendation_rationale",
+                "confidence_score",
+            }
+        ),
+    )
+    r = extract_claude_json(
+        risk_out.get("result", {}).get("risk_assessment", "") or "",
+        context="Bid analysis (risk)",
+        require_any_of=frozenset({"risk_score", "risks"}),
+    )
+
+    # Prompt now pins this to a plain "BID"/"NO_BID"/"CONDITIONAL_BID"
+    # string (see capture_director.py), but a nested object — or any
+    # other off-schema value — slipping through anyway must not crash the
+    # write and lose every other score in the same commit, which it did
+    # live (DataError: "expected str, got dict") because this used to
+    # assign the raw value straight into a String column with no shape
+    # check at all. Only ever accept one of the three known values;
+    # anything else (a stray free-text phrase pulled out of a nested
+    # object, for instance) becomes None rather than corrupting a column
+    # the frontend treats as a closed enum for icon/color lookups.
+    recommendation = c.get("bid_no_bid_recommendation")
+    if isinstance(recommendation, dict):
+        recommendation = (
+            recommendation.get("recommendation")
+            or recommendation.get("decision")
+            or recommendation.get("value")
+        )
+    if isinstance(recommendation, str):
+        normalized = recommendation.strip().upper().replace(" ", "_").replace("-", "_")
+        recommendation = normalized if normalized in _VALID_RECOMMENDATIONS else None
+    else:
+        recommendation = None
+
+    async with async_session_factory() as db:
+        # A second session is a second physical connection (NullPool on the
+        # worker, see core/database.py), so app.current_tenant does NOT carry
+        # over from the read session above — it has to be set again here or
+        # the re-select below returns zero rows under RLS and the task
+        # reports success having written nothing.
+        await db.execute(
+            text("SELECT set_config('app.current_tenant', :tenant_id, false)"),
+            {"tenant_id": tenant_id},
         )
 
-        capture = CaptureDirector()
-        risk = RiskDirector()
-
-        capture_out = await capture.run(
-            context, opportunity_data=opportunity_data, knowledge_context=[]
+        # Re-fetch rather than reusing the instance from the read session:
+        # that one is detached now, and assigning to a detached instance
+        # would commit nothing at all.
+        d_result = await db.execute(
+            select(BidDecision).where(BidDecision.id == uuid.UUID(decision_id))
         )
-        risk_out = await risk.run(context, opportunity_data=opportunity_data, knowledge_context=[])
-
-        from cios.agents.json_parsing import extract_claude_json
-
-        # require_any_of: a response that parses as JSON but matches none of
-        # the schema keys must FAIL (and retry) here, not sail through — every
-        # .get() below would return None, and the row would commit as
-        # "analyzed" with every score, the recommendation, and the rationale
-        # all silently null. That exact all-null-but-analyzed row shape
-        # shipped live from this task once already (when parse failures were
-        # swallowed into {}); this guard closes the last remaining path to it.
-        c = extract_claude_json(
-            capture_out.get("result", {}).get("capture_assessment", "") or "",
-            context="Bid analysis (capture)",
-            require_any_of=frozenset(
-                {
-                    "strategic_fit_score",
-                    "win_probability_score",
-                    "past_performance_score",
-                    "capability_match_score",
-                    "bid_no_bid_recommendation",
-                    "recommendation_rationale",
-                    "confidence_score",
-                }
-            ),
-        )
-        r = extract_claude_json(
-            risk_out.get("result", {}).get("risk_assessment", "") or "",
-            context="Bid analysis (risk)",
-            require_any_of=frozenset({"risk_score", "risks"}),
-        )
+        decision = d_result.scalar_one_or_none()
+        if not decision:
+            return {"error": "decision not found"}
 
         decision.strategic_fit_score = c.get("strategic_fit_score")
         decision.win_probability_score = c.get("win_probability_score")
         decision.past_performance_score = c.get("past_performance_score")
         decision.capability_match_score = c.get("capability_match_score")
         decision.risk_score = r.get("risk_score")
-
-        # Prompt now pins this to a plain "BID"/"NO_BID"/"CONDITIONAL_BID"
-        # string (see capture_director.py), but a nested object — or any
-        # other off-schema value — slipping through anyway must not crash the
-        # write and lose every other score in the same commit, which it did
-        # live (DataError: "expected str, got dict") because this used to
-        # assign the raw value straight into a String column with no shape
-        # check at all. Only ever accept one of the three known values;
-        # anything else (a stray free-text phrase pulled out of a nested
-        # object, for instance) becomes None rather than corrupting a column
-        # the frontend treats as a closed enum for icon/color lookups.
-        recommendation = c.get("bid_no_bid_recommendation")
-        if isinstance(recommendation, dict):
-            recommendation = (
-                recommendation.get("recommendation")
-                or recommendation.get("decision")
-                or recommendation.get("value")
-            )
-        if isinstance(recommendation, str):
-            normalized = recommendation.strip().upper().replace(" ", "_").replace("-", "_")
-            recommendation = normalized if normalized in _VALID_RECOMMENDATIONS else None
-        else:
-            recommendation = None
         decision.recommendation = recommendation
         decision.recommendation_rationale = c.get("recommendation_rationale")
         decision.risks = r.get("risks", [])
