@@ -139,6 +139,69 @@ async def test_login_is_case_insensitive_on_email(client: AsyncClient):
 
 
 @pytest.mark.anyio
+async def test_login_disambiguates_case_varying_duplicate_emails_by_password(
+    client: AsyncClient,
+):
+    """Regression test for a live 500: register() never checked email
+    uniqueness (only company slug), so the same email registered twice with
+    different casing — e.g. by someone who hit the case-sensitivity bug and
+    re-registered as a workaround — produces two active TenantMember rows.
+    Case-insensitive login matching them both used scalar_one_or_none(),
+    which raises MultipleResultsFound (a 500) the instant more than one row
+    matches, rather than picking the account the submitted password
+    actually belongs to."""
+    suffix = uuid.uuid4().hex[:10]
+    ip_header = {"X-Forwarded-For": _fake_client_ip()}
+
+    account_a = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": f"Dup.User.{suffix}@Example.com",
+            "password": "PasswordForA123!",
+            "full_name": "Account A",
+            "company_name": f"Company A {suffix}",
+        },
+        headers=ip_header,
+    )
+    assert account_a.status_code == 201, account_a.text
+
+    account_b = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": f"dup.user.{suffix}@example.com",
+            "password": "PasswordForB123!",
+            "full_name": "Account B",
+            "company_name": f"Company B {suffix}",
+        },
+        headers=ip_header,
+    )
+    assert account_b.status_code == 201, account_b.text
+
+    login_a = await client.post(
+        "/api/v1/auth/login",
+        json={"email": f"DUP.USER.{suffix}@EXAMPLE.COM", "password": "PasswordForA123!"},
+        headers=ip_header,
+    )
+    assert login_a.status_code == 200, login_a.text
+    assert login_a.json()["tenant_id"] == account_a.json()["tenant_id"]
+
+    login_b = await client.post(
+        "/api/v1/auth/login",
+        json={"email": f"DUP.USER.{suffix}@EXAMPLE.COM", "password": "PasswordForB123!"},
+        headers=ip_header,
+    )
+    assert login_b.status_code == 200, login_b.text
+    assert login_b.json()["tenant_id"] == account_b.json()["tenant_id"]
+
+    login_wrong = await client.post(
+        "/api/v1/auth/login",
+        json={"email": f"DUP.USER.{suffix}@EXAMPLE.COM", "password": "NeitherPassword!"},
+        headers=ip_header,
+    )
+    assert login_wrong.status_code == 401, login_wrong.text
+
+
+@pytest.mark.anyio
 async def test_tenants_module_smoke(client: AsyncClient):
     headers = await _register(client)
     resp = await client.get("/api/v1/tenants/profile", headers=headers)
