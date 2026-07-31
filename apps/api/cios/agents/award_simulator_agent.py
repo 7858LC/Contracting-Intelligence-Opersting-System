@@ -140,7 +140,7 @@ EVALUATION FACTORS (in priority order):
 {eval_factors_block}
 
 SOLICITATION REQUIREMENTS SUMMARY:
-{opportunity_data.get("description", "Not provided")[:2000]}
+{(opportunity_data.get("description") or "Not provided")[:2000]}
 
 KEY REQUIREMENTS:
 {opportunity_data.get("key_requirements", [])}
@@ -149,9 +149,9 @@ OFFEROR PROFILE (from Knowledge Vault):
 {evidence_block}
 
 PROPOSAL CONTENT PROVIDED:
-Technical Volume: {proposal_content.get("technical", "Not provided")[:1000]}
-Management Volume: {proposal_content.get("management", "Not provided")[:500]}
-Past Performance: {proposal_content.get("past_performance", "Not provided")[:500]}
+Technical Volume: {(proposal_content.get("technical") or "Not provided")[:1000]}
+Management Volume: {(proposal_content.get("management") or "Not provided")[:500]}
+Past Performance: {(proposal_content.get("past_performance") or "Not provided")[:500]}
 Price: {proposal_content.get("price", "Not provided")}
 
 ---
