@@ -101,3 +101,7 @@ class ResearchReport(Base, UUIDMixin, TimestampMixin):
     storage_url: Mapped[str | None] = mapped_column(String(512))
     generated_by_agent_run_id: Mapped[uuid.UUID | None] = mapped_column(PG_UUID(as_uuid=True))
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Soft-delete only — this table has no tenant_id to scope a delete against,
+    # so removal is a platform-wide action (admin.py, PlatformOperatorAuth),
+    # never tenant-facing. Mirrors bid_decisions.is_archived.
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False)

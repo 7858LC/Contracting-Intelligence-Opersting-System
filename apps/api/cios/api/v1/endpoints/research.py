@@ -40,7 +40,10 @@ async def list_reports(db: DB, user: Auth) -> dict:
         (
             await db.execute(
                 select(ResearchReport)
-                .where(ResearchReport.status == "published")
+                .where(
+                    ResearchReport.status == "published",
+                    ResearchReport.is_archived == False,  # noqa: E712
+                )
                 .order_by(ResearchReport.published_at.desc())
             )
         )

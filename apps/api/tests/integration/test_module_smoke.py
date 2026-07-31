@@ -482,3 +482,24 @@ async def test_research_module_smoke(client: AsyncClient):
 
     denied_again = await client.get("/api/v1/research/reports", headers=tenant_headers)
     assert denied_again.status_code == 403, denied_again.text
+
+    # Admin-only listing/deletion (no tenant_id on ResearchReport, so this is
+    # a landlord action, not a tenant-facing one — see admin.py's
+    # "Executive Council research" section).
+    admin_list = await client.get("/api/v1/admin/research/reports", headers=admin_headers)
+    assert admin_list.status_code == 200, admin_list.text
+    assert any(r["id"] == report_id for r in admin_list.json()["items"])
+
+    missing = await client.delete(
+        f"/api/v1/admin/research/reports/{uuid.uuid4()}", headers=admin_headers
+    )
+    assert missing.status_code == 404, missing.text
+
+    deleted = await client.delete(
+        f"/api/v1/admin/research/reports/{report_id}", headers=admin_headers
+    )
+    assert deleted.status_code == 204, deleted.text
+
+    admin_list_after = await client.get("/api/v1/admin/research/reports", headers=admin_headers)
+    assert admin_list_after.status_code == 200, admin_list_after.text
+    assert not any(r["id"] == report_id for r in admin_list_after.json()["items"])
