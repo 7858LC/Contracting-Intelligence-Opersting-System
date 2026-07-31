@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import {
   Crosshair, Plus, Sparkles, Play, FileText, Trophy, Gauge,
   AlertTriangle, ChevronDown, ChevronUp, ShieldCheck, Target, Layers,
-  Upload, CheckCircle2, X, ClipboardCheck, BookOpen, RefreshCw, Building2,
+  Upload, CheckCircle2, X, ClipboardCheck, BookOpen, RefreshCw, Building2, Copy,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -339,6 +339,29 @@ function CapturePackagePanel({ solicitationId }: { solicitationId: string }) {
     onError: () => toast.error("Failed to publish to Knowledge Vault"),
   });
 
+  function copyPackage(p: CapturePackage) {
+    const { solicitation, target_assessment, contractor_rankings, evidence_summary } = p.content;
+    const lines = [
+      `${solicitation.title}${solicitation.solicitation_number ? ` (${solicitation.solicitation_number})` : ""}`,
+      solicitation.agency ? `Agency: ${solicitation.agency}` : null,
+      `Capture Package — ${p.status} · v${p.version}`,
+      target_assessment
+        ? `\nRecommendation: ${target_assessment.recommendation.replace(/_/g, " ")} — PDQ ${target_assessment.pdq_score}/100`
+        : null,
+      target_assessment?.executive_summary ? `\nExecutive Summary:\n${target_assessment.executive_summary}` : null,
+      contractor_rankings.length
+        ? `\nContractor Rankings:\n${contractor_rankings
+            .map((r) => `#${r.rank} ${r.contractor_name} — ${r.overall_alignment_score}`)
+            .join("\n")}`
+        : null,
+      `\nEvidence: ${evidence_summary.document_count} documents, ${evidence_summary.signal_count} signals`,
+      p.review_notes ? `\nReview notes: ${p.review_notes}` : null,
+      p.knowledge_vault_document_id ? "\nPublished to Knowledge Vault" : null,
+    ].filter(Boolean);
+    navigator.clipboard.writeText(lines.join("\n"));
+    toast.success("Copied to clipboard");
+  }
+
   if (isLoading) return <div className="h-24 bg-card border border-border rounded-lg animate-pulse" />;
 
   return (
@@ -356,14 +379,26 @@ function CapturePackagePanel({ solicitationId }: { solicitationId: string }) {
             </span>
           )}
         </h2>
-        <button
-          onClick={() => generateMutation.mutate()}
-          disabled={generateMutation.isPending}
-          className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-md text-xs font-medium hover:bg-secondary transition-colors disabled:opacity-50"
-        >
-          {pkg ? <RefreshCw className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
-          {generateMutation.isPending ? "Generating…" : pkg ? "Regenerate" : "Generate Capture Package"}
-        </button>
+        <div className="flex items-center gap-2">
+          {pkg && (
+            <button
+              onClick={() => copyPackage(pkg)}
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-md text-xs font-medium hover:bg-secondary transition-colors"
+              title="Copy package summary to clipboard"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              Copy
+            </button>
+          )}
+          <button
+            onClick={() => generateMutation.mutate()}
+            disabled={generateMutation.isPending}
+            className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-md text-xs font-medium hover:bg-secondary transition-colors disabled:opacity-50"
+          >
+            {pkg ? <RefreshCw className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
+            {generateMutation.isPending ? "Generating…" : pkg ? "Regenerate" : "Generate Capture Package"}
+          </button>
+        </div>
       </div>
 
       {!pkg ? (
