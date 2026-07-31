@@ -73,13 +73,32 @@ async def _run_async(tenant_id: str, user_id: str, decision_id: str) -> dict:
 
         from cios.agents.json_parsing import extract_claude_json
 
+        # require_any_of: a response that parses as JSON but matches none of
+        # the schema keys must FAIL (and retry) here, not sail through — every
+        # .get() below would return None, and the row would commit as
+        # "analyzed" with every score, the recommendation, and the rationale
+        # all silently null. That exact all-null-but-analyzed row shape
+        # shipped live from this task once already (when parse failures were
+        # swallowed into {}); this guard closes the last remaining path to it.
         c = extract_claude_json(
             capture_out.get("result", {}).get("capture_assessment", "") or "",
             context="Bid analysis (capture)",
+            require_any_of=frozenset(
+                {
+                    "strategic_fit_score",
+                    "win_probability_score",
+                    "past_performance_score",
+                    "capability_match_score",
+                    "bid_no_bid_recommendation",
+                    "recommendation_rationale",
+                    "confidence_score",
+                }
+            ),
         )
         r = extract_claude_json(
             risk_out.get("result", {}).get("risk_assessment", "") or "",
             context="Bid analysis (risk)",
+            require_any_of=frozenset({"risk_score", "risks"}),
         )
 
         decision.strategic_fit_score = c.get("strategic_fit_score")

@@ -115,7 +115,11 @@ export function BidDecisionView() {
     bid: (decisions as BidDecision[]).filter((d) => d.decision === "BID").length,
     no_bid: (decisions as BidDecision[]).filter((d) => d.decision === "NO_BID").length,
     conditional: (decisions as BidDecision[]).filter((d) => d.decision === "CONDITIONAL_BID").length,
-    pending: (decisions as BidDecision[]).filter((d) => !d.decision).length,
+    // Pending means the analysis hasn't finished — same signal the polling
+    // and progress bar use. Keying this off !d.decision instead miscounted
+    // an analyzed-but-broken row (analyzed_at set, decision null — a shape
+    // old task code really produced) as still "Pending Analysis" forever.
+    pending: (decisions as BidDecision[]).filter((d) => !d.analyzed_at).length,
   };
 
   return (
