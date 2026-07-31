@@ -6,15 +6,16 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { getUserRole, getUserPlan } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import { Settings, CreditCard, Key, Shield, Building2, ExternalLink } from "lucide-react";
+import { Settings, CreditCard, Key, Shield, Building2, ExternalLink, Users } from "lucide-react";
 
-type Tab = "profile" | "subscription" | "api_keys" | "security";
+type Tab = "profile" | "team" | "subscription" | "api_keys" | "security";
 
 export function SettingsView() {
   const [tab, setTab] = useState<Tab>("profile");
 
   const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "profile", label: "Company Profile", icon: <Building2 className="w-4 h-4" /> },
+    { id: "team", label: "Team", icon: <Users className="w-4 h-4" /> },
     { id: "subscription", label: "Subscription", icon: <CreditCard className="w-4 h-4" /> },
     { id: "api_keys", label: "API Keys", icon: <Key className="w-4 h-4" /> },
     { id: "security", label: "Security", icon: <Shield className="w-4 h-4" /> },
@@ -43,6 +44,7 @@ export function SettingsView() {
         {/* Content */}
         <div className="flex-1">
           {tab === "profile" && <ProfileTab />}
+          {tab === "team" && <TeamTab />}
           {tab === "subscription" && <SubscriptionTab />}
           {tab === "api_keys" && <ApiKeysTab />}
           {tab === "security" && <SecurityTab />}
@@ -104,6 +106,110 @@ function ProfileTab() {
             {getUserPlan()} plan
           </span>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function TeamTab() {
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("member");
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+
+  const { data: members = [], isLoading, refetch } = useQuery({
+    queryKey: ["members"],
+    queryFn: () => api.getMembers(),
+  });
+
+  const inviteMutation = useMutation({
+    mutationFn: () => api.inviteMember({ email, role }),
+    onSuccess: (data: { invite_url?: string }) => {
+      setInviteUrl(data.invite_url || null);
+      setEmail("");
+      toast.success("Invite created — share the link below (an email was also attempted)");
+    },
+    onError: () => toast.error("Failed to create invite"),
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-card border border-border rounded-lg p-6">
+        <h3 className="font-semibold mb-1">Invite a Teammate</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          Invites are emailed when available, but the link below always works —
+          share it directly if the invite doesn&apos;t arrive.
+        </p>
+        <form
+          onSubmit={(e) => { e.preventDefault(); if (email.trim()) inviteMutation.mutate(); }}
+          className="flex gap-3"
+        >
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="colleague@company.com"
+            className="flex-1 px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+          />
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            className="px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+          >
+            <option value="member">Member</option>
+            <option value="admin">Admin</option>
+          </select>
+          <button
+            type="submit"
+            disabled={inviteMutation.isPending}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
+            {inviteMutation.isPending ? "Inviting…" : "Send Invite"}
+          </button>
+        </form>
+
+        {inviteUrl && (
+          <div className="mt-4 p-3 bg-primary/10 border border-primary/30 rounded-md">
+            <p className="text-xs font-medium text-primary mb-1">Invite link (expires in 7 days)</p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 text-xs font-mono bg-background p-2 rounded overflow-x-auto">
+                {inviteUrl}
+              </code>
+              <button
+                onClick={() => { navigator.clipboard.writeText(inviteUrl); toast.success("Copied!"); }}
+                className="text-xs text-primary hover:underline shrink-0"
+              >
+                Copy
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-card border border-border rounded-lg p-6">
+        <h3 className="font-semibold mb-4">Current Members</h3>
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : (members as { id: string; email: string; full_name: string | null; role: string }[]).length === 0 ? (
+          <p className="text-sm text-muted-foreground">No members yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {(members as { id: string; email: string; full_name: string | null; role: string }[]).map((m) => (
+              <div key={m.id} className="flex items-center justify-between text-sm py-2 border-b border-border last:border-0">
+                <div>
+                  <p className="font-medium">{m.full_name || m.email}</p>
+                  <p className="text-xs text-muted-foreground">{m.email}</p>
+                </div>
+                <span className="px-2 py-0.5 bg-secondary text-muted-foreground rounded text-xs capitalize">
+                  {m.role}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+        <button onClick={() => refetch()} className="mt-3 text-xs text-primary hover:underline">
+          Refresh
+        </button>
       </div>
     </div>
   );
