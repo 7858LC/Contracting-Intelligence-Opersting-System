@@ -1,5 +1,8 @@
 """Tenant management API."""
 
+import uuid
+from datetime import datetime
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
@@ -23,6 +26,32 @@ class TenantProfileUpdate(BaseModel):
     primary_jurisdictions: list[str] | None = None
 
 
+class TenantProfileResponse(BaseModel):
+    # encryption_key_reference deliberately excluded — a KMS key reference
+    # has no reason to ever leave the backend, and to_dict()'s generic
+    # column dump was sending it to every authenticated tenant user before
+    # this response_model existed to filter it out.
+    id: uuid.UUID
+    name: str
+    slug: str
+    plan: str
+    is_active: bool
+    settings: dict
+    naics_codes: list
+    cage_code: str | None
+    duns_number: str | None
+    sam_unique_id: str | None
+    small_business_designations: list
+    annual_revenue_band: str | None
+    employee_count_band: str | None
+    primary_jurisdictions: list
+    is_council_member: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class InviteMemberRequest(BaseModel):
     email: EmailStr
     role: str = "member"
@@ -34,27 +63,65 @@ class InviteMemberResponse(BaseModel):
     invite_url: str
 
 
-@router.get("/profile")
-async def get_tenant_profile(db: DB, user: Auth) -> dict:
+class MemberResponse(BaseModel):
+    id: str
+    email: str
+    full_name: str | None
+    role: str
+
+
+class MemberListResponse(BaseModel):
+    members: list[MemberResponse]
+
+
+class ApiKeyCreate(BaseModel):
+    name: str
+
+
+class ApiKeyCreatedResponse(BaseModel):
+    id: str
+    name: str
+    key_prefix: str
+    plaintext_key: str
+    created_at: str
+
+
+class ApiKeySummaryResponse(BaseModel):
+    id: str
+    name: str
+    key_prefix: str
+    created_at: str
+
+
+class ApiKeyListResponse(BaseModel):
+    api_keys: list[ApiKeySummaryResponse]
+
+
+class RevokedResponse(BaseModel):
+    revoked: bool
+
+
+@router.get("/profile", response_model=TenantProfileResponse)
+async def get_tenant_profile(db: DB, user: Auth) -> Tenant:
     result = await db.execute(select(Tenant).where(Tenant.id == user.tenant_id))
     tenant = result.scalar_one_or_none()
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
-    return tenant.to_dict()
+    return tenant
 
 
-@router.patch("/profile")
-async def update_tenant_profile(body: TenantProfileUpdate, db: DB, user: AdminAuth) -> dict:
+@router.patch("/profile", response_model=TenantProfileResponse)
+async def update_tenant_profile(body: TenantProfileUpdate, db: DB, user: AdminAuth) -> Tenant:
     result = await db.execute(select(Tenant).where(Tenant.id == user.tenant_id))
     tenant = result.scalar_one_or_none()
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
     for k, v in body.model_dump(exclude_none=True).items():
         setattr(tenant, k, v)
-    return tenant.to_dict()
+    return tenant
 
 
-@router.get("/members")
+@router.get("/members", response_model=MemberListResponse)
 async def list_members(db: DB, user: Auth) -> dict:
     result = await db.execute(
         select(TenantMember)
@@ -73,7 +140,7 @@ async def list_members(db: DB, user: Auth) -> dict:
 @router.post("/members/invite", response_model=InviteMemberResponse)
 async def invite_member(body: InviteMemberRequest, db: DB, user: AdminAuth) -> InviteMemberResponse:
     import secrets
-    from datetime import UTC, datetime, timedelta
+    from datetime import UTC, timedelta
 
     from cios.config import settings
     from cios.models.tenant import TenantInvite
@@ -100,11 +167,7 @@ async def invite_member(body: InviteMemberRequest, db: DB, user: AdminAuth) -> I
     return InviteMemberResponse(status="invited", email=body.email, invite_url=invite_url)
 
 
-class ApiKeyCreate(BaseModel):
-    name: str
-
-
-@router.post("/api-keys")
+@router.post("/api-keys", response_model=ApiKeyCreatedResponse)
 async def create_api_key(body: ApiKeyCreate, db: DB, user: AdminAuth) -> dict:
     plaintext, key_hash = generate_api_key("cios")
     api_key = ApiKey(
@@ -125,7 +188,7 @@ async def create_api_key(body: ApiKeyCreate, db: DB, user: AdminAuth) -> dict:
     }
 
 
-@router.get("/api-keys")
+@router.get("/api-keys", response_model=ApiKeyListResponse)
 async def list_api_keys(db: DB, user: Auth) -> dict:
     result = await db.execute(
         select(ApiKey)
@@ -145,7 +208,7 @@ async def list_api_keys(db: DB, user: Auth) -> dict:
     }
 
 
-@router.delete("/api-keys/{key_id}")
+@router.delete("/api-keys/{key_id}", response_model=RevokedResponse)
 async def revoke_api_key(key_id: str, db: DB, user: AdminAuth) -> dict:
     result = await db.execute(
         select(ApiKey).where(ApiKey.id == key_id, ApiKey.tenant_id == user.tenant_id)

@@ -1,5 +1,9 @@
 """Subscription & Billing API — Stripe integration."""
 
+import uuid
+from datetime import datetime
+from typing import Any
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -56,7 +60,62 @@ PLAN_FEATURES = {
 }
 
 
-@router.get("/current")
+class SubscriptionResponse(BaseModel):
+    # Only plan/status/features are guaranteed — a trial tenant with no
+    # Subscription row yet gets a sparse fallback (see get_subscription
+    # below), so everything else must be optional to cover both shapes.
+    id: uuid.UUID | None = None
+    tenant_id: uuid.UUID | None = None
+    plan: str
+    status: str
+    stripe_customer_id: str | None = None
+    stripe_subscription_id: str | None = None
+    stripe_price_id: str | None = None
+    current_period_start: datetime | None = None
+    current_period_end: datetime | None = None
+    trial_end: datetime | None = None
+    cancel_at_period_end: bool | None = None
+    seats: int | None = None
+    features: dict[str, Any]
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class CheckoutSessionResponse(BaseModel):
+    url: str
+    checkout_url: str
+    session_id: str
+
+
+class PortalSessionResponse(BaseModel):
+    url: str
+    portal_url: str
+
+
+class InvoiceResponse(BaseModel):
+    id: uuid.UUID
+    stripe_invoice_id: str
+    amount_due: float
+    amount_paid: float | None
+    currency: str
+    status: str
+    invoice_pdf_url: str | None
+    period_start: datetime | None
+    period_end: datetime | None
+    paid_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class InvoiceListResponse(BaseModel):
+    invoices: list[InvoiceResponse]
+
+
+@router.get("/current", response_model=SubscriptionResponse)
 async def get_subscription(db: DB, user: Auth) -> dict:
     result = await db.execute(
         select(Subscription)
@@ -69,7 +128,7 @@ async def get_subscription(db: DB, user: Auth) -> dict:
     return {**sub.to_dict(), "features": PLAN_FEATURES.get(sub.plan, {})}
 
 
-@router.post("/checkout")
+@router.post("/checkout", response_model=CheckoutSessionResponse)
 async def create_checkout_session(body: CreateCheckoutRequest, user: AdminAuth) -> dict:
     """Create a Stripe Checkout session."""
     if not settings.stripe_secret_key:
@@ -98,7 +157,7 @@ async def create_checkout_session(body: CreateCheckoutRequest, user: AdminAuth) 
     return {"url": session.url, "checkout_url": session.url, "session_id": session.id}
 
 
-@router.post("/portal")
+@router.post("/portal", response_model=PortalSessionResponse)
 async def customer_portal(db: DB, user: Auth, body: PortalRequest = None) -> dict:
     """Stripe customer portal for billing management."""
     return_url = body.return_url if body else "/dashboard/settings"
@@ -117,7 +176,7 @@ async def customer_portal(db: DB, user: Auth, body: PortalRequest = None) -> dic
     return {"url": session.url, "portal_url": session.url}
 
 
-@router.get("/invoices")
+@router.get("/invoices", response_model=InvoiceListResponse)
 async def list_invoices(db: DB, user: Auth) -> dict:
     result = await db.execute(
         select(Invoice)
@@ -125,4 +184,4 @@ async def list_invoices(db: DB, user: Auth) -> dict:
         .order_by(Invoice.created_at.desc())
         .limit(24)
     )
-    return {"invoices": [i.to_dict() for i in result.scalars().all()]}
+    return {"invoices": result.scalars().all()}

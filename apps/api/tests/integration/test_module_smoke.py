@@ -159,31 +159,56 @@ async def test_bid_decisions_module_smoke(client: AsyncClient):
 @pytest.mark.anyio
 async def test_capabilities_module_smoke(client: AsyncClient):
     headers = await _register(client)
+    opp_id = await _create_opportunity(client, headers)
     resp = await client.post(
         "/api/v1/capabilities",
         headers=headers,
         json={"name": "Cloud Migration", "category": "technical"},
     )
     assert resp.status_code == 200, resp.text
+    cap_id = resp.json()["id"]
 
     gaps = await client.get("/api/v1/capabilities/gaps", headers=headers)
     assert gaps.status_code == 200, gaps.text
+
+    analyze = await client.post(
+        "/api/v1/capabilities/analyze-gaps",
+        headers=headers,
+        json={"opportunity_id": opp_id},
+    )
+    assert analyze.status_code == 200, analyze.text
+    assert analyze.json()["status"] == "queued"
+
+    deleted = await client.delete(f"/api/v1/capabilities/{cap_id}", headers=headers)
+    assert deleted.status_code == 200, deleted.text
+    assert deleted.json()["deleted"] is True
 
 
 @pytest.mark.anyio
 async def test_past_performance_module_smoke(client: AsyncClient):
     headers = await _register(client)
+    opp_id = await _create_opportunity(client, headers)
     resp = await client.post(
         "/api/v1/past-performance",
         headers=headers,
         json={"contract_title": "Smoke Contract", "customer_name": "Smoke Agency"},
     )
     assert resp.status_code == 200, resp.text
+    pp_id = resp.json()["id"]
+
+    relevance = await client.get(
+        f"/api/v1/past-performance/{pp_id}/relevance",
+        headers=headers,
+        params={"opportunity_id": opp_id},
+    )
+    assert relevance.status_code == 200, relevance.text
+    assert relevance.json()["status"] == "queued"
 
 
 @pytest.mark.anyio
 async def test_teaming_module_smoke(client: AsyncClient):
     headers = await _register(client)
+    opp_id = await _create_opportunity(client, headers)
     resp = await client.post(
         "/api/v1/teaming/partners", headers=headers, json={"company_name": "Smoke Partner LLC"}
     )
@@ -192,14 +217,38 @@ async def test_teaming_module_smoke(client: AsyncClient):
     partners = await client.get("/api/v1/teaming/partners", headers=headers)
     assert partners.status_code == 200, partners.text
 
+    recommend = await client.post(
+        "/api/v1/teaming/recommend", headers=headers, json={"opportunity_id": opp_id}
+    )
+    assert recommend.status_code == 200, recommend.text
+    assert recommend.json()["status"] == "queued"
+
+    recs = await client.get("/api/v1/teaming/recommendations", headers=headers)
+    assert recs.status_code == 200, recs.text
+
 
 @pytest.mark.anyio
 async def test_competitors_module_smoke(client: AsyncClient):
     headers = await _register(client)
+    opp_id = await _create_opportunity(client, headers)
     resp = await client.post(
         "/api/v1/competitors", headers=headers, json={"company_name": "Smoke Rival Inc"}
     )
     assert resp.status_code == 200, resp.text
+    competitor_id = resp.json()["id"]
+
+    intel = await client.post(
+        f"/api/v1/competitors/{competitor_id}/intel",
+        headers=headers,
+        json={"intel_type": "pricing", "content": "Historically underbids by 8-10%"},
+    )
+    assert intel.status_code == 200, intel.text
+
+    analyze = await client.post(
+        "/api/v1/competitors/analyze", headers=headers, json={"opportunity_id": opp_id}
+    )
+    assert analyze.status_code == 200, analyze.text
+    assert analyze.json()["status"] == "queued"
 
 
 @pytest.mark.anyio
@@ -255,6 +304,29 @@ async def test_onboarding_module_smoke(client: AsyncClient):
         json={"step": "company_profile", "data": {"name": "Smoke Co"}},
     )
     assert step.status_code == 200, step.text
+
+    complete = await client.post("/api/v1/onboarding/complete", headers=headers)
+    assert complete.status_code == 200, complete.text
+    assert complete.json()["status"] == "onboarding_complete"
+
+
+@pytest.mark.anyio
+async def test_tenants_api_keys_module_smoke(client: AsyncClient):
+    headers = await _register(client)
+    created = await client.post(
+        "/api/v1/tenants/api-keys", headers=headers, json={"name": "Smoke CI key"}
+    )
+    assert created.status_code == 200, created.text
+    assert created.json()["plaintext_key"]
+    key_id = created.json()["id"]
+
+    listed = await client.get("/api/v1/tenants/api-keys", headers=headers)
+    assert listed.status_code == 200, listed.text
+    assert any(k["id"] == key_id for k in listed.json()["api_keys"])
+
+    revoked = await client.delete(f"/api/v1/tenants/api-keys/{key_id}", headers=headers)
+    assert revoked.status_code == 200, revoked.text
+    assert revoked.json()["revoked"] is True
 
 
 @pytest.mark.anyio
