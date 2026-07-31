@@ -39,6 +39,20 @@ def test_extracts_json_with_preamble_text():
     assert result == {"strategic_fit_score": 65}
 
 
+def test_extracts_json_with_literal_newline_in_string_value():
+    """Reproduces the live failure: risk_director's response was rejected
+    with "not valid JSON" even though it was a complete, well-formed object
+    — because a long free-text field contained a literal newline character
+    instead of an escaped \\n, which json.loads rejects by default."""
+    raw = (
+        '{"risk_score": 40, "risks": '
+        '[{"description": "Line one.\nLine two.", "severity": "medium"}]}'
+    )
+    result = extract_claude_json(raw, context="test")
+    assert result["risk_score"] == 40
+    assert result["risks"][0]["description"] == "Line one.\nLine two."
+
+
 def test_raises_on_unparseable_output():
     with pytest.raises(ValueError, match="not valid JSON"):
         extract_claude_json("I'm unable to complete this assessment.", context="test")

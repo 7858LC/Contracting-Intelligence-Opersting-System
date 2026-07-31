@@ -34,17 +34,22 @@ def extract_claude_json(raw: str, context: str) -> dict:
     if fence:
         text = fence.group(1).strip()
 
-    try:
-        return json.loads(text)
-    except (json.JSONDecodeError, ValueError):
-        pass
-
+    candidates = [text]
     match = re.search(r"\{[\s\S]*\}", text)
     if match:
-        try:
-            return json.loads(match.group(0))
-        except (json.JSONDecodeError, ValueError):
-            pass
+        candidates.append(match.group(0))
+
+    for candidate in candidates:
+        # strict=True (the default) rejects literal, unescaped control
+        # characters — routinely a literal newline — inside a JSON string
+        # value. Long free-text fields (rationale, description, etc.) are
+        # exactly where Claude produces these; strict=False accepts them
+        # instead of failing to parse an otherwise well-formed object.
+        for strict in (True, False):
+            try:
+                return json.loads(candidate, strict=strict)
+            except (json.JSONDecodeError, ValueError):
+                continue
 
     raise ValueError(
         f"{context}: Claude response was not valid JSON. "
