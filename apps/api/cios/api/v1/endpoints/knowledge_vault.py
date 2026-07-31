@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
+import structlog
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -12,6 +13,7 @@ from cios.core.dependencies import DB, Auth
 from cios.models.knowledge_vault import KnowledgeDocument
 
 router = APIRouter()
+log = structlog.get_logger(__name__)
 
 ALLOWED_MIME_TYPES = {
     "application/pdf",
@@ -200,6 +202,28 @@ async def delete_document(document_id: uuid.UUID, db: DB, user: Auth) -> None:
         from cios.vector.tenant_store import TenantVectorStore
 
         store = TenantVectorStore(str(user.tenant_id))
-        await store.delete_document(str(document_id))
+        try:
+            await store.delete_document(str(document_id))
+        except Exception:
+            # A Qdrant hiccup (unreachable, timeout, misconfigured client)
+            # must not block the user from deleting their own row — this is
+            # vector cleanup, not the primary action, same reasoning as
+            # search's "except Exception: knowledge_context = []" elsewhere
+            # in this codebase. Previously this raised straight out of the
+            # endpoint, so the Postgres delete below never ran and every
+            # delete failed outright ("Delete failed") whenever Qdrant had
+            # any issue, even though nothing about the user's own document
+            # row was actually broken. Trade-off: search's results come
+            # straight from each chunk's Qdrant payload, not a join back to
+            # this table, so an orphaned chunk can still surface in semantic
+            # search for a document that no longer exists here — logged as a
+            # warning so that's visible, but still better than refusing to
+            # delete the user's own document at all.
+            log.warning(
+                "knowledge_vault_qdrant_delete_failed",
+                document_id=str(document_id),
+                tenant_id=str(user.tenant_id),
+                exc_info=True,
+            )
 
     await db.delete(doc)
