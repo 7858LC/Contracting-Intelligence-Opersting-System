@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { formatCurrency, getScoreColor, cn } from "@/lib/utils";
-import { BarChart3, Plus, ChevronDown, ChevronUp, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { BarChart3, Plus, ChevronDown, ChevronUp, CheckCircle2, XCircle, AlertCircle, Copy, Trash2 } from "lucide-react";
 
 interface BidDecision {
   id: string;
@@ -60,6 +60,30 @@ export function BidDecisionView() {
     queryKey: ["bid-decisions"],
     queryFn: () => api.getBidDecisions(),
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.deleteBidDecision(id),
+    onSuccess: () => {
+      toast.success("Analysis deleted");
+      queryClient.invalidateQueries({ queryKey: ["bid-decisions"] });
+    },
+    onError: () => toast.error("Failed to delete analysis"),
+  });
+
+  function copyDecision(d: BidDecision) {
+    const lines = [
+      `${d.opportunity_title} — ${d.decision ?? "Pending"}`,
+      d.overall_score != null ? `Overall score: ${d.overall_score}/100 (threshold ${d.go_no_go_threshold})` : null,
+      ...SCORE_FACTORS.map(({ key, label }) => {
+        const score = d[key as keyof BidDecision] as number | null;
+        return score != null ? `${label}: ${score}` : null;
+      }),
+      d.rationale ? `\nRationale: ${d.rationale}` : null,
+      d.risk_factors?.length ? `\nRisk factors:\n${d.risk_factors.map((r) => `- ${(r as { description?: string }).description ?? JSON.stringify(r)}`).join("\n")}` : null,
+    ].filter(Boolean);
+    navigator.clipboard.writeText(lines.join("\n"));
+    toast.success("Copied to clipboard");
+  }
 
   const summary = {
     bid: (decisions as BidDecision[]).filter((d) => d.decision === "BID").length,
@@ -124,9 +148,12 @@ export function BidDecisionView() {
                 d.decision ? DECISION_STYLES[d.decision] : "border-border bg-card"
               )}
             >
-              <button
+              <div
+                role="button"
+                tabIndex={0}
                 onClick={() => setExpanded(expanded === d.id ? null : d.id)}
-                className="w-full text-left p-4"
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setExpanded(expanded === d.id ? null : d.id); }}
+                className="w-full text-left p-4 cursor-pointer"
               >
                 <div className="flex items-center gap-3">
                   {d.decision && DECISION_ICONS[d.decision as keyof typeof DECISION_ICONS]}
@@ -144,13 +171,32 @@ export function BidDecisionView() {
                       <div className="text-xs text-muted-foreground">/ 100</div>
                     </div>
                   )}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); copyDecision(d); }}
+                    className="text-muted-foreground/40 hover:text-foreground transition-colors p-1 shrink-0"
+                    title="Copy summary to clipboard"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm(`Delete the analysis for "${d.opportunity_title}"? This can't be undone from the UI.`)) {
+                        deleteMutation.mutate(d.id);
+                      }
+                    }}
+                    className="text-muted-foreground/40 hover:text-red-400 transition-colors p-1 shrink-0"
+                    title="Delete analysis"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                   {expanded === d.id ? (
                     <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />
                   ) : (
                     <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
                   )}
                 </div>
-              </button>
+              </div>
 
               {expanded === d.id && (
                 <div className="px-4 pb-4 space-y-4 border-t border-border/50 pt-4">

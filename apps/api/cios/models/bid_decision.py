@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, Float, ForeignKey, Index, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -52,6 +52,12 @@ class BidDecision(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin):
     # (components/modules/bid-decision/bid-decision-view.tsx) depends on both.
     go_no_go_threshold: Mapped[float | None] = mapped_column(Float, default=65.0)
     analyzed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    # Soft-delete, same pattern as Opportunity.is_archived — excluded from
+    # list_bid_decisions by default rather than hard-deleted, so a mistaken
+    # or accidental delete stays recoverable directly from the database
+    # rather than depending on a Postgres backup/restore.
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
 
     factors: Mapped[list["BidDecisionFactor"]] = relationship(back_populates="decision")
 
