@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -40,6 +40,20 @@ const DECISION_STYLES: Record<string, string> = {
   CONDITIONAL_BID: "border-amber-500/40 bg-amber-500/5",
 };
 
+// Two sequential Director calls observed taking ~130-180s each in
+// production — ~5 minutes total is the realistic common case. Progress is
+// capped short of 100% so the bar never implies "done" before analyzed_at
+// actually lands; a run that legitimately takes longer just holds at the cap.
+const EXPECTED_ANALYSIS_SECONDS = 300;
+const PROGRESS_CAP_PERCENT = 92;
+
+function formatElapsed(createdAt: string, nowMs: number): string {
+  const elapsedSec = Math.max(0, Math.floor((nowMs - new Date(createdAt).getTime()) / 1000));
+  const minutes = Math.floor(elapsedSec / 60);
+  const seconds = elapsedSec % 60;
+  return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+}
+
 const SCORE_FACTORS = [
   { key: "strategic_fit_score", label: "Strategic Fit" },
   { key: "win_probability_score", label: "Win Probability" },
@@ -59,7 +73,19 @@ export function BidDecisionView() {
   const { data: decisions = [], isLoading } = useQuery({
     queryKey: ["bid-decisions"],
     queryFn: () => api.getBidDecisions(),
+    refetchInterval: (query) => {
+      const list = (query.state.data as BidDecision[] | undefined) ?? [];
+      return list.some((d) => !d.analyzed_at) ? 10_000 : false;
+    },
   });
+
+  const hasPending = (decisions as BidDecision[]).some((d) => !d.analyzed_at);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!hasPending) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [hasPending]);
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.deleteBidDecision(id),
@@ -89,7 +115,11 @@ export function BidDecisionView() {
     bid: (decisions as BidDecision[]).filter((d) => d.decision === "BID").length,
     no_bid: (decisions as BidDecision[]).filter((d) => d.decision === "NO_BID").length,
     conditional: (decisions as BidDecision[]).filter((d) => d.decision === "CONDITIONAL_BID").length,
-    pending: (decisions as BidDecision[]).filter((d) => !d.decision).length,
+    // Pending means the analysis hasn't finished — same signal the polling
+    // and progress bar use. Keying this off !d.decision instead miscounted
+    // an analyzed-but-broken row (analyzed_at set, decision null — a shape
+    // old task code really produced) as still "Pending Analysis" forever.
+    pending: (decisions as BidDecision[]).filter((d) => !d.analyzed_at).length,
   };
 
   return (
@@ -159,9 +189,28 @@ export function BidDecisionView() {
                   {d.decision && DECISION_ICONS[d.decision as keyof typeof DECISION_ICONS]}
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{d.opportunity_title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {d.analyzed_at ? `Analyzed ${new Date(d.analyzed_at).toLocaleDateString()}` : "Pending analysis"}
-                    </p>
+                    {d.analyzed_at ? (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Analyzed {new Date(d.analyzed_at).toLocaleDateString()}
+                      </p>
+                    ) : (
+                      <div className="mt-1">
+                        <p className="text-xs text-muted-foreground">
+                          Analyzing… {formatElapsed(d.created_at, now)} elapsed (usually ~5 min)
+                        </p>
+                        <div className="w-full max-w-[200px] h-1 bg-secondary rounded-full overflow-hidden mt-1">
+                          <div
+                            className="h-full bg-primary/60 rounded-full transition-all"
+                            style={{
+                              width: `${Math.min(
+                                PROGRESS_CAP_PERCENT,
+                                ((now - new Date(d.created_at).getTime()) / 1000 / EXPECTED_ANALYSIS_SECONDS) * 100
+                              )}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                   {d.overall_score != null && (
                     <div className="text-right mr-2">

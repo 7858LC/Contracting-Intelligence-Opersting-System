@@ -28,7 +28,22 @@ Scoring methodology (0–100 scale):
 - 45-59: Borderline / requires significant effort
 - <45: Unfavorable / recommend No-Bid
 
-OUTPUT: Structured JSON with scores, rationale, evidence, and action items."""
+Use the framework and methodology above only as your internal analysis process. Do NOT
+reproduce that process, gap analysis, capture actions, or risk factors in your output — those
+inform your scores and rationale but do not get their own fields. Output ONLY the following
+JSON object — no markdown fences, no preamble or closing remarks, no extra top-level keys,
+no multi-paragraph fields:
+{
+  "strategic_fit_score": 0,
+  "win_probability_score": 0,
+  "past_performance_score": 0,
+  "capability_match_score": 0,
+  "bid_no_bid_recommendation": "BID",
+  "recommendation_rationale": "2-4 sentence rationale, mentioning the key gaps/actions/risks",
+  "confidence_score": 0.0
+}
+"bid_no_bid_recommendation" must be exactly one of the plain strings "BID", "NO_BID", or
+"CONDITIONAL_BID" — never an object, never a longer phrase, never anything else."""
 
 
 class CaptureDirector(BaseAgent):
@@ -64,17 +79,12 @@ Incumbent: {opportunity_data.get("incumbent", "Unknown")}
 ORGANIZATIONAL EVIDENCE:
 {evidence_block}
 
-Perform complete capture assessment:
-1. Strategic fit score (0-100) with rationale
-2. Win probability estimate (0-100) with basis
-3. Proposal readiness score (0-100) by factor
-4. Gap analysis (capability, past performance, relationships)
-5. Capture actions ranked by impact
-6. Bid/No-Bid recommendation with confidence score
-7. Risk factors with mitigation strategies
-
-Cite specific FAR/DFARS sections or applicable procurement rules.
-Respond as structured JSON.
+Analyze internally: strategic fit, win probability, proposal readiness by factor, gap
+analysis (capability, past performance, relationships), capture actions ranked by impact, and
+risk factors with mitigations. Cite specific FAR/DFARS sections or applicable procurement
+rules in your reasoning. Then condense that analysis into the exact JSON schema specified in
+your system prompt — the gaps, actions, and risks you found inform "recommendation_rationale"
+but do not get their own fields.
 """
         raw = await self._call_claude(CAPTURE_SYSTEM_PROMPT, user_message, raise_on_truncation=True)
 

@@ -28,7 +28,20 @@ RISK RATING SCALE:
 For each risk: Probability (0–1), Impact (1–5), Score = Probability × Impact × 20
 Provide mitigation strategies with responsible party recommendations.
 
-OUTPUT: Structured JSON with risk register, risk matrix, and go/no-go risk threshold."""
+Use the taxonomy and methodology above only as your internal analysis process. Do NOT
+reproduce that process in your output. Output ONLY the following JSON object — no markdown
+fences, no preamble or closing remarks, no extra top-level keys (no "metadata", no
+"risk_assessment" wrapper, no "risk_register"), and no multi-paragraph fields:
+{
+  "risk_score": 0,
+  "risks": [
+    {"description": "specific risk #1, one plain sentence", "severity": "high"},
+    {"description": "specific risk #2, one plain sentence", "severity": "medium"}
+  ]
+}
+"risk_score" is a single number 0-100 (higher = riskier). Each "risks" entry is a flat object
+with a one-sentence "description" and a "severity" of "low"/"medium"/"high"/"very_high" —
+never grouped by taxonomy category, never more than one sentence per description."""
 
 
 class RiskDirector(BaseAgent):
@@ -56,18 +69,10 @@ Response Deadline: {opportunity_data.get("response_deadline", "Unknown")}
 
 Organizational Context: {[k.get("content", "")[:150] for k in knowledge_context[:3]]}
 
-Produce comprehensive risk register:
-1. Risk identification across all taxonomy categories
-2. Risk rating (probability × impact matrix)
-3. Risk score (0–100)
-4. Mitigation strategies for each High/Medium risk
-5. Residual risk after mitigation
-6. Bid/No-Bid risk threshold assessment
-7. Top 3 showstopper risks
-
-Rate overall risk level: LOW / MEDIUM / HIGH / VERY HIGH
-Include risk-adjusted win probability modifier.
-Respond as structured JSON.
+Analyze internally across all taxonomy categories, the probability × impact matrix, mitigation
+strategies, residual risk, and the top showstopper risks — then condense that analysis into
+the exact JSON schema specified in your system prompt. Every risk you identify becomes one
+entry in the "risks" array; nothing else about your process appears in the output.
 """
         raw = await self._call_claude(RISK_SYSTEM_PROMPT, user_message, raise_on_truncation=True)
         return {"risk_assessment": raw, "agent": self.name}
