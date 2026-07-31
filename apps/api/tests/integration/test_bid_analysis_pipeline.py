@@ -99,6 +99,16 @@ async def test_bid_analysis_populates_real_scores_from_fenced_claude_output():
         decision_id = str(decision.id)
         tenant_id = str(tenant.id)
 
+    # _run_async must set its own app.current_tenant — it must not rely on
+    # inheriting it from whatever a previous session left on the pooled
+    # physical connection. Clearing it here on a session that's likely to
+    # share that connection is what makes this test actually exercise that,
+    # instead of silently passing on leaked pool state the way this test did
+    # before the fix (see cios/core/database.py's module docstring for why
+    # that leakage happens and why CIOS_WORKER_PROCESS uses NullPool instead).
+    async with async_session_factory() as db:
+        await _set_tenant(db, uuid.UUID("00000000-0000-0000-0000-000000000000"))
+
     with patch.object(BaseAgent, "_call_claude", new=AsyncMock(side_effect=_fake_call_claude)):
         result = await _run_async(tenant_id, str(uuid.uuid4()), decision_id)
 

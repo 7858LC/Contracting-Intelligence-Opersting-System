@@ -21,7 +21,7 @@ def run_bid_analysis(self, tenant_id: str, user_id: str, decision_id: str) -> di
 async def _run_async(tenant_id: str, user_id: str, decision_id: str) -> dict:
     from datetime import UTC, datetime
 
-    from sqlalchemy import select
+    from sqlalchemy import select, text
 
     from cios.agents.base import AgentContext
     from cios.agents.directors.capture_director import CaptureDirector
@@ -31,6 +31,17 @@ async def _run_async(tenant_id: str, user_id: str, decision_id: str) -> dict:
     from cios.models.opportunity import Opportunity
 
     async with async_session_factory() as db:
+        # bid_decisions and opportunities both FORCE ROW LEVEL SECURITY
+        # (migration 007). app.current_tenant is normally set by
+        # get_current_user's SET LOCAL on the request's session — this task
+        # runs outside that request lifecycle on its own session, so without
+        # this the queries below silently return zero rows (RLS, not a real
+        # "not found") and the task exits early having written nothing.
+        await db.execute(
+            text("SELECT set_config('app.current_tenant', :tenant_id, false)"),
+            {"tenant_id": tenant_id},
+        )
+
         d_result = await db.execute(
             select(BidDecision).where(BidDecision.id == uuid.UUID(decision_id))
         )
