@@ -59,6 +59,10 @@ export function BidDecisionView() {
   const { data: decisions = [], isLoading } = useQuery({
     queryKey: ["bid-decisions"],
     queryFn: () => api.getBidDecisions(),
+    refetchInterval: (query) => {
+      const list = (query.state.data as BidDecision[] | undefined) ?? [];
+      return list.some((d) => !d.analyzed_at) ? 10_000 : false;
+    },
   });
 
   const deleteMutation = useMutation({
