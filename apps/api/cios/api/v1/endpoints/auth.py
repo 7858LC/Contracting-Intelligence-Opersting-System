@@ -16,7 +16,7 @@ from cios.core.security import (
     hash_password,
     verify_password,
 )
-from cios.models.tenant import Tenant, TenantMember
+from cios.models.tenant import Tenant, TenantInvite, TenantMember
 
 router = APIRouter()
 
@@ -24,6 +24,9 @@ router = APIRouter()
 # tenant/user context yet to key off of.
 _register_rate_limit = Depends(rate_limiter("register", max_requests=5, window_seconds=300))
 _login_rate_limit = Depends(rate_limiter("login", max_requests=10, window_seconds=300))
+_accept_invite_rate_limit = Depends(
+    rate_limiter("accept_invite", max_requests=5, window_seconds=300)
+)
 
 
 class RegisterRequest(BaseModel):
@@ -52,6 +55,12 @@ class TokenResponse(BaseModel):
 
 class RefreshRequest(BaseModel):
     refresh_token: str
+
+
+class AcceptInviteRequest(BaseModel):
+    token: str
+    full_name: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=8)
 
 
 @router.post(
@@ -101,6 +110,68 @@ async def register(body: RegisterRequest, db: DB) -> TokenResponse:
         tenant_id=str(tenant.id),
         role="owner",
         plan="trial",
+    )
+
+
+@router.post(
+    "/accept-invite",
+    response_model=TokenResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[_accept_invite_rate_limit],
+)
+async def accept_invite(body: AcceptInviteRequest, db: DB) -> TokenResponse:
+    """Redeem a TenantInvite token into a real, logged-in TenantMember.
+
+    Previously there was no endpoint for this at all — POST /tenants/members/invite
+    created a TenantInvite row and (supposedly) emailed a link, but nothing
+    could ever consume that token: an invited teammate had no way to actually
+    join, regardless of whether the email arrived.
+    """
+    result = await db.execute(select(TenantInvite).where(TenantInvite.token == body.token))
+    invite = result.scalar_one_or_none()
+    if not invite:
+        raise HTTPException(status_code=404, detail="Invalid invite link")
+
+    if invite.accepted_at is not None:
+        raise HTTPException(status_code=409, detail="This invite has already been accepted")
+
+    if invite.expires_at < datetime.now(UTC):
+        raise HTTPException(status_code=410, detail="This invite has expired")
+
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == invite.tenant_id))
+    tenant = tenant_result.scalar_one_or_none()
+    if not tenant or not tenant.is_active:
+        raise HTTPException(status_code=403, detail="Workspace is no longer active")
+
+    user_id = uuid.uuid4()
+    member = TenantMember(
+        tenant_id=invite.tenant_id,
+        user_id=user_id,
+        email=invite.email,
+        full_name=body.full_name,
+        password_hash=hash_password(body.password),
+        role=invite.role,
+    )
+    db.add(member)
+    invite.accepted_at = datetime.now(UTC)
+    await db.flush()
+
+    token_payload = {
+        "sub": str(user_id),
+        "tenant_id": str(invite.tenant_id),
+        "email": invite.email,
+        "role": invite.role,
+        "plan": tenant.plan,
+    }
+
+    return TokenResponse(
+        access_token=create_access_token(token_payload),
+        refresh_token=create_refresh_token(token_payload),
+        expires_in=3600,
+        user_id=str(user_id),
+        tenant_id=str(invite.tenant_id),
+        role=invite.role,
+        plan=tenant.plan,
     )
 
 

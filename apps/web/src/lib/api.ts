@@ -74,6 +74,21 @@ class CIOSApiClient {
     return data;
   }
 
+  async acceptInvite(payload: { token: string; full_name: string; password: string }) {
+    const { data } = await this.client.post("/auth/accept-invite", payload);
+    return data;
+  }
+
+  async inviteMember(payload: { email: string; role?: string }) {
+    const { data } = await this.client.post("/tenants/members/invite", payload);
+    return data;
+  }
+
+  async getMembers() {
+    const { data } = await this.client.get("/tenants/members");
+    return data;
+  }
+
   // ── Opportunities (Module 1) ─────────────────────────────────────────────
 
   async getOpportunities(params?: Record<string, unknown>) {

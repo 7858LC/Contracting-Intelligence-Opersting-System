@@ -28,6 +28,12 @@ class InviteMemberRequest(BaseModel):
     role: str = "member"
 
 
+class InviteMemberResponse(BaseModel):
+    status: str
+    email: str
+    invite_url: str
+
+
 @router.get("/profile")
 async def get_tenant_profile(db: DB, user: Auth) -> dict:
     result = await db.execute(select(Tenant).where(Tenant.id == user.tenant_id))
@@ -64,11 +70,12 @@ async def list_members(db: DB, user: Auth) -> dict:
     }
 
 
-@router.post("/members/invite")
-async def invite_member(body: InviteMemberRequest, db: DB, user: AdminAuth) -> dict:
+@router.post("/members/invite", response_model=InviteMemberResponse)
+async def invite_member(body: InviteMemberRequest, db: DB, user: AdminAuth) -> InviteMemberResponse:
     import secrets
     from datetime import UTC, datetime, timedelta
 
+    from cios.config import settings
     from cios.models.tenant import TenantInvite
     from cios.tasks.email import send_invite_email
 
@@ -84,7 +91,13 @@ async def invite_member(body: InviteMemberRequest, db: DB, user: AdminAuth) -> d
     db.add(invite)
     await db.flush()
     send_invite_email.delay(str(user.tenant_id), body.email, token)
-    return {"status": "invited", "email": body.email}
+
+    # Returned regardless of whether the email actually sends (SendGrid may
+    # not be configured, or may fail) — this is the reliable path to get an
+    # invited teammate in: copy/paste the link rather than depend on email
+    # delivery succeeding.
+    invite_url = f"{settings.app_url}/auth/accept-invite?token={token}"
+    return InviteMemberResponse(status="invited", email=body.email, invite_url=invite_url)
 
 
 class ApiKeyCreate(BaseModel):

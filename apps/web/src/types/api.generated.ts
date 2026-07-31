@@ -55,6 +55,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/accept-invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept Invite
+         * @description Redeem a TenantInvite token into a real, logged-in TenantMember.
+         *
+         *     Previously there was no endpoint for this at all — POST /tenants/members/invite
+         *     created a TenantInvite row and (supposedly) emailed a link, but nothing
+         *     could ever consume that token: an invited teammate had no way to actually
+         *     join, regardless of whether the email arrived.
+         */
+        post: operations["accept_invite_api_v1_auth_accept_invite_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -1809,6 +1834,15 @@ export interface components {
              */
             created_at: string;
         };
+        /** AcceptInviteRequest */
+        AcceptInviteRequest: {
+            /** Token */
+            token: string;
+            /** Full Name */
+            full_name: string;
+            /** Password */
+            password: string;
+        };
         /** AdminLoginRequest */
         AdminLoginRequest: {
             /**
@@ -2556,6 +2590,15 @@ export interface components {
              * @default member
              */
             role: string;
+        };
+        /** InviteMemberResponse */
+        InviteMemberResponse: {
+            /** Status */
+            status: string;
+            /** Email */
+            email: string;
+            /** Invite Url */
+            invite_url: string;
         };
         /**
          * JurisdictionType
@@ -3649,6 +3692,39 @@ export interface operations {
             };
         };
     };
+    accept_invite_api_v1_auth_accept_invite_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptInviteRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     login_api_v1_auth_login_post: {
         parameters: {
             query?: never;
@@ -3835,9 +3911,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["InviteMemberResponse"];
                 };
             };
             /** @description Validation Error */
