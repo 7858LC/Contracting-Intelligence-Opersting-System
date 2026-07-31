@@ -83,32 +83,62 @@ async def _async_generate_brief(period_label: str | None) -> dict:
     if period_label:
         label = period_label
 
+    # Each agency's DB write happens in its own short-lived session, opened
+    # only after that agency's external work (USASpending HTTP call, then a
+    # real Claude call via ResearchAnalystAgent — Director-tier, easily
+    # minutes) has already finished — never one session spanning the whole
+    # loop. See tasks/analysis.py for the full rationale and reproduction:
+    # an AsyncSession holds its transaction open from its first statement
+    # until commit, so a session held across that much external I/O per
+    # agency, times every tracked agency, sits idle-in-transaction long
+    # enough that a managed host kills it — and because the old code never
+    # committed until every agency (and the final report) had been
+    # processed, a connection death anywhere in the loop lost the *entire*
+    # brief, including every agency that had already succeeded. Committing
+    # each agency's pattern as soon as it's ready fixes both problems: no
+    # long-idle transaction, and partial progress survives a later failure.
     async with async_session_factory() as db:
         agencies = (
             (await db.execute(select(AgencyProfile).where(AgencyProfile.is_active == True)))  # noqa: E712
             .scalars()
             .all()
         )
-        if not agencies:
-            return {"error": "No active AgencyProfile rows — seed DoD/GSA/VA first"}
+    if not agencies:
+        return {"error": "No active AgencyProfile rows — seed DoD/GSA/VA first"}
 
-        sections: list[dict] = []
-        errors: list[str] = []
+    sections: list[dict] = []
+    errors: list[str] = []
 
-        async with USASpendingScanner() as scanner:
-            for agency in agencies:
-                try:
-                    aggregate = await scanner.aggregate_agency_period(
-                        agency_name=agency.name,
-                        period_start=period_start,
-                        period_end=period_end,
-                    )
-                    errors.extend(aggregate.get("errors", []))
+    async with USASpendingScanner() as scanner:
+        for agency in agencies:
+            try:
+                aggregate = await scanner.aggregate_agency_period(
+                    agency_name=agency.name,
+                    period_start=period_start,
+                    period_end=period_end,
+                )
+                errors.extend(aggregate.get("errors", []))
 
-                    # Rerunning generation for a period already covered (e.g. a
-                    # retry after fixing a bad query) must refresh the existing
-                    # row rather than insert a duplicate — uq_agency_period
-                    # enforces one row per (agency, period).
+                agent = ResearchAnalystAgent()
+                ctx = AgentContext(tenant_id=uuid.uuid4(), user_id=uuid.uuid4())
+                run = await agent.run(
+                    ctx,
+                    agency_name=agency.name,
+                    period_label=label,
+                    period_start=period_start.date().isoformat(),
+                    period_end=period_end.date().isoformat(),
+                    aggregate=aggregate,
+                )
+                sections.append({"agency": agency.name, "brief": run["result"]})
+
+                # Written only now, after both external calls for this
+                # agency have already completed — the session below never
+                # spans anything but this one short DB round trip.
+                async with async_session_factory() as db:
+                    # Rerunning generation for a period already covered
+                    # (e.g. a retry after fixing a bad query) must refresh
+                    # the existing row rather than insert a duplicate —
+                    # uq_agency_period enforces one row per (agency, period).
                     pattern = (
                         await db.execute(
                             select(AgencyBuyingPattern).where(
@@ -130,25 +160,15 @@ async def _async_generate_brief(period_label: str | None) -> dict:
                     pattern.recompete_count = 0  # TODO: needs same-PIID-base award history tracking
                     pattern.top_naics_breakdown = aggregate["top_naics_breakdown"]
                     pattern.source_evidence = aggregate["source_evidence"]
+                    await db.commit()
+            except Exception as e:
+                errors.append(f"{agency.name}: {e}")
+                log.warning("agency_brief_section_failed", agency=agency.name, error=str(e))
 
-                    agent = ResearchAnalystAgent()
-                    ctx = AgentContext(tenant_id=uuid.uuid4(), user_id=uuid.uuid4())
-                    run = await agent.run(
-                        ctx,
-                        agency_name=agency.name,
-                        period_label=label,
-                        period_start=period_start.date().isoformat(),
-                        period_end=period_end.date().isoformat(),
-                        aggregate=aggregate,
-                    )
-                    sections.append({"agency": agency.name, "brief": run["result"]})
-                except Exception as e:
-                    errors.append(f"{agency.name}: {e}")
-                    log.warning("agency_brief_section_failed", agency=agency.name, error=str(e))
+    if not sections:
+        return {"error": "All agency sections failed", "errors": errors}
 
-        if not sections:
-            return {"error": "All agency sections failed", "errors": errors}
-
+    async with async_session_factory() as db:
         report = ResearchReport(
             report_type="agency_intelligence_brief",
             period_label=label,
