@@ -17,6 +17,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import func, select, text
@@ -26,11 +27,13 @@ from cios.core.dependencies import DB, Pages, PlatformAuth, PlatformOperatorAuth
 from cios.core.rate_limit import rate_limiter
 from cios.core.security import create_access_token, create_refresh_token, verify_password
 from cios.models.opportunity import Opportunity
+from cios.models.research import ResearchReport
 from cios.models.subscription import Subscription
 from cios.models.tenant import AuditLog, PlatformAdmin, Tenant, TenantMember
 from cios.models.winning_profile import WPHSolicitation
 
 router = APIRouter()
+log = structlog.get_logger(__name__)
 
 _admin_login_rate_limit = Depends(rate_limiter("admin_login", max_requests=10, window_seconds=300))
 
@@ -303,6 +306,32 @@ async def activate_tenant(tenant_id: uuid.UUID, db: DB, admin: PlatformOperatorA
     return {"id": str(tenant.id), "is_active": True}
 
 
+@router.post("/tenants/{tenant_id}/council/grant", response_model=dict)
+async def grant_council_membership(
+    tenant_id: uuid.UUID, db: DB, admin: PlatformOperatorAuth
+) -> dict:
+    tenant = await _get_tenant(db, tenant_id)
+    if tenant.is_council_member:
+        return {"id": str(tenant.id), "is_council_member": True}
+    tenant.is_council_member = True
+    await _write_audit(db, tenant_id, admin, "tenant.council_membership_granted")
+    await db.commit()
+    return {"id": str(tenant.id), "is_council_member": True}
+
+
+@router.post("/tenants/{tenant_id}/council/revoke", response_model=dict)
+async def revoke_council_membership(
+    tenant_id: uuid.UUID, db: DB, admin: PlatformOperatorAuth
+) -> dict:
+    tenant = await _get_tenant(db, tenant_id)
+    if not tenant.is_council_member:
+        return {"id": str(tenant.id), "is_council_member": False}
+    tenant.is_council_member = False
+    await _write_audit(db, tenant_id, admin, "tenant.council_membership_revoked")
+    await db.commit()
+    return {"id": str(tenant.id), "is_council_member": False}
+
+
 @router.get("/tenants/{tenant_id}/audit-log", response_model=dict)
 async def tenant_audit_log(tenant_id: uuid.UUID, db: DB, admin: PlatformAuth, pages: Pages) -> dict:
     await _get_tenant(db, tenant_id)
@@ -329,3 +358,68 @@ async def tenant_audit_log(tenant_id: uuid.UUID, db: DB, admin: PlatformAuth, pa
         "page": pages.page,
         "page_size": pages.page_size,
     }
+
+
+# ── Executive Council research ───────────────────────────────────────────────
+#
+# ResearchReport has no tenant_id (cios/models/research.py — deliberately
+# platform-owned, shared across every Council-member tenant), so listing and
+# deleting it is a landlord action here, not a tenant-facing one under
+# /api/v1/research (which stays read-only). No AuditLog row is written on
+# delete — AuditLog.tenant_id is NOT NULL and there is no single tenant to
+# attribute a platform-wide report removal to; structlog is the equivalent
+# here for a non-tenant-scoped platform action.
+
+
+@router.get("/research/reports", response_model=dict)
+async def list_research_reports(db: DB, admin: PlatformAuth) -> dict:
+    rows = (
+        (
+            await db.execute(
+                select(ResearchReport)
+                .where(ResearchReport.is_archived == False)  # noqa: E712
+                .order_by(ResearchReport.created_at.desc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return {
+        "items": [
+            {
+                "id": str(r.id),
+                "report_type": r.report_type,
+                "period_label": r.period_label,
+                "status": r.status,
+                "visibility": r.visibility,
+                "title": r.title,
+                "summary": r.summary,
+                "published_at": r.published_at.isoformat() if r.published_at else None,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in rows
+        ],
+        "total": len(rows),
+    }
+
+
+@router.delete("/research/reports/{report_id}", status_code=204)
+async def delete_research_report(
+    report_id: uuid.UUID, db: DB, admin: PlatformOperatorAuth
+) -> None:
+    """Soft-delete — sets is_archived rather than removing the row, so this
+    stays recoverable directly from the database. Excluded from both the
+    admin list and the tenant-facing /research/reports list immediately
+    either way."""
+    report = await db.get(ResearchReport, report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Research report not found")
+    report.is_archived = True
+    log.info(
+        "research_report_archived",
+        report_id=str(report_id),
+        title=report.title,
+        platform_admin_id=str(admin.admin_id),
+        platform_admin_email=admin.email,
+    )
+    await db.commit()

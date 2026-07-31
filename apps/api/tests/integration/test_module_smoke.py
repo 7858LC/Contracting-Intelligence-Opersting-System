@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import random
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 from httpx import AsyncClient
@@ -123,10 +124,36 @@ async def test_bid_decisions_module_smoke(client: AsyncClient):
     opp_id = await _create_opportunity(client, headers)
 
     resp = await client.post(
-        "/api/v1/bid-decisions", headers=headers, json={"opportunity_id": opp_id}
+        "/api/v1/bid-decisions",
+        headers=headers,
+        json={"opportunity_id": opp_id, "go_no_go_threshold": 70},
     )
     assert resp.status_code == 202, resp.text
     assert resp.json()["status"] == "queued"
+
+    # The frontend (bid-decision-view.tsx) depends on this exact response
+    # shape — decision/overall_score/capability_score/risk_factors/rationale
+    # are all deliberately different names from this model's own columns
+    # (recommendation/composite_score/etc.), and go_no_go_threshold/
+    # analyzed_at were dropped by a schema-drift migration and restored in
+    # 015. A field-name mismatch here is exactly what crashed the page
+    # ("u.filter is not a function") since the wrapper key didn't match either.
+    listed = await client.get("/api/v1/bid-decisions", headers=headers)
+    assert listed.status_code == 200, listed.text
+    items = listed.json()["items"]
+    assert len(items) == 1
+    item = items[0]
+    assert item["opportunity_title"]
+    assert item["go_no_go_threshold"] == 70
+    expected_keys = (
+        "decision", "overall_score", "capability_score", "risk_factors", "rationale", "analyzed_at",
+    )
+    for key in expected_keys:
+        assert key in item
+
+    detail = await client.get(f"/api/v1/bid-decisions/{item['id']}", headers=headers)
+    assert detail.status_code == 200, detail.text
+    assert detail.json()["opportunity_title"] == item["opportunity_title"]
 
 
 @pytest.mark.anyio
@@ -252,6 +279,78 @@ async def test_winning_profile_module_smoke(client: AsyncClient):
     body = resp.json()
     assert body["profile"] is not None
     assert body["rankings"]
+    assert body["assessment"] is not None
+
+
+@pytest.mark.anyio
+async def test_wph_capture_package_module_smoke(client: AsyncClient):
+    """Capture package build -> review -> approve -> publish-to-vault, on top
+    of the same seeded/run sample used by the winning-profile smoke test."""
+    headers = await _register(client)
+    seeded = await client.post(
+        "/api/v1/winning-profile/sample", headers=headers, params={"run": "true"}
+    )
+    assert seeded.status_code == 201, seeded.text
+    sol_id = seeded.json()["solicitation_id"]
+
+    # Generating before any package exists creates version 1, draft.
+    built = await client.post(
+        f"/api/v1/winning-profile/solicitations/{sol_id}/capture-package", headers=headers
+    )
+    assert built.status_code == 200, built.text
+    package = built.json()
+    assert package["version"] == 1
+    assert package["status"] == "draft"
+    assert package["content"]["solicitation"]["title"]
+    assert package["content"]["target_assessment"] is not None
+    assert package["content"]["contractor_rankings"]
+
+    fetched = await client.get(
+        f"/api/v1/winning-profile/solicitations/{sol_id}/capture-package", headers=headers
+    )
+    assert fetched.status_code == 200, fetched.text
+    assert fetched.json()["id"] == package["id"]
+
+    # Regenerating bumps the version and supersedes the prior one.
+    rebuilt = await client.post(
+        f"/api/v1/winning-profile/solicitations/{sol_id}/capture-package", headers=headers
+    )
+    assert rebuilt.status_code == 200, rebuilt.text
+    assert rebuilt.json()["version"] == 2
+
+    history = await client.get(
+        f"/api/v1/winning-profile/solicitations/{sol_id}/capture-package/history",
+        headers=headers,
+    )
+    assert history.status_code == 200, history.text
+    assert len(history.json()["items"]) == 2
+
+    # Publishing before approval is rejected.
+    early_publish = await client.post(
+        f"/api/v1/winning-profile/solicitations/{sol_id}/capture-package/publish-to-vault",
+        headers=headers,
+    )
+    assert early_publish.status_code == 409, early_publish.text
+
+    approved = await client.post(
+        f"/api/v1/winning-profile/solicitations/{sol_id}/capture-package/approve",
+        headers=headers,
+        json={"review_notes": "Looks accurate, approved for the exec review."},
+    )
+    assert approved.status_code == 200, approved.text
+    assert approved.json()["status"] == "approved"
+    assert approved.json()["reviewed_by"]
+
+    published = await client.post(
+        f"/api/v1/winning-profile/solicitations/{sol_id}/capture-package/publish-to-vault",
+        headers=headers,
+    )
+    assert published.status_code == 200, published.text
+    assert published.json()["knowledge_vault_document_id"]
+
+    vault = await client.get("/api/v1/knowledge-vault", headers=headers)
+    assert vault.status_code == 200, vault.text
+    assert any(d["document_type"] == "capture_package" for d in vault.json()["items"])
 
 
 @pytest.mark.anyio
@@ -301,3 +400,106 @@ async def test_admin_landlord_module_smoke(client: AsyncClient):
     tenant_headers = await _register(client)
     denied = await client.get("/api/v1/admin/stats", headers=tenant_headers)
     assert denied.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_research_module_smoke(client: AsyncClient):
+    """Module: research (Executive Council report access, Phase 1 —
+    Agency Intelligence Brief). Phase 1's tables have no tenant-facing write
+    endpoints — AgencyProfile/AgencyBuyingPattern/ResearchReport are only
+    ever populated by the generate_agency_intelligence_brief Celery task —
+    so seed them directly, same as the admin smoke test does for
+    PlatformAdmin. Also proves is_council_member actually gates access, in
+    both directions, through the real grant/revoke admin endpoints."""
+    from cios.core.database import async_session_factory
+    from cios.core.security import hash_password
+    from cios.models.research import AgencyProfile, ReportStatus, ResearchReport
+    from cios.models.tenant import PlatformAdmin
+
+    tenant_headers = await _register(client)
+    profile = await client.get("/api/v1/tenants/profile", headers=tenant_headers)
+    assert profile.status_code == 200, profile.text
+    tenant_id = profile.json()["id"]
+
+    suffix = uuid.uuid4().hex[:10]
+    admin_email = f"smoke-research-admin-{suffix}@cios.ai"
+    async with async_session_factory() as db:
+        db.add(
+            AgencyProfile(name=f"Smoke Agency {suffix}", usaspending_toptier_code="097")
+        )
+        report = ResearchReport(
+            report_type="agency_intelligence_brief",
+            period_label="2026-Q3",
+            status=ReportStatus.PUBLISHED.value,
+            title="Smoke Test Agency Intelligence Brief — 2026-Q3",
+            summary="Smoke test summary.",
+            content=[{"agency": "Smoke Agency", "brief": {"executive_summary": "Smoke summary."}}],
+            published_at=datetime.now(UTC),
+        )
+        db.add(report)
+        db.add(
+            PlatformAdmin(
+                email=admin_email,
+                password_hash=hash_password("SmokeAdmin123!"),
+                full_name="Smoke Research Admin",
+                role="admin",
+            )
+        )
+        await db.commit()
+        report_id = str(report.id)
+
+    # Not a Council member yet — reports are forbidden, not just empty.
+    denied = await client.get("/api/v1/research/reports", headers=tenant_headers)
+    assert denied.status_code == 403, denied.text
+
+    admin_login = await client.post(
+        "/api/v1/admin/auth/login",
+        json={"email": admin_email, "password": "SmokeAdmin123!"},
+    )
+    assert admin_login.status_code == 200, admin_login.text
+    admin_headers = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
+
+    grant = await client.post(
+        f"/api/v1/admin/tenants/{tenant_id}/council/grant", headers=admin_headers
+    )
+    assert grant.status_code == 200, grant.text
+    assert grant.json()["is_council_member"] is True
+
+    reports = await client.get("/api/v1/research/reports", headers=tenant_headers)
+    assert reports.status_code == 200, reports.text
+    assert any(r["id"] == report_id for r in reports.json()["items"])
+
+    one = await client.get(f"/api/v1/research/reports/{report_id}", headers=tenant_headers)
+    assert one.status_code == 200, one.text
+    assert one.json()["title"] == "Smoke Test Agency Intelligence Brief — 2026-Q3"
+    assert one.json()["content"][0]["agency"] == "Smoke Agency"
+
+    revoke = await client.post(
+        f"/api/v1/admin/tenants/{tenant_id}/council/revoke", headers=admin_headers
+    )
+    assert revoke.status_code == 200, revoke.text
+    assert revoke.json()["is_council_member"] is False
+
+    denied_again = await client.get("/api/v1/research/reports", headers=tenant_headers)
+    assert denied_again.status_code == 403, denied_again.text
+
+    # Admin-only listing/deletion (no tenant_id on ResearchReport, so this is
+    # a landlord action, not a tenant-facing one — see admin.py's
+    # "Executive Council research" section).
+    admin_list = await client.get("/api/v1/admin/research/reports", headers=admin_headers)
+    assert admin_list.status_code == 200, admin_list.text
+    assert any(r["id"] == report_id for r in admin_list.json()["items"])
+
+    missing = await client.delete(
+        f"/api/v1/admin/research/reports/{uuid.uuid4()}", headers=admin_headers
+    )
+    assert missing.status_code == 404, missing.text
+
+    deleted = await client.delete(
+        f"/api/v1/admin/research/reports/{report_id}", headers=admin_headers
+    )
+    assert deleted.status_code == 204, deleted.text
+
+    admin_list_after = await client.get("/api/v1/admin/research/reports", headers=admin_headers)
+    assert admin_list_after.status_code == 200, admin_list_after.text
+    assert not any(r["id"] == report_id for r in admin_list_after.json()["items"])

@@ -20,13 +20,13 @@ log = structlog.get_logger(__name__)
 
 def _run(coro: Any) -> Any:
     """Run an async coroutine from a sync Celery task."""
-    return asyncio.get_event_loop().run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 async def _get_db():
-    from cios.core.database import AsyncSessionLocal
+    from cios.core.database import async_session_factory
 
-    async with AsyncSessionLocal() as session:
+    async with async_session_factory() as session:
         return session
 
 
@@ -60,11 +60,12 @@ async def _async_scan_company(
     tenant_id: uuid.UUID,
     scan_config: dict,
 ) -> dict:
-    from cios.core.database import AsyncSessionLocal
+    from cios.config import settings
+    from cios.core.database import async_session_factory
     from cios.models.pir import PIRCompany
     from cios.scanners import JobBoardScanner, SAMGovScanner, USASpendingScanner
 
-    async with AsyncSessionLocal() as db:
+    async with async_session_factory() as db:
         company = await db.get(PIRCompany, company_id)
         if not company:
             return {"error": f"Company {company_id} not found"}
@@ -74,12 +75,15 @@ async def _async_scan_company(
         signals_created = 0
         errors: list[str] = []
 
-        # Run all scanners
+        # SAMGovScanner/USASpendingScanner hit proper public APIs; JobBoardScanner
+        # scrapes third-party sites unauthenticated and is gated off by default
+        # (see Settings.enable_job_board_scanning) pending legal review.
         scanners = [
             SAMGovScanner(),
             USASpendingScanner(),
-            JobBoardScanner(),
         ]
+        if settings.enable_job_board_scanning:
+            scanners.append(JobBoardScanner())
 
         for scanner in scanners:
             async with scanner:
@@ -182,11 +186,11 @@ async def _async_bulk_scan(
     company_ids: list[str] | None,
     scan_config: dict,
 ) -> dict:
-    from cios.core.database import AsyncSessionLocal
+    from cios.core.database import async_session_factory
     from cios.models.pir import PIRCompany
 
     tid = uuid.UUID(tenant_id)
-    async with AsyncSessionLocal() as db:
+    async with async_session_factory() as db:
         if company_ids:
             cids = [uuid.UUID(c) for c in company_ids]
             rows = await db.execute(
@@ -229,11 +233,11 @@ def score_company(self, company_id: str, tenant_id: str) -> dict:
 
 
 async def _async_score_company(company_id: uuid.UUID, tenant_id: uuid.UUID) -> dict:
-    from cios.core.database import AsyncSessionLocal
+    from cios.core.database import async_session_factory
     from cios.models.pir import PIRCompany, PIRSignal
     from cios.scoring import SignalScorer
 
-    async with AsyncSessionLocal() as db:
+    async with async_session_factory() as db:
         company = await db.get(PIRCompany, company_id)
         if not company:
             return {"error": "not found"}
@@ -277,6 +281,7 @@ async def _async_score_company(company_id: uuid.UUID, tenant_id: uuid.UUID) -> d
     bind=True,
     max_retries=2,
     default_retry_delay=30,
+    soft_time_limit=180,
 )
 def analyze_company_ai(
     self,
@@ -307,10 +312,10 @@ async def _async_analyze_company(
     user_id: uuid.UUID | None,
 ) -> dict:
     from cios.agents.pir_analyst_agent import run_pir_analysis
-    from cios.core.database import AsyncSessionLocal
+    from cios.core.database import async_session_factory
     from cios.models.pir import PIRAIAnalysis, PIRCompany, PIRSignal
 
-    async with AsyncSessionLocal() as db:
+    async with async_session_factory() as db:
         analysis = await db.get(PIRAIAnalysis, analysis_id)
         if not analysis:
             return {"error": "Analysis record not found"}
@@ -374,10 +379,10 @@ def daily_radar_scan() -> dict:
 async def _async_daily_scan() -> dict:
     from sqlalchemy import distinct
 
-    from cios.core.database import AsyncSessionLocal
+    from cios.core.database import async_session_factory
     from cios.models.pir import PIRCompany
 
-    async with AsyncSessionLocal() as db:
+    async with async_session_factory() as db:
         result = await db.execute(
             select(distinct(PIRCompany.tenant_id)).where(PIRCompany.is_active.is_(True))
         )

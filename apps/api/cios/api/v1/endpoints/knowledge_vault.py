@@ -1,6 +1,7 @@
 """Knowledge Vault API — per-tenant private AI memory."""
 
 import uuid
+from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
@@ -34,8 +35,8 @@ class DocumentResponse(BaseModel):
     vectorization_status: str = "pending"
     is_vectorized: bool = False
     chunk_count: int = 0
-    created_at: Any = None
-    tags: list = []
+    created_at: datetime
+    tags: list[str] = []
 
     model_config = {"from_attributes": True}
 
@@ -47,7 +48,33 @@ class SearchRequest(BaseModel):
     min_score: float = 0.6
 
 
-@router.get("", response_model=dict[str, Any])
+class DocumentListResponse(BaseModel):
+    items: list[DocumentResponse]
+
+
+class UploadResponse(BaseModel):
+    document_id: str
+    task_id: str
+    status: str
+    message: str
+
+
+class SearchResultItem(BaseModel):
+    chunk_id: str
+    document_id: str
+    document_title: str
+    text: str
+    score: float
+    metadata: dict[str, Any]
+
+
+class SearchResponse(BaseModel):
+    results: list[SearchResultItem]
+    query: str
+    count: int
+
+
+@router.get("", response_model=DocumentListResponse)
 async def list_documents(
     db: DB,
     user: Auth,
@@ -68,7 +95,7 @@ async def list_documents(
     return {"items": [DocumentResponse.model_validate(i).model_dump() for i in items]}
 
 
-@router.post("/upload", status_code=status.HTTP_202_ACCEPTED)
+@router.post("/upload", response_model=UploadResponse, status_code=status.HTTP_202_ACCEPTED)
 async def upload_document(
     db: DB,
     user: Auth,
@@ -131,7 +158,7 @@ async def upload_document(
     }
 
 
-@router.post("/search")
+@router.post("/search", response_model=SearchResponse)
 async def search_knowledge_vault(body: SearchRequest, user: Auth) -> dict[str, Any]:
     """Semantic search across the tenant's Knowledge Vault using vector similarity."""
     from cios.vector.tenant_store import TenantVectorStore

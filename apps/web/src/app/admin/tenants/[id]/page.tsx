@@ -14,6 +14,7 @@ interface TenantDetail {
     slug: string;
     plan: string;
     is_active: boolean;
+    is_council_member: boolean;
     created_at: string;
   };
   usage: {
@@ -78,6 +79,26 @@ export default function TenantDetailPage() {
     onError: () => toast.error("Failed to activate tenant"),
   });
 
+  const grantCouncil = useMutation({
+    mutationFn: () => adminApi.grantCouncilMembership(id),
+    onSuccess: () => {
+      toast.success("Executive Council membership granted");
+      queryClient.invalidateQueries({ queryKey: ["admin-tenant", id] });
+      queryClient.invalidateQueries({ queryKey: ["admin-tenant-audit", id] });
+    },
+    onError: () => toast.error("Failed to grant Council membership"),
+  });
+
+  const revokeCouncil = useMutation({
+    mutationFn: () => adminApi.revokeCouncilMembership(id),
+    onSuccess: () => {
+      toast.success("Executive Council membership revoked");
+      queryClient.invalidateQueries({ queryKey: ["admin-tenant", id] });
+      queryClient.invalidateQueries({ queryKey: ["admin-tenant-audit", id] });
+    },
+    onError: () => toast.error("Failed to revoke Council membership"),
+  });
+
   if (isLoading || !data) {
     return <div className="text-sm text-muted-foreground">Loading…</div>;
   }
@@ -110,6 +131,11 @@ export default function TenantDetailPage() {
           >
             {data.tenant.is_active ? "active" : "suspended"}
           </span>
+          {data.tenant.is_council_member && (
+            <span className="px-2.5 py-1 rounded-full bg-indigo-500/15 text-indigo-500 text-xs">
+              council member
+            </span>
+          )}
           {operator &&
             (data.tenant.is_active ? (
               <button
@@ -126,6 +152,24 @@ export default function TenantDetailPage() {
                 className="px-3 py-1.5 text-sm rounded-md border border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
               >
                 Activate
+              </button>
+            ))}
+          {operator &&
+            (data.tenant.is_council_member ? (
+              <button
+                onClick={() => revokeCouncil.mutate()}
+                disabled={revokeCouncil.isPending}
+                className="px-3 py-1.5 text-sm rounded-md border border-indigo-500/30 text-indigo-500 hover:bg-indigo-500/10 transition-colors disabled:opacity-50"
+              >
+                Revoke Council Access
+              </button>
+            ) : (
+              <button
+                onClick={() => grantCouncil.mutate()}
+                disabled={grantCouncil.isPending}
+                className="px-3 py-1.5 text-sm rounded-md border border-indigo-500/30 text-indigo-500 hover:bg-indigo-500/10 transition-colors disabled:opacity-50"
+              >
+                Grant Council Access
               </button>
             ))}
         </div>

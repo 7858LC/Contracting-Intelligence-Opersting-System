@@ -30,6 +30,12 @@ htmlcov/
 # Testing
 coverage/
 *.lcov
+.coverage
+coverage.xml
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
 
 # Python venv
 .venv/
@@ -68,3 +74,6 @@ logs/
 
 # Local Redis snapshots (dev/test runs)
 *.rdb
+
+# Celery Beat local schedule state (dev/test runs)
+celerybeat-schedule*

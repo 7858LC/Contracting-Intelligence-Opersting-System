@@ -3,14 +3,21 @@
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from cios.core.dependencies import DB, Auth
+from cios.core.rate_limit import tenant_rate_limiter
 from cios.models.award_simulation import AwardSimulation
 
 router = APIRouter()
+
+# claude-opus-4-8, max_tokens=16384 — the platform's single most expensive
+# call. See tenant_rate_limiter's docstring for why this needed a bound.
+_create_rate_limit = Depends(
+    tenant_rate_limiter("award_simulation_create", max_requests=10, window_seconds=3600)
+)
 
 
 class SimulationCreate(BaseModel):
@@ -77,7 +84,7 @@ async def list_simulations(db: DB, user: Auth) -> dict[str, Any]:
     return {"items": [SimulationResponse.model_validate(i).model_dump() for i in items]}
 
 
-@router.post("", status_code=status.HTTP_202_ACCEPTED)
+@router.post("", status_code=status.HTTP_202_ACCEPTED, dependencies=[_create_rate_limit])
 async def create_simulation(body: SimulationCreate, db: DB, user: Auth) -> dict[str, Any]:
     """Launch a new award simulation. Processing is async — poll status endpoint."""
     sim = AwardSimulation(

@@ -153,22 +153,43 @@ async def refresh_token(body: RefreshRequest, db: DB) -> TokenResponse:
     if payload.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Not a refresh token")
 
+    # Re-check current DB state rather than trusting the old token's stale
+    # claims — refresh tokens live 30 days (settings.jwt_refresh_expiry_days),
+    # so without this a landlord suspending a tenant (or removing a member)
+    # has no effect on anyone already holding one: they'd silently keep
+    # minting fresh access tokens for the token's full lifetime, exactly the
+    # same way /login already re-checks tenant.is_active on every new login.
+    member_result = await db.execute(
+        select(TenantMember).where(
+            TenantMember.user_id == uuid.UUID(payload["sub"]),
+            TenantMember.is_active == True,  # noqa: E712
+        )
+    )
+    member = member_result.scalar_one_or_none()
+    if not member:
+        raise HTTPException(status_code=401, detail="Account inactive")
+
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == member.tenant_id))
+    tenant = tenant_result.scalar_one_or_none()
+    if not tenant or not tenant.is_active:
+        raise HTTPException(status_code=403, detail="Account inactive")
+
     token_payload = {
-        "sub": payload["sub"],
-        "tenant_id": payload["tenant_id"],
-        "email": payload.get("email", ""),
-        "role": payload.get("role", "member"),
-        "plan": payload.get("plan", "starter"),
+        "sub": str(member.user_id),
+        "tenant_id": str(member.tenant_id),
+        "email": member.email,
+        "role": member.role,
+        "plan": tenant.plan,
     }
 
     return TokenResponse(
         access_token=create_access_token(token_payload),
         refresh_token=create_refresh_token(token_payload),
         expires_in=3600,
-        user_id=payload["sub"],
-        tenant_id=payload["tenant_id"],
-        role=payload.get("role", "member"),
-        plan=payload.get("plan", "starter"),
+        user_id=str(member.user_id),
+        tenant_id=str(member.tenant_id),
+        role=member.role,
+        plan=tenant.plan,
     )
 
 

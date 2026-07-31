@@ -32,8 +32,24 @@ uvicorn cios.main:app --reload --port 8000
 # Frontend
 cd apps/web && npm install && npm run dev
 
-# Worker
-celery -A cios.tasks worker --loglevel=info
+# Worker — the -Q list must match every queue in cios/tasks/__init__.py's
+# task_routes plus any task's own queue= override (grep the tasks/ package
+# for `queue=` if you add a new one); omitting a queue here means Celery
+# silently never runs the tasks routed to it — this exact gap went
+# undetected for a long time because "celery" (Celery's real default queue)
+# had been misnamed "default" here, which doesn't exist.
+#
+# CIOS_WORKER_PROCESS=1 is required on any process running task bodies —
+# it switches core/database.py to NullPool, since every task calls
+# asyncio.run() (a fresh event loop per task) and a real connection pool
+# would hand out a connection bound to a previous, already-closed loop.
+# Never set this on the API process (uvicorn) — it keeps one long-lived
+# loop and should keep real pooling.
+CIOS_WORKER_PROCESS=1 celery -A cios.tasks worker --loglevel=info -Q celery,simulations,ingestion,analysis,email,pir_scan,research
+
+# Scheduler (required for the daily PIR scan and quarterly research brief
+# to actually fire — a worker alone does not run scheduled tasks)
+CIOS_WORKER_PROCESS=1 celery -A cios.tasks beat --loglevel=info
 ```
 
 ## Environment
@@ -56,7 +72,9 @@ Copy `.env.example` to `.env` and populate. Required:
 
 ## Testing Discipline
 
-This project runs on the Damascus Protocol — schema drift, wiring bugs, and cross-module breakage get caught automatically as the codebase evolves, instead of accumulating silently until one big pre-launch sweep finds them all at once (which is exactly what happened here once: a dependency-order bug, a response-type mismatch, and 14 drifted tables all shipped clean through review and sat live until the first real end-to-end test pass hit them). Four mechanisms carry that going forward: the `alembic check` CI gate below, the module checklist's step 8, the shared fixtures in `tests/integration/conftest.py`, and a weekly automated regression sweep against a real Postgres + Redis. None of these are ceremony. Don't skip or bypass one because a change feels too small to bother — that exact reasoning is how each of the three bugs above shipped in the first place.
+This project runs on the Damascus Protocol — schema drift, wiring bugs, and cross-module breakage get caught automatically as the codebase evolves, instead of accumulating silently until one big pre-launch sweep finds them all at once (which is exactly what happened here once: a dependency-order bug, a response-type mismatch, and 14 drifted tables all shipped clean through review and sat live until the first real end-to-end test pass hit them). Five mechanisms carry that going forward: the `alembic check` CI gate below, the module checklist's steps 8–9, the shared fixtures in `tests/integration/conftest.py` and `apps/web/e2e/fixtures.ts`, and a weekly automated regression sweep against a real Postgres + Redis. None of these are ceremony. Don't skip or bypass one because a change feels too small to bother — that exact reasoning is how each of the three bugs above shipped in the first place.
+
+**The backend tiers above only prove the backend works in isolation and that the frontend compiles — neither can catch the frontend misreading a real backend response.** That gap is exactly as real as schema drift and was found the same way: a live walkthrough hit four bugs (a response-shape mismatch, a stale model default the UI silently dropped, an untyped `response_model`, a React event-bubbling bug) that `tsc`, `next build`, and the full backend test suite all passed cleanly through. `apps/web/e2e/` (Playwright, real browser against a real API + Postgres + Redis, see `apps/web/e2e/fixtures.ts`) and CI's `e2e-test` job exist to make that gap visible on every push instead of only when someone happens to click through the UI by hand.
 
 ```bash
 cd apps/api
@@ -66,6 +84,10 @@ pytest tests/ -v --cov=cios
 `tests/integration/` requires a real, migrated Postgres + Redis — `docker compose -f infra/docker/docker-compose.yml up postgres redis` locally, same setup CI uses. These can't run against a mock; that's the point (see `tests/integration/conftest.py`). Two things that bite new integration tests:
 - Anything hitting `/auth/register` or `/auth/login` needs a distinct `X-Forwarded-For` header per call, or the shared-IP test harness trips the endpoint's own rate limiter (`core/rate_limit.py`).
 - After changing a model, run `alembic check` (also gates CI) before writing a migration by hand — it tells you exactly what's out of sync instead of finding out from a 500 later.
+
+**Production migrations are automated** — `render.yaml`'s `cios-api` service runs `alembic upgrade head` as a `preDeployCommand` on every deploy, before the new release takes traffic. Never run `alembic upgrade head` against production by hand anymore; it happens automatically, and a failing migration now aborts the deploy (keeping the previous release live) instead of shipping code against an unmigrated schema. This replaced the prior manual-only workflow, which is exactly the kind of step that gets forgotten under time pressure.
+
+**Frontend/backend contract enforcement** — every FastAPI route must declare a real Pydantic `response_model` (never `response_model=dict` or no `response_model` at all); `apps/web/src/types/api.generated.ts` is generated from that schema (`npm run generate:api-types` in `apps/web`, requires the API's venv active for `python3` to resolve `cios`) and CI's `web-test` job regenerates it fresh and fails the build if it differs from what's committed — mirrors the `alembic check` gate above, same rationale. Components import types from `apps/web/src/types/api.ts` (hand-written, stable aliases over the generated schema — add new ones there, never hand-write a duplicate interface in a component file). This exists because that's exactly what used to happen: hand-written frontend interfaces silently drifted from the real backend response shape with nothing to catch it, since `response_model=dict` gives FastAPI's own OpenAPI schema nothing to check against either — confirmed drift found and fixed the day this was added (a `CapturePackage` frontend type missing 5 real backend fields, a `status` field over-narrowed to a 2-value literal against a plain `str` backend field, `is_vectorized` missing entirely from a `KnowledgeDocument` type, two nullable backend fields typed as non-nullable). If you add a Pydantic response model with a JSONB/freeform-looking field, check how it's actually populated (e.g. `cios/wph/schemas.py`'s dataclasses for the WPH modules) before typing it `dict[str, Any]` — several fields here looked like structured objects from their DB column comments but are actually `list[str]`, and vice versa; the integration test suite hitting real endpoints (not just `mypy`) is what actually catches a wrong guess, via FastAPI's own response validation.
 
 ## AI Models
 
@@ -78,12 +100,13 @@ pytest tests/ -v --cov=cios
 
 1. Create model in `apps/api/cios/models/`
 2. Add Alembic migration in `apps/api/alembic/versions/`
-3. Create API endpoints in `apps/api/cios/api/v1/endpoints/`
+3. Create API endpoints in `apps/api/cios/api/v1/endpoints/` — every route needs a real Pydantic `response_model`, never `response_model=dict`, see "Frontend/backend contract enforcement" above.
 4. Register router in `apps/api/cios/api/v1/router.py`
 5. Create agent in `apps/api/cios/agents/`
 6. Create Celery task in `apps/api/cios/tasks/`
-7. Add frontend page in `apps/web/src/app/dashboard/`
-8. Add at least one smoke test in `apps/api/tests/integration/` exercising the new endpoint(s) through the real HTTP/DB/Redis stack (see `test_module_smoke.py`) — this is the tier that catches wiring bugs (broken imports, missing router registration, model/migration drift) that unit tests and manual testing both miss.
+7. Add frontend page in `apps/web/src/app/dashboard/` — run `npm run generate:api-types` in `apps/web` and commit the result so the page can import real types from `apps/web/src/types/api.ts` instead of hand-writing them.
+8. Add at least one smoke test in `apps/api/tests/integration/` exercising the new endpoint(s) through the real HTTP/DB/Redis stack (see `test_module_smoke.py`) — this is the tier that catches wiring bugs (broken imports, missing router registration, model/migration drift) that unit tests and manual testing both miss, and it's also what catches a wrong `response_model` field type, via FastAPI's own response validation.
+9. If step 7 wired a page/component to a live endpoint, add one smoke test in `apps/web/e2e/` (see `smoke.spec.ts`) that creates a real record via the real API and asserts it actually renders — not an empty/zero state. This is the tier that catches the frontend silently misreading a real backend response shape, which `tsc`/`next build`/step 8 all structurally cannot see.
 
 ## Security Rules
 

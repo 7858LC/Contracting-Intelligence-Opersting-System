@@ -34,6 +34,12 @@ OUTPUT: Structured JSON with compliance matrix, deficiency findings, and remedia
 
 class ComplianceDirector(BaseAgent):
     name = "compliance_director"
+    # See capture_director.py's comment — 8192 still truncated live in
+    # production for a sibling Director; 16384 matches AwardSimulatorAgent's
+    # already-proven-sufficient budget. This one doesn't get JSON-parsed
+    # downstream, but a truncated response is still a silently cut-off
+    # narrative.
+    max_tokens = 16384
 
     async def _execute(self, context: AgentContext, **kwargs: Any) -> dict[str, Any]:
         opportunity_data: dict = kwargs.get("opportunity_data", {})
@@ -65,5 +71,7 @@ Perform comprehensive compliance assessment:
 Flag all showstoppers (deficiencies that would disqualify the proposal).
 Respond as structured JSON.
 """
-        raw = await self._call_claude(COMPLIANCE_SYSTEM_PROMPT, user_message)
+        raw = await self._call_claude(
+            COMPLIANCE_SYSTEM_PROMPT, user_message, raise_on_truncation=True
+        )
         return {"compliance_assessment": raw, "agent": self.name}

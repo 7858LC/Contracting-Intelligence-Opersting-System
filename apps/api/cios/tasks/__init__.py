@@ -1,8 +1,23 @@
 """Celery task workers for async processing."""
 
+import ssl
+from urllib.parse import urlparse
+
 from celery import Celery
+from celery.schedules import crontab
 
 from cios.config import settings
+
+# Render's managed Redis (and most managed Redis providers) hands out a
+# rediss:// (TLS) URL. Celery's redis backend refuses to start against
+# rediss:// unless ssl_cert_reqs is explicitly configured — it won't infer
+# a default the way redis-py's own client does — so this must be set
+# whenever the URL uses that scheme, or the worker crashes on boot with
+# "A rediss:// URL must have parameter ssl_cert_reqs...". CERT_NONE matches
+# the managed-Redis providers' own guidance: the proxy-terminated TLS cert
+# isn't meant to be verified against a public CA chain from inside the
+# container network.
+_uses_tls_redis = urlparse(settings.redis_url).scheme == "rediss"
 
 celery_app = Celery(
     "cios",
@@ -22,6 +37,7 @@ celery_app = Celery(
         "cios.tasks.onboarding",
         "cios.tasks.pir",
         "cios.tasks.winning_profile",
+        "cios.tasks.research",
     ],
 )
 
@@ -46,5 +62,17 @@ celery_app.conf.update(
             "task": "cios.tasks.pir.daily_radar_scan",
             "schedule": 86400,  # every 24 hours
         },
+        "quarterly-agency-intelligence-brief": {
+            "task": "cios.tasks.research.generate_agency_intelligence_brief",
+            "schedule": crontab(minute=0, hour=6, day_of_month=1, month_of_year="1,4,7,10"),
+        },
     },
+    **(
+        {
+            "broker_use_ssl": {"ssl_cert_reqs": ssl.CERT_NONE},
+            "redis_backend_use_ssl": {"ssl_cert_reqs": ssl.CERT_NONE},
+        }
+        if _uses_tls_redis
+        else {}
+    ),
 )

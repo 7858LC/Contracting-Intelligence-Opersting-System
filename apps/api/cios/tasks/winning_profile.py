@@ -20,7 +20,7 @@ log = structlog.get_logger(__name__)
 
 
 def _run(coro: Any) -> Any:
-    return asyncio.get_event_loop().run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 @celery_app.task(
@@ -29,6 +29,7 @@ def _run(coro: Any) -> Any:
     bind=True,
     max_retries=2,
     default_retry_delay=30,
+    soft_time_limit=600,
 )
 def run_pipeline(
     self,

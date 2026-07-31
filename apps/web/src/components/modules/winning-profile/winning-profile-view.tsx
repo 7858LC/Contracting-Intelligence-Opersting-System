@@ -8,87 +8,26 @@ import { cn } from "@/lib/utils";
 import {
   Crosshair, Plus, Sparkles, Play, FileText, Trophy, Gauge,
   AlertTriangle, ChevronDown, ChevronUp, ShieldCheck, Target, Layers,
-  Upload, CheckCircle2, X,
+  Upload, CheckCircle2, X, ClipboardCheck, BookOpen, RefreshCw, Building2, Copy,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
+//
+// Generated from the backend's actual Pydantic response models — see
+// src/types/api.ts and `npm run generate:api-types`. Do not hand-write
+// interfaces here; they drift from the real backend shape silently (this
+// file's types used to do exactly that — see PR history).
 
-interface Solicitation {
-  id: string;
-  title: string;
-  agency: string | null;
-  solicitation_number: string | null;
-  set_aside_type: string | null;
-  pipeline_status: string;
-  document_count: number;
-  signal_count: number;
-}
-
-interface EvidenceDocument {
-  id: string;
-  document_type: string;
-  title: string;
-  source_url: string | null;
-  source_ref: string | null;
-  is_extracted: boolean;
-  created_at: string;
-}
-
-interface Attribute {
-  name: string;
-  category: string;
-  description: string | null;
-  importance_weight: number;
-  evidence_confidence: number;
-  confidence_level: string;
-  required_level: number;
-  supporting_evidence: { text: string; source: string }[];
-  reasoning: string | null;
-  unknown_factors: string[];
-}
-
-interface Profile {
-  summary: string | null;
-  narrative: string | null;
-  overall_confidence: number;
-  evidence_strength: number;
-  attribute_count: number;
-  unknown_factors: string[];
-  attributes: Attribute[];
-}
-
-interface Ranking {
-  contractor_id: string;
-  contractor_name: string;
-  overall_alignment_score: number;
-  rank: number;
-  gaps: { attribute_name: string; severity: string; gap_size: number }[];
-  gap_closures: { recommendation: string; timeline_months: number; feasibility: string }[];
-  strengths: string[];
-  summary: string | null;
-}
-
-interface Assessment {
-  target_contractor_name: string | null;
-  pdq_score: number;
-  win_positioning_score: number;
-  competitive_rank: number | null;
-  candidate_pool_size: number;
-  recommendation: string;
-  executive_summary: string | null;
-  key_findings: string[];
-  critical_gaps: { attribute_name: string; severity: string; impact: string }[];
-  recommended_actions: { recommendation: string; timeline_months?: number; feasibility?: string }[];
-  risks: { risk: string; severity: string; mitigation: string }[];
-  assumptions: string[];
-}
-
-interface Intelligence {
-  solicitation: Solicitation;
-  profile: Profile | null;
-  rankings: Ranking[];
-  assessment: Assessment | null;
-}
+import type {
+  Solicitation,
+  EvidenceDocument,
+  ProfileAttribute as Attribute,
+  Profile,
+  Ranking,
+  Assessment,
+  Intelligence,
+  CapturePackage,
+} from "@/types/api";
 
 // ── Small UI helpers ─────────────────────────────────────────────────────────────
 
@@ -163,6 +102,7 @@ export function WinningProfileView() {
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [showAddContractor, setShowAddContractor] = useState(false);
 
   const { data: solList, isLoading } = useQuery({
     queryKey: ["wph-solicitations"],
@@ -200,6 +140,11 @@ export function WinningProfileView() {
             className="flex items-center gap-2 px-3 py-2 border border-border rounded-md text-sm hover:bg-secondary transition-colors disabled:opacity-50">
             <Sparkles className="w-4 h-4" />
             {seedMutation.isPending ? "Seeding…" : "Load Sample"}
+          </button>
+          <button onClick={() => setShowAddContractor(true)}
+            className="flex items-center gap-2 px-3 py-2 border border-border rounded-md text-sm hover:bg-secondary transition-colors">
+            <Building2 className="w-4 h-4" />
+            Add Contractor
           </button>
           <button onClick={() => setShowCreate(true)}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">
@@ -256,6 +201,13 @@ export function WinningProfileView() {
           )}
         </div>
       </div>
+
+      {showAddContractor && (
+        <AddContractorModal
+          onClose={() => setShowAddContractor(false)}
+          onCreated={() => setShowAddContractor(false)}
+        />
+      )}
 
       {showCreate && (
         <CreateSolicitationModal
@@ -339,6 +291,202 @@ function SolicitationDetail({ solicitationId }: { solicitationId: string }) {
 
           {/* Rankings */}
           {rankings.length > 0 && <RankingPanel rankings={rankings} />}
+
+          {/* Capture Manager Package */}
+          {assessment && <CapturePackagePanel solicitationId={solicitationId} />}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Capture Manager Package ────────────────────────────────────────────────────
+
+function CapturePackagePanel({ solicitationId }: { solicitationId: string }) {
+  const queryClient = useQueryClient();
+  const [expanded, setExpanded] = useState(true);
+  const [reviewNotes, setReviewNotes] = useState("");
+
+  const { data: pkg, isLoading } = useQuery<CapturePackage | null>({
+    queryKey: ["wph-capture-package", solicitationId],
+    queryFn: async () => {
+      try {
+        return await api.getCapturePackage(solicitationId);
+      } catch {
+        return null;
+      }
+    },
+  });
+
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: ["wph-capture-package", solicitationId] });
+
+  const generateMutation = useMutation({
+    mutationFn: () => api.generateCapturePackage(solicitationId),
+    onSuccess: () => { toast.success("Capture package generated — review and approve below"); invalidate(); },
+    onError: () => toast.error("Failed to generate capture package"),
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: () => api.approveCapturePackage(solicitationId, reviewNotes),
+    onSuccess: () => { toast.success("Capture package approved"); invalidate(); },
+    onError: () => toast.error("Failed to approve capture package"),
+  });
+
+  const publishMutation = useMutation({
+    mutationFn: () => api.publishCapturePackageToVault(solicitationId),
+    onSuccess: () => { toast.success("Published to Knowledge Vault"); invalidate(); },
+    onError: () => toast.error("Failed to publish to Knowledge Vault"),
+  });
+
+  function copyPackage(p: CapturePackage) {
+    const { solicitation, target_assessment, contractor_rankings, evidence_summary } = p.content;
+    const lines = [
+      `${solicitation.title}${solicitation.solicitation_number ? ` (${solicitation.solicitation_number})` : ""}`,
+      solicitation.agency ? `Agency: ${solicitation.agency}` : null,
+      `Capture Package — ${p.status} · v${p.version}`,
+      target_assessment
+        ? `\nRecommendation: ${target_assessment.recommendation.replace(/_/g, " ")} — PDQ ${target_assessment.pdq_score}/100`
+        : null,
+      target_assessment?.executive_summary ? `\nExecutive Summary:\n${target_assessment.executive_summary}` : null,
+      contractor_rankings.length
+        ? `\nContractor Rankings:\n${contractor_rankings
+            .map((r) => `#${r.rank} ${r.contractor_name} — ${r.overall_alignment_score}`)
+            .join("\n")}`
+        : null,
+      `\nEvidence: ${evidence_summary.document_count} documents, ${evidence_summary.signal_count} signals`,
+      p.review_notes ? `\nReview notes: ${p.review_notes}` : null,
+      p.knowledge_vault_document_id ? "\nPublished to Knowledge Vault" : null,
+    ].filter(Boolean);
+    navigator.clipboard.writeText(lines.join("\n"));
+    toast.success("Copied to clipboard");
+  }
+
+  if (isLoading) return <div className="h-24 bg-card border border-border rounded-lg animate-pulse" />;
+
+  return (
+    <div className="bg-card border border-border rounded-lg p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold flex items-center gap-2">
+          <ClipboardCheck className="w-4 h-4 text-primary" />
+          Capture Manager Package
+          {pkg && (
+            <span className={cn(
+              "text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded",
+              pkg.status === "approved" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500"
+            )}>
+              {pkg.status} · v{pkg.version}
+            </span>
+          )}
+        </h2>
+        <div className="flex items-center gap-2">
+          {pkg && (
+            <button
+              onClick={() => copyPackage(pkg)}
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-md text-xs font-medium hover:bg-secondary transition-colors"
+              title="Copy package summary to clipboard"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              Copy
+            </button>
+          )}
+          <button
+            onClick={() => generateMutation.mutate()}
+            disabled={generateMutation.isPending}
+            className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-md text-xs font-medium hover:bg-secondary transition-colors disabled:opacity-50"
+          >
+            {pkg ? <RefreshCw className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
+            {generateMutation.isPending ? "Generating…" : pkg ? "Regenerate" : "Generate Capture Package"}
+          </button>
+        </div>
+      </div>
+
+      {!pkg ? (
+        <p className="text-sm text-muted-foreground">
+          Compiles the winning profile, contractor rankings, and executive assessment above into
+          one risk-informed decision brief for the Capture Manager / CEO.
+        </p>
+      ) : (
+        <>
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+          >
+            {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            {expanded ? "Hide" : "Show"} package content
+          </button>
+
+          {expanded && (
+            <div className="space-y-3 bg-background/50 rounded-md p-4">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Recommendation</p>
+                <p className="text-sm font-medium">
+                  {pkg.content.target_assessment?.recommendation.replace(/_/g, " ")}
+                  {" — "}PDQ {pkg.content.target_assessment?.pdq_score}/100
+                </p>
+              </div>
+              {pkg.content.target_assessment?.executive_summary && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Executive Summary</p>
+                  <p className="text-sm">{pkg.content.target_assessment.executive_summary}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Contractor Rankings</p>
+                <div className="space-y-1">
+                  {pkg.content.contractor_rankings.map((r) => (
+                    <div key={r.contractor_name} className="text-sm flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground w-5">#{r.rank}</span>
+                      <span className="flex-1">{r.contractor_name}</span>
+                      <span className="text-xs font-mono text-muted-foreground">
+                        {r.overall_alignment_score}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Evidence: {pkg.content.evidence_summary.document_count} documents,{" "}
+                {pkg.content.evidence_summary.signal_count} signals
+              </p>
+            </div>
+          )}
+
+          {pkg.status === "draft" ? (
+            <div className="space-y-2 pt-2 border-t border-border/50">
+              <textarea
+                value={reviewNotes}
+                onChange={(e) => setReviewNotes(e.target.value)}
+                placeholder="Optional review notes…"
+                rows={2}
+                className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
+              />
+              <button
+                onClick={() => approveMutation.mutate()}
+                disabled={approveMutation.isPending}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                {approveMutation.isPending ? "Approving…" : "Approve"}
+              </button>
+            </div>
+          ) : pkg.knowledge_vault_document_id ? (
+            <div className="pt-2 border-t border-border/50 flex items-center gap-2 text-sm text-emerald-500">
+              <CheckCircle2 className="w-4 h-4" />
+              Published to Knowledge Vault
+            </div>
+          ) : (
+            <div className="pt-2 border-t border-border/50">
+              <button
+                onClick={() => publishMutation.mutate()}
+                disabled={publishMutation.isPending}
+                className="flex items-center gap-2 px-4 py-2 border border-border rounded-md text-sm font-medium hover:bg-secondary transition-colors disabled:opacity-50"
+              >
+                <BookOpen className="w-4 h-4" />
+                {publishMutation.isPending ? "Publishing…" : "Publish to Knowledge Vault"}
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>
@@ -707,6 +855,143 @@ function AddDocumentModal({
             <button type="submit" disabled={addMutation.isPending}
               className="flex-1 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">
               {addMutation.isPending ? "Adding…" : "Add Document"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Contractor modal ─────────────────────────────────────────────────────────────
+
+function AddContractorModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
+    name: "", description: "", is_self: false, is_incumbent: false,
+    business_size: "", naics_codes: "", certifications: "", set_asides: "",
+    clearances: "", capabilities: "",
+  });
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const split = (s: string) => (s ? s.split(",").map((x) => x.trim()).filter(Boolean) : []);
+      // "Range Operations:85, TADSS Maintenance:70" -> [{name, level}]
+      const capabilities = split(form.capabilities)
+        .map((pair) => {
+          const [name, level] = pair.split(":").map((p) => p.trim());
+          const parsedLevel = parseFloat(level);
+          return name && !Number.isNaN(parsedLevel)
+            ? { name, level: Math.min(100, Math.max(0, parsedLevel)) }
+            : null;
+        })
+        .filter((c): c is { name: string; level: number } => c !== null);
+
+      await api.createWphContractor({
+        name: form.name,
+        description: form.description || null,
+        is_self: form.is_self,
+        is_incumbent: form.is_incumbent,
+        business_size: form.business_size || null,
+        naics_codes: split(form.naics_codes),
+        certifications: split(form.certifications),
+        set_asides: split(form.set_asides),
+        clearances: split(form.clearances),
+        capabilities,
+      });
+      toast.success("Contractor added");
+      onCreated();
+    } catch {
+      toast.error("Failed to add contractor");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-card border border-border rounded-xl w-full max-w-lg p-6 my-4">
+        <h2 className="font-semibold text-lg mb-1">Add Contractor</h2>
+        <p className="text-xs text-muted-foreground mb-4">
+          Score a candidate contractor (your own company or a competitor) against a solicitation&apos;s
+          Winning Profile Hypothesis.
+        </p>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium mb-1 text-muted-foreground">Company Name *</label>
+            <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="Acme Government Solutions" />
+          </div>
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={form.is_self}
+                onChange={(e) => setForm({ ...form, is_self: e.target.checked })} />
+              This is our own company
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={form.is_incumbent}
+                onChange={(e) => setForm({ ...form, is_incumbent: e.target.checked })} />
+              Incumbent
+            </label>
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1 text-muted-foreground">Business Size</label>
+            <select value={form.business_size} onChange={(e) => setForm({ ...form, business_size: e.target.value })}
+              className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none">
+              <option value="">Unknown</option>
+              <option value="small">Small</option>
+              <option value="large">Large</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1 text-muted-foreground">Description</label>
+            <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
+              rows={3} className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="What this contractor does, relevant experience, differentiators…" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1 text-muted-foreground">
+              Capabilities (name:level, comma separated — level 0-100)
+            </label>
+            <input value={form.capabilities} onChange={(e) => setForm({ ...form, capabilities: e.target.value })}
+              className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="Range Operations:85, TADSS Maintenance:70" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1 text-muted-foreground">NAICS Codes (comma separated)</label>
+            <input value={form.naics_codes} onChange={(e) => setForm({ ...form, naics_codes: e.target.value })}
+              className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="541330, 541611" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1 text-muted-foreground">Certifications (comma separated)</label>
+            <input value={form.certifications} onChange={(e) => setForm({ ...form, certifications: e.target.value })}
+              className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="ISO 9001, CMMI Level 3" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1 text-muted-foreground">Set-Asides (comma separated)</label>
+            <input value={form.set_asides} onChange={(e) => setForm({ ...form, set_asides: e.target.value })}
+              className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="SDVOSB, 8(a)" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1 text-muted-foreground">Clearances (comma separated)</label>
+            <input value={form.clearances} onChange={(e) => setForm({ ...form, clearances: e.target.value })}
+              className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="Secret, TS/SCI" />
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose}
+              className="flex-1 py-2 border border-border rounded-md text-sm hover:bg-secondary transition-colors">
+              Cancel
+            </button>
+            <button type="submit" disabled={loading}
+              className="flex-1 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">
+              {loading ? "Adding…" : "Add Contractor"}
             </button>
           </div>
         </form>

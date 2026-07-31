@@ -187,7 +187,9 @@ Then provide:
 Respond as detailed structured JSON matching the AwardSimulation schema.
 """
 
-        raw = await self._call_claude(AWARD_SIMULATOR_SYSTEM_PROMPT, user_message)
+        raw = await self._call_claude(
+            AWARD_SIMULATOR_SYSTEM_PROMPT, user_message, raise_on_truncation=True
+        )
 
         return {
             "simulation": raw,

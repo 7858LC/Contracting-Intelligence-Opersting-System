@@ -16,6 +16,7 @@ from .pir import (  # noqa: F401
     PIRSignal,
     PIRWatchlist,
 )
+from .research import AgencyBuyingPattern, AgencyProfile, ResearchReport  # noqa: F401
 from .subscription import Invoice, Subscription  # noqa: F401
 from .teaming import TeamingPartner, TeamingRecommendation  # noqa: F401
 from .tenant import (  # noqa: F401
@@ -29,6 +30,7 @@ from .tenant import (  # noqa: F401
 from .winning_profile import (  # noqa: F401
     WPHAlignment,
     WPHAssessment,
+    WPHCapturePackage,
     WPHContractor,
     WPHEvidenceDocument,
     WPHProfile,

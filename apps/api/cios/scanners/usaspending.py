@@ -14,15 +14,19 @@ logger = logging.getLogger(__name__)
 
 _BASE = "https://api.usaspending.gov/api/v2"
 
-# Contract type code → signal type
+# Contract type code → signal type. Must match USASpending's actual
+# award_type_codes enum for the spending_by_award endpoint — 'E'/'F'/'G' are
+# NOT valid procurement codes there (confirmed live: the API 400s on them,
+# listing only 'A'/'B'/'C'/'D', the 'IDV_*' family, and the numeric/F0xx
+# assistance codes as valid). Passing them silently zeroed out every result
+# in this dict-keys-derived filter, in both this module's aggregate query and
+# the existing daily PIR radar scan's _scan_recent_awards, since _post()
+# treats a 400 the same as an empty response.
 _AWARD_TYPE_SIGNAL: dict[str, str] = {
     "A": SignalType.FEDERAL_CONTRACT_AWARD,  # BPA Call
     "B": SignalType.FEDERAL_CONTRACT_AWARD,  # Purchase Order
     "C": SignalType.FEDERAL_CONTRACT_AWARD,  # Delivery Order
     "D": SignalType.IDIQ_AWARD,  # Definitive Contract
-    "E": SignalType.FEDERAL_CONTRACT_AWARD,
-    "F": SignalType.FEDERAL_CONTRACT_AWARD,
-    "G": SignalType.GWAC_AWARD,  # Grants/cooperative
     "IDV_A": SignalType.IDIQ_AWARD,  # GWAC
     "IDV_B": SignalType.IDIQ_AWARD,  # IDC
     "IDV_B_A": SignalType.IDIQ_AWARD,  # BPA
@@ -33,10 +37,138 @@ _AWARD_TYPE_SIGNAL: dict[str, str] = {
     "IDV_E": SignalType.IDIQ_AWARD,  # BOA
 }
 
+# USASpending also rejects a single award_type_codes filter that mixes its
+# internal groups (confirmed live: 422 "must only contain types from one
+# group" — the groups are contracts/idvs/grants/loans/etc). Procurement
+# activity spans two of those groups (definitive contracts + IDV orders), so
+# every query against this endpoint has to run once per group and merge.
+_CONTRACT_TYPE_CODES = ["A", "B", "C", "D"]
+_IDV_TYPE_CODES = ["IDV_A", "IDV_B", "IDV_B_A", "IDV_B_B", "IDV_B_C", "IDV_C", "IDV_D", "IDV_E"]
+_AWARD_TYPE_CODE_GROUPS: list[list[str]] = [_CONTRACT_TYPE_CODES, _IDV_TYPE_CODES]
+
 
 class USASpendingScanner(BaseScanner):
     source_name = SignalSource.USASPENDING
     _rate_limit_delay = 0.3
+
+    async def aggregate_agency_period(
+        self,
+        agency_name: str,
+        period_start: datetime,
+        period_end: datetime,
+        naics_codes: list[str] | None = None,
+        max_pages: int = 5,
+    ) -> dict[str, Any]:
+        """Aggregate award activity for one agency over one period, for the
+        research module's AgencyBuyingPattern (cios/models/research.py).
+
+        NOTE: this is a bounded top-N aggregate, not a complete Treasury-grade
+        total — it pages through ``spending_by_award`` (the same endpoint/
+        payload shape ``_scan_recent_awards`` already uses successfully) up to
+        ``max_pages`` pages of 100 results each, ordered by award amount
+        descending, and sums what it sees. A large agency (DoD) has far more
+        awards per quarter than max_pages*100 can cover completely. Getting a
+        complete total would mean using USASpending's dedicated aggregate
+        endpoints (spending_over_time / spending_by_category), which this
+        environment could not reach to verify their exact request/response
+        schema before shipping — do a live check against a real quarter's
+        published Treasury totals before trusting this for anything but a
+        directional "top awards this quarter" narrative.
+        """
+        total_obligated = 0.0
+        award_count = 0
+        naics_totals: dict[str, float] = {}
+        evidence: list[dict[str, Any]] = []
+        errors: list[str] = []
+
+        for type_codes in _AWARD_TYPE_CODE_GROUPS:
+            payload: dict[str, Any] = {
+                "filters": {
+                    "time_period": [
+                        {
+                            "start_date": period_start.strftime("%Y-%m-%d"),
+                            "end_date": period_end.strftime("%Y-%m-%d"),
+                        }
+                    ],
+                    "award_type_codes": type_codes,
+                    "agencies": [{"type": "awarding", "tier": "toptier", "name": agency_name}],
+                },
+                "fields": [
+                    "Award ID",
+                    "Recipient Name",
+                    "Award Amount",
+                    "Award Type",
+                    "NAICS Code",
+                    "Action Date",
+                    "Awarding Sub Agency",
+                ],
+                "sort": "Award Amount",
+                "order": "desc",
+                "limit": 100,
+                "page": 1,
+            }
+            if naics_codes:
+                payload["filters"]["naics_codes"] = naics_codes[:20]
+
+            for page in range(1, max_pages + 1):
+                payload["page"] = page
+                resp = await self._post(
+                    f"{_BASE}/search/spending_by_award/",
+                    json=payload,
+                    headers={"Accept": "application/json"},
+                )
+                if not resp:
+                    errors.append(
+                        f"{agency_name}: no response on page {page} ({type_codes[0]} group)"
+                    )
+                    break
+
+                try:
+                    data = resp.json()
+                except Exception:
+                    errors.append(
+                        f"{agency_name}: invalid JSON on page {page} ({type_codes[0]} group) — "
+                        f"body starts with: {resp.text[:200]!r}"
+                    )
+                    break
+
+                results = data.get("results", [])
+                if not results:
+                    break
+
+                for award in results:
+                    amount = award.get("Award Amount") or 0
+                    total_obligated += amount
+                    award_count += 1
+                    naics = str(award.get("NAICS Code") or "")
+                    if naics:
+                        naics_totals[naics] = naics_totals.get(naics, 0.0) + amount
+                    if len(evidence) < 25:
+                        evidence.append(
+                            {
+                                "award_id": award.get("Award ID", ""),
+                                "recipient_name": award.get("Recipient Name", ""),
+                                "amount": amount,
+                                "naics": naics,
+                                "action_date": award.get("Action Date", ""),
+                                "source_url": (
+                                    f"https://www.usaspending.gov/award/{award.get('Award ID', '')}"
+                                ),
+                            }
+                        )
+
+                if not data.get("page_metadata", {}).get("hasNext", False):
+                    break
+
+        top_naics = dict(sorted(naics_totals.items(), key=lambda kv: kv[1], reverse=True)[:10])
+
+        return {
+            "total_obligated_amount": total_obligated,
+            "award_count": award_count,
+            "top_naics_breakdown": top_naics,
+            "source_evidence": evidence,
+            "errors": errors,
+        }
 
     async def scan(self, keywords: list[str], **kwargs: Any) -> ScanResult:
         result = ScanResult(source=self.source_name)
@@ -57,49 +189,59 @@ class USASpendingScanner(BaseScanner):
         start_date = (datetime.now(UTC) - timedelta(days=days_back)).strftime("%Y-%m-%d")
         end_date = datetime.now(UTC).strftime("%Y-%m-%d")
 
-        payload: dict[str, Any] = {
-            "filters": {
-                "time_period": [{"start_date": start_date, "end_date": end_date}],
-                "award_type_codes": list(_AWARD_TYPE_SIGNAL.keys()),
-            },
-            "fields": [
-                "Award ID",
-                "Recipient Name",
-                "recipient_uei",
-                "Award Amount",
-                "Awarding Agency",
-                "Award Type",
-                "NAICS Code",
-                "Place of Performance State Code",
-                "Place of Performance City Name",
-                "Action Date",
-                "Description",
-            ],
-            "sort": "Action Date",
-            "order": "desc",
-            "limit": 100,
-            "page": 1,
-        }
+        for type_codes in _AWARD_TYPE_CODE_GROUPS:
+            payload: dict[str, Any] = {
+                "filters": {
+                    "time_period": [{"start_date": start_date, "end_date": end_date}],
+                    "award_type_codes": type_codes,
+                },
+                "fields": [
+                    "Award ID",
+                    "Recipient Name",
+                    "recipient_uei",
+                    "Award Amount",
+                    "Awarding Agency",
+                    "Award Type",
+                    "NAICS Code",
+                    "Place of Performance State Code",
+                    "Place of Performance City Name",
+                    "Action Date",
+                    "Description",
+                ],
+                "sort": "Action Date",
+                "order": "desc",
+                "limit": 100,
+                "page": 1,
+            }
 
-        if naics_codes:
-            payload["filters"]["naics_codes"] = naics_codes[:20]
+            if naics_codes:
+                payload["filters"]["naics_codes"] = naics_codes[:20]
 
-        resp = await self._post(f"{_BASE}/search/spending_by_award/", json=payload)
-        if not resp:
-            result.add_error("USASpending award search returned no response")
-            return
+            resp = await self._post(
+                f"{_BASE}/search/spending_by_award/",
+                json=payload,
+                headers={"Accept": "application/json"},
+            )
+            if not resp:
+                result.add_error(
+                    f"USASpending award search returned no response ({type_codes[0]} group)"
+                )
+                continue
 
-        try:
-            data = resp.json()
-        except Exception:
-            result.add_error("USASpending: invalid JSON response")
-            return
-
-        for award in data.get("results", []):
             try:
-                self._process_award(award, result)
-            except Exception as e:
-                result.add_error(f"Award processing error: {e}")
+                data = resp.json()
+            except Exception:
+                result.add_error(
+                    f"USASpending: invalid JSON response ({type_codes[0]} group) — "
+                    f"body starts with: {resp.text[:200]!r}"
+                )
+                continue
+
+            for award in data.get("results", []):
+                try:
+                    self._process_award(award, result)
+                except Exception as e:
+                    result.add_error(f"Award processing error: {e}")
 
     def _process_award(self, award: dict, result: ScanResult) -> None:
         recipient = award.get("Recipient Name", "")
@@ -175,7 +317,11 @@ class USASpendingScanner(BaseScanner):
             "subawards": False,
         }
 
-        resp = await self._post(f"{_BASE}/search/spending_by_award/", json=payload)
+        resp = await self._post(
+            f"{_BASE}/search/spending_by_award/",
+            json=payload,
+            headers={"Accept": "application/json"},
+        )
         if not resp:
             return
 

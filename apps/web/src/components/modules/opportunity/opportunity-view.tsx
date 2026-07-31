@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -17,6 +17,25 @@ import { Target, Plus, Search, Filter, Zap, Eye, FileText, TrendingUp } from "lu
 const PIPELINE_STAGES = ["tracking", "qualifying", "capture", "proposal", "submitted", "awarded", "lost"];
 const JURISDICTIONS = ["us_federal", "us_state", "us_local", "eu", "world_bank", "other"];
 const STATUS_OPTIONS = ["open", "closed", "awarded", "cancelled"];
+
+// Directors now run in parallel (see ceo_agent.py's orchestrate_full_assessment),
+// so the realistic wall-clock cost is one director call plus the CEO synthesis
+// call after it, not all six sequentially. Progress is capped short of 100% so
+// the bar never implies "done" before analyzed_at actually lands — see
+// bid-decision-view.tsx's identical pattern.
+const EXPECTED_ANALYSIS_SECONDS = 180;
+const PROGRESS_CAP_PERCENT = 92;
+// If analyzed_at still hasn't landed by this point, the task most likely hit
+// its soft_time_limit or exhausted its retries — surface that instead of
+// leaving the spinner running forever with no explanation.
+const ANALYSIS_TIMEOUT_SECONDS = 900;
+
+function formatElapsed(startMs: number, nowMs: number): string {
+  const elapsedSec = Math.max(0, Math.floor((nowMs - startMs) / 1000));
+  const minutes = Math.floor(elapsedSec / 60);
+  const seconds = elapsedSec % 60;
+  return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+}
 
 interface Opportunity {
   id: string;
@@ -35,6 +54,7 @@ interface Opportunity {
   jurisdiction: string | null;
   place_of_performance: string | null;
   created_at: string;
+  analyzed_at: string | null;
 }
 
 const STAGE_COLORS: Record<string, string> = {
@@ -58,18 +78,63 @@ export function OpportunityView() {
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState("");
   const [showAdd, setShowAdd] = useState(false);
-  const [selected, setSelected] = useState<Opportunity | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // opportunity id -> epoch ms when "Run AI Analysis" was clicked. Unlike
+  // bid decisions (every row exists specifically to be analyzed, so
+  // !analyzed_at alone means "pending"), most opportunities in the pipeline
+  // were never analyzed and never will be — polling every row with a null
+  // score would poll forever for no reason. This tracks only opportunities
+  // actually in flight, and is cleared once a poll shows analyzed_at newer
+  // than the click, or after ANALYSIS_TIMEOUT_SECONDS elapses.
+  const [pendingAnalysis, setPendingAnalysis] = useState<Record<string, number>>({});
+  const [now, setNow] = useState(() => Date.now());
 
-  const { data: opportunities = [], isLoading } = useQuery({
+  const hasPending = Object.keys(pendingAnalysis).length > 0;
+  useEffect(() => {
+    if (!hasPending) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [hasPending]);
+
+  const { data: oppsData, isLoading } = useQuery({
     queryKey: ["opportunities", search, stageFilter],
-    queryFn: () => api.getOpportunities({ search: search || undefined, pipeline_stage: stageFilter || undefined }),
-    refetchInterval: 30_000,
+    queryFn: () => api.getOpportunities({ search: search || undefined, pipeline_stage: stageFilter || undefined, page_size: 100 }),
+    refetchInterval: hasPending ? 8_000 : 30_000,
   });
+  const opportunities = useMemo(() => (oppsData?.items ?? []) as Opportunity[], [oppsData]);
+  const selected = opportunities.find((o) => o.id === selectedId) ?? null;
+
+  // Clear (and toast) any pending marker once a poll shows the analysis
+  // actually landed, and flag any that have blown past the timeout instead
+  // of leaving the spinner running with no explanation.
+  useEffect(() => {
+    if (!hasPending) return;
+    setPendingAnalysis((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const [id, requestedAt] of Object.entries(prev)) {
+        const opp = opportunities.find((o) => o.id === id);
+        const analyzedAt = opp?.analyzed_at ? new Date(opp.analyzed_at).getTime() : null;
+        if (analyzedAt && analyzedAt >= requestedAt) {
+          delete next[id];
+          changed = true;
+          toast.success(`AI analysis complete for "${opp?.title ?? "opportunity"}"`);
+        } else if (Date.now() - requestedAt > ANALYSIS_TIMEOUT_SECONDS * 1000) {
+          delete next[id];
+          changed = true;
+          toast.error(`AI analysis for "${opp?.title ?? "opportunity"}" is taking longer than expected — it may have failed. Try again.`);
+        }
+      }
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opportunities, hasPending]);
 
   const analyzeMutation = useMutation({
     mutationFn: (id: string) => api.analyzeOpportunity(id),
-    onSuccess: () => {
-      toast.success("AI analysis queued — results in ~60 seconds");
+    onSuccess: (_data, id) => {
+      setPendingAnalysis((prev) => ({ ...prev, [id]: Date.now() }));
+      toast.success("AI analysis queued — usually a few minutes");
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
     },
     onError: () => toast.error("Analysis failed — please try again"),
@@ -77,13 +142,23 @@ export function OpportunityView() {
 
   const pipeline: Record<string, Opportunity[]> = {};
   PIPELINE_STAGES.forEach((s) => { pipeline[s] = []; });
-  (opportunities as Opportunity[]).forEach((o) => {
-    const stage = o.pipeline_stage || "tracking";
-    if (pipeline[stage]) pipeline[stage].push(o);
+  opportunities.forEach((o) => {
+    const stage = pipeline[o.pipeline_stage] ? o.pipeline_stage : "tracking";
+    pipeline[stage].push(o);
   });
 
   if (selected) {
-    return <OpportunityDetail opp={selected} onBack={() => setSelected(null)} onAnalyze={() => analyzeMutation.mutate(selected.id)} analyzing={analyzeMutation.isPending} />;
+    const pendingSince = pendingAnalysis[selected.id];
+    return (
+      <OpportunityDetail
+        opp={selected}
+        onBack={() => setSelectedId(null)}
+        onAnalyze={() => analyzeMutation.mutate(selected.id)}
+        analyzing={analyzeMutation.isPending || pendingSince != null}
+        pendingSince={pendingSince}
+        now={now}
+      />
+    );
   }
 
   return (
@@ -155,7 +230,7 @@ export function OpportunityView() {
                 {pipeline[stage].map((opp) => (
                   <button
                     key={opp.id}
-                    onClick={() => setSelected(opp)}
+                    onClick={() => setSelectedId(opp.id)}
                     className="w-full text-left bg-card border border-border rounded-lg p-3 hover:border-primary/50 transition-colors group"
                   >
                     <p className="text-xs font-medium line-clamp-2 group-hover:text-primary transition-colors">
@@ -188,6 +263,12 @@ export function OpportunityView() {
                         {opp.bid_no_bid_recommendation.replace("_", " ")}
                       </span>
                     )}
+                    {pendingAnalysis[opp.id] != null && (
+                      <span className="inline-flex items-center gap-1 mt-2 text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                        <Zap className="w-2.5 h-2.5" />
+                        Analyzing…
+                      </span>
+                    )}
                     {opp.response_due_date && (
                       <p className="text-[10px] text-muted-foreground mt-1">
                         Due {getDaysUntil(opp.response_due_date)}d
@@ -211,7 +292,21 @@ export function OpportunityView() {
   );
 }
 
-function OpportunityDetail({ opp, onBack, onAnalyze, analyzing }: { opp: Opportunity; onBack: () => void; onAnalyze: () => void; analyzing: boolean }) {
+function OpportunityDetail({
+  opp,
+  onBack,
+  onAnalyze,
+  analyzing,
+  pendingSince,
+  now,
+}: {
+  opp: Opportunity;
+  onBack: () => void;
+  onAnalyze: () => void;
+  analyzing: boolean;
+  pendingSince?: number;
+  now: number;
+}) {
   const scoreNum = opp.award_probability_score != null ? Math.round(opp.award_probability_score * 100) : null;
 
   return (
@@ -227,9 +322,27 @@ function OpportunityDetail({ opp, onBack, onAnalyze, analyzing }: { opp: Opportu
           className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
           <Zap className="w-4 h-4" />
-          {analyzing ? "Queuing…" : "Run AI Analysis"}
+          {analyzing ? "Analyzing…" : "Run AI Analysis"}
         </button>
       </div>
+
+      {pendingSince != null && (
+        <div className="bg-card border border-border rounded-lg p-3">
+          <div className="flex items-center justify-between text-xs mb-1.5">
+            <span className="text-muted-foreground">
+              AI analysis in progress — {formatElapsed(pendingSince, now)} elapsed (usually ~3 min)
+            </span>
+          </div>
+          <div className="w-full h-1 bg-secondary rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary/60 rounded-full transition-all"
+              style={{
+                width: `${Math.min(PROGRESS_CAP_PERCENT, ((now - pendingSince) / 1000 / EXPECTED_ANALYSIS_SECONDS) * 100)}%`,
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-4">
         {/* Probability Card */}

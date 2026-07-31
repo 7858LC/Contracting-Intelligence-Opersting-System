@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { LogOut, ShieldAlert, Users } from "lucide-react";
+import { LogOut, ShieldAlert, Users, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { clearAdminTokens, getAdminFullName, getAdminRole, isAdminAuthenticated } from "@/lib/admin-auth";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Overview", icon: ShieldAlert },
   { href: "/admin/tenants", label: "Tenants", icon: Users },
+  { href: "/admin/research", label: "Research Reports", icon: FileText },
 ];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {

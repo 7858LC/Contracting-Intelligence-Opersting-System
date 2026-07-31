@@ -5,16 +5,25 @@ import uuid
 
 from cios.tasks import celery_app
 
+_VALID_RECOMMENDATIONS = {"BID", "NO_BID", "CONDITIONAL_BID"}
 
-@celery_app.task(bind=True, max_retries=2, soft_time_limit=600)
+
+@celery_app.task(bind=True, max_retries=2, default_retry_delay=30, soft_time_limit=600)
 def run_opportunity_analysis(self, tenant_id: str, user_id: str, opportunity_id: str) -> dict:
-    return asyncio.get_event_loop().run_until_complete(
-        _run_async(tenant_id, user_id, opportunity_id)
-    )
+    try:
+        return asyncio.run(_run_async(tenant_id, user_id, opportunity_id))
+    except Exception as exc:
+        # max_retries was declared but nothing ever called self.retry() — see
+        # bid_analysis.py's identical fix. A transient failure (or a JSON
+        # parse failure below) used to just complete silently with every
+        # score left blank instead of actually retrying.
+        raise self.retry(exc=exc)
 
 
 async def _run_async(tenant_id: str, user_id: str, opportunity_id: str) -> dict:
-    from sqlalchemy import select
+    from datetime import UTC, datetime
+
+    from sqlalchemy import select, text
 
     from cios.agents.base import AgentContext
     from cios.agents.ceo_agent import CEOAgent
@@ -23,6 +32,17 @@ async def _run_async(tenant_id: str, user_id: str, opportunity_id: str) -> dict:
     from cios.vector.tenant_store import TenantVectorStore
 
     async with async_session_factory() as db:
+        # opportunities has FORCE ROW LEVEL SECURITY (migration 007).
+        # app.current_tenant is normally set by get_current_user's SET LOCAL
+        # on the request's session — this task runs outside that request
+        # lifecycle on its own session, so without this the query below
+        # silently returns zero rows (RLS, not a real "not found") and the
+        # task exits early having written nothing. See bid_analysis.py.
+        await db.execute(
+            text("SELECT set_config('app.current_tenant', :tenant_id, false)"),
+            {"tenant_id": tenant_id},
+        )
+
         result = await db.execute(
             select(Opportunity).where(Opportunity.id == uuid.UUID(opportunity_id))
         )
@@ -54,19 +74,44 @@ async def _run_async(tenant_id: str, user_id: str, opportunity_id: str) -> dict:
         synthesis = output.get("synthesis", {})
         result_data = synthesis.get("result", {})
 
-        import json
+        from cios.agents.json_parsing import extract_claude_json
 
-        try:
-            exec_summary = result_data.get("executive_summary", "")
-            parsed = json.loads(exec_summary) if isinstance(exec_summary, str) else exec_summary
-        except Exception:
-            parsed = {}
+        # require_any_of: a response that parses as JSON but matches none of
+        # the schema keys must FAIL (and retry via self.retry() in the task
+        # wrapper above) rather than sail through — every .get() below would
+        # return None, and the row would commit as "analyzed" with every
+        # score and the recommendation silently null. See bid_analysis.py,
+        # which shipped that exact all-null-but-analyzed row once already.
+        parsed = extract_claude_json(
+            result_data.get("executive_summary", "") or "",
+            context="Opportunity analysis (CEO synthesis)",
+            require_any_of=frozenset(
+                {
+                    "gate_review_recommendation",
+                    "award_probability",
+                    "confidence_score",
+                    "strategic_recommendation",
+                }
+            ),
+        )
+
+        # Same shape guard as bid_analysis.py's recommendation handling —
+        # only ever accept one of the three known values; anything else
+        # becomes None rather than corrupting a column the frontend treats
+        # as a closed enum for color/label lookups.
+        recommendation = parsed.get("gate_review_recommendation")
+        if isinstance(recommendation, str):
+            normalized = recommendation.strip().upper().replace(" ", "_").replace("-", "_")
+            recommendation = normalized if normalized in _VALID_RECOMMENDATIONS else None
+        else:
+            recommendation = None
 
         opp.award_probability_score = parsed.get("award_probability")
-        opp.bid_no_bid_recommendation = parsed.get("gate_review_recommendation")
+        opp.bid_no_bid_recommendation = recommendation
         opp.evidence = {"ceo_synthesis": str(result_data)[:3000]}
         opp.confidence_score = parsed.get("confidence_score")
         opp.ai_model_version = CEOAgent.model
+        opp.analyzed_at = datetime.now(UTC)
 
         await db.commit()
         return {"opportunity_id": opportunity_id, "status": "completed"}

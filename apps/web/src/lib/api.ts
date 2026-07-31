@@ -78,7 +78,7 @@ class CIOSApiClient {
 
   async getOpportunities(params?: Record<string, unknown>) {
     const { data } = await this.client.get("/opportunities", { params });
-    return data.items ?? data;
+    return data;
   }
 
   async createOpportunity(payload: Record<string, unknown>) {
@@ -110,7 +110,7 @@ class CIOSApiClient {
 
   async getBidDecisions(params?: Record<string, unknown>) {
     const { data } = await this.client.get("/bid-decisions", { params });
-    return data.bid_decisions ?? data.decisions ?? data;
+    return data.items ?? data.bid_decisions ?? data.decisions ?? data;
   }
 
   async createBidDecision(payload: { opportunity_id: string; go_no_go_threshold?: number; scoring_weights?: Record<string, number> }) {
@@ -124,6 +124,11 @@ class CIOSApiClient {
       human_rationale: rationale,
     });
     return data;
+  }
+
+  async deleteBidDecision(id: string) {
+    await this.client.delete(`/bid-decisions/${id}`);
+    return { deleted: true };
   }
 
   // ── Award Simulations (Module 13 — flagship) ────────────────────────────
@@ -301,6 +306,18 @@ class CIOSApiClient {
 
   async getDashboardStats() {
     const { data } = await this.client.get("/dashboard/stats");
+    return data;
+  }
+
+  // ── Executive Council Research ───────────────────────────────────────────
+
+  async getResearchReports() {
+    const { data } = await this.client.get("/research/reports");
+    return data;
+  }
+
+  async getResearchReport(id: string) {
+    const { data } = await this.client.get(`/research/reports/${id}`);
     return data;
   }
 
@@ -507,6 +524,39 @@ class CIOSApiClient {
 
   async seedWphSample(run = true) {
     const { data } = await this.client.post("/winning-profile/sample", null, { params: { run } });
+    return data;
+  }
+
+  // ── Capture Manager Package ──────────────────────────────────────────────
+
+  async generateCapturePackage(solicitationId: string) {
+    const { data } = await this.client.post(
+      `/winning-profile/solicitations/${solicitationId}/capture-package`);
+    return data;
+  }
+
+  async getCapturePackage(solicitationId: string) {
+    const { data } = await this.client.get(
+      `/winning-profile/solicitations/${solicitationId}/capture-package`);
+    return data;
+  }
+
+  async listCapturePackageHistory(solicitationId: string) {
+    const { data } = await this.client.get(
+      `/winning-profile/solicitations/${solicitationId}/capture-package/history`);
+    return data;
+  }
+
+  async approveCapturePackage(solicitationId: string, reviewNotes?: string) {
+    const { data } = await this.client.post(
+      `/winning-profile/solicitations/${solicitationId}/capture-package/approve`,
+      { review_notes: reviewNotes || null });
+    return data;
+  }
+
+  async publishCapturePackageToVault(solicitationId: string) {
+    const { data } = await this.client.post(
+      `/winning-profile/solicitations/${solicitationId}/capture-package/publish-to-vault`);
     return data;
   }
 }

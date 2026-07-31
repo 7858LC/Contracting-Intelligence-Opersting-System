@@ -73,9 +73,28 @@ class CIOSAdminApiClient {
     return data;
   }
 
+  async grantCouncilMembership(id: string) {
+    const { data } = await this.client.post(`/tenants/${id}/council/grant`);
+    return data;
+  }
+
+  async revokeCouncilMembership(id: string) {
+    const { data } = await this.client.post(`/tenants/${id}/council/revoke`);
+    return data;
+  }
+
   async getTenantAuditLog(id: string, params?: Record<string, unknown>) {
     const { data } = await this.client.get(`/tenants/${id}/audit-log`, { params });
     return data;
+  }
+
+  async listResearchReports() {
+    const { data } = await this.client.get("/research/reports");
+    return data;
+  }
+
+  async deleteResearchReport(id: string) {
+    await this.client.delete(`/research/reports/${id}`);
   }
 }
 

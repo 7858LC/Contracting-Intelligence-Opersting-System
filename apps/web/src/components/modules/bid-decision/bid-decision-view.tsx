@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { formatCurrency, getScoreColor, cn } from "@/lib/utils";
-import { BarChart3, Plus, ChevronDown, ChevronUp, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { BarChart3, Plus, ChevronDown, ChevronUp, CheckCircle2, XCircle, AlertCircle, Copy, Trash2 } from "lucide-react";
 
 interface BidDecision {
   id: string;
@@ -40,6 +40,20 @@ const DECISION_STYLES: Record<string, string> = {
   CONDITIONAL_BID: "border-amber-500/40 bg-amber-500/5",
 };
 
+// Two sequential Director calls observed taking ~130-180s each in
+// production — ~5 minutes total is the realistic common case. Progress is
+// capped short of 100% so the bar never implies "done" before analyzed_at
+// actually lands; a run that legitimately takes longer just holds at the cap.
+const EXPECTED_ANALYSIS_SECONDS = 300;
+const PROGRESS_CAP_PERCENT = 92;
+
+function formatElapsed(createdAt: string, nowMs: number): string {
+  const elapsedSec = Math.max(0, Math.floor((nowMs - new Date(createdAt).getTime()) / 1000));
+  const minutes = Math.floor(elapsedSec / 60);
+  const seconds = elapsedSec % 60;
+  return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+}
+
 const SCORE_FACTORS = [
   { key: "strategic_fit_score", label: "Strategic Fit" },
   { key: "win_probability_score", label: "Win Probability" },
@@ -59,13 +73,53 @@ export function BidDecisionView() {
   const { data: decisions = [], isLoading } = useQuery({
     queryKey: ["bid-decisions"],
     queryFn: () => api.getBidDecisions(),
+    refetchInterval: (query) => {
+      const list = (query.state.data as BidDecision[] | undefined) ?? [];
+      return list.some((d) => !d.analyzed_at) ? 10_000 : false;
+    },
   });
+
+  const hasPending = (decisions as BidDecision[]).some((d) => !d.analyzed_at);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!hasPending) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [hasPending]);
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.deleteBidDecision(id),
+    onSuccess: () => {
+      toast.success("Analysis deleted");
+      queryClient.invalidateQueries({ queryKey: ["bid-decisions"] });
+    },
+    onError: () => toast.error("Failed to delete analysis"),
+  });
+
+  function copyDecision(d: BidDecision) {
+    const lines = [
+      `${d.opportunity_title} — ${d.decision ?? "Pending"}`,
+      d.overall_score != null ? `Overall score: ${d.overall_score}/100 (threshold ${d.go_no_go_threshold})` : null,
+      ...SCORE_FACTORS.map(({ key, label }) => {
+        const score = d[key as keyof BidDecision] as number | null;
+        return score != null ? `${label}: ${score}` : null;
+      }),
+      d.rationale ? `\nRationale: ${d.rationale}` : null,
+      d.risk_factors?.length ? `\nRisk factors:\n${d.risk_factors.map((r) => `- ${(r as { description?: string }).description ?? JSON.stringify(r)}`).join("\n")}` : null,
+    ].filter(Boolean);
+    navigator.clipboard.writeText(lines.join("\n"));
+    toast.success("Copied to clipboard");
+  }
 
   const summary = {
     bid: (decisions as BidDecision[]).filter((d) => d.decision === "BID").length,
     no_bid: (decisions as BidDecision[]).filter((d) => d.decision === "NO_BID").length,
     conditional: (decisions as BidDecision[]).filter((d) => d.decision === "CONDITIONAL_BID").length,
-    pending: (decisions as BidDecision[]).filter((d) => !d.decision).length,
+    // Pending means the analysis hasn't finished — same signal the polling
+    // and progress bar use. Keying this off !d.decision instead miscounted
+    // an analyzed-but-broken row (analyzed_at set, decision null — a shape
+    // old task code really produced) as still "Pending Analysis" forever.
+    pending: (decisions as BidDecision[]).filter((d) => !d.analyzed_at).length,
   };
 
   return (
@@ -124,17 +178,39 @@ export function BidDecisionView() {
                 d.decision ? DECISION_STYLES[d.decision] : "border-border bg-card"
               )}
             >
-              <button
+              <div
+                role="button"
+                tabIndex={0}
                 onClick={() => setExpanded(expanded === d.id ? null : d.id)}
-                className="w-full text-left p-4"
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setExpanded(expanded === d.id ? null : d.id); }}
+                className="w-full text-left p-4 cursor-pointer"
               >
                 <div className="flex items-center gap-3">
                   {d.decision && DECISION_ICONS[d.decision as keyof typeof DECISION_ICONS]}
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{d.opportunity_title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {d.analyzed_at ? `Analyzed ${new Date(d.analyzed_at).toLocaleDateString()}` : "Pending analysis"}
-                    </p>
+                    {d.analyzed_at ? (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Analyzed {new Date(d.analyzed_at).toLocaleDateString()}
+                      </p>
+                    ) : (
+                      <div className="mt-1">
+                        <p className="text-xs text-muted-foreground">
+                          Analyzing… {formatElapsed(d.created_at, now)} elapsed (usually ~5 min)
+                        </p>
+                        <div className="w-full max-w-[200px] h-1 bg-secondary rounded-full overflow-hidden mt-1">
+                          <div
+                            className="h-full bg-primary/60 rounded-full transition-all"
+                            style={{
+                              width: `${Math.min(
+                                PROGRESS_CAP_PERCENT,
+                                ((now - new Date(d.created_at).getTime()) / 1000 / EXPECTED_ANALYSIS_SECONDS) * 100
+                              )}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                   {d.overall_score != null && (
                     <div className="text-right mr-2">
@@ -144,13 +220,32 @@ export function BidDecisionView() {
                       <div className="text-xs text-muted-foreground">/ 100</div>
                     </div>
                   )}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); copyDecision(d); }}
+                    className="text-muted-foreground/40 hover:text-foreground transition-colors p-1 shrink-0"
+                    title="Copy summary to clipboard"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm(`Delete the analysis for "${d.opportunity_title}"? This can't be undone from the UI.`)) {
+                        deleteMutation.mutate(d.id);
+                      }
+                    }}
+                    className="text-muted-foreground/40 hover:text-red-400 transition-colors p-1 shrink-0"
+                    title="Delete analysis"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                   {expanded === d.id ? (
                     <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />
                   ) : (
                     <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
                   )}
                 </div>
-              </button>
+              </div>
 
               {expanded === d.id && (
                 <div className="px-4 pb-4 space-y-4 border-t border-border/50 pt-4">
@@ -232,10 +327,11 @@ function AddBidDecisionModal({ onClose, onCreated }: { onClose: () => void; onCr
   const [opportunityId, setOpportunityId] = useState("");
   const [threshold, setThreshold] = useState("65");
 
-  const { data: opportunities = [] } = useQuery({
+  const { data: oppsData } = useQuery({
     queryKey: ["opportunities-list"],
-    queryFn: () => api.getOpportunities(),
+    queryFn: () => api.getOpportunities({ page_size: 100 }),
   });
+  const opportunities = oppsData?.items ?? [];
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

@@ -86,3 +86,8 @@ class PursuitRecommendation(StrEnum):
     NO_BID = "no_bid"
     CONDITIONAL_BID = "conditional_bid"
     MONITOR = "monitor"
+
+
+class CapturePackageStatus(StrEnum):
+    DRAFT = "draft"
+    APPROVED = "approved"

@@ -4,14 +4,22 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select
 
 from cios.core.dependencies import DB, Auth, Pages
+from cios.core.rate_limit import tenant_rate_limiter
 from cios.models.opportunity import JurisdictionType, Opportunity, OpportunityNote, OpportunityWatch
 
 router = APIRouter()
+
+# Fans out to 6 live Claude calls per request (CEO Agent + all 5 Directors,
+# see tasks/analysis.py) — see tenant_rate_limiter's docstring for why this
+# needed a bound.
+_analyze_rate_limit = Depends(
+    tenant_rate_limiter("opportunity_analyze", max_requests=10, window_seconds=3600)
+)
 
 
 class OpportunityCreate(BaseModel):
@@ -62,11 +70,26 @@ class OpportunityResponse(BaseModel):
     incumbent: str | None
     source: str
     created_at: datetime
+    analyzed_at: datetime | None
 
     model_config = {"from_attributes": True}
 
 
-@router.get("", response_model=dict[str, Any])
+class AnalyzeOpportunityResponse(BaseModel):
+    task_id: str
+    status: str
+    opportunity_id: str
+
+
+class OpportunityListResponse(BaseModel):
+    items: list[OpportunityResponse]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+@router.get("", response_model=OpportunityListResponse)
 async def list_opportunities(
     db: DB,
     user: Auth,
@@ -79,7 +102,7 @@ async def list_opportunities(
     max_value: float | None = Query(None),
     sort_by: str = Query("created_at"),
     sort_dir: str = Query("desc"),
-) -> dict[str, Any]:
+) -> OpportunityListResponse:
     query = select(Opportunity).where(
         Opportunity.tenant_id == user.tenant_id,
         Opportunity.is_archived == False,  # noqa: E712
@@ -116,13 +139,13 @@ async def list_opportunities(
     query = query.offset(pages.offset).limit(pages.limit)
     items = (await db.execute(query)).scalars().all()
 
-    return {
-        "items": [OpportunityResponse.model_validate(item).model_dump() for item in items],
-        "total": total,
-        "page": pages.page,
-        "page_size": pages.page_size,
-        "pages": -(-total // pages.page_size),
-    }
+    return OpportunityListResponse(
+        items=[OpportunityResponse.model_validate(item) for item in items],
+        total=total,
+        page=pages.page,
+        page_size=pages.page_size,
+        pages=-(-total // pages.page_size),
+    )
 
 
 @router.post("", response_model=OpportunityResponse, status_code=status.HTTP_201_CREATED)
@@ -161,10 +184,15 @@ async def archive_opportunity(opportunity_id: uuid.UUID, db: DB, user: Auth) -> 
     opp.is_archived = True
 
 
-@router.post("/{opportunity_id}/analyze", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/{opportunity_id}/analyze",
+    response_model=AnalyzeOpportunityResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[_analyze_rate_limit],
+)
 async def trigger_opportunity_analysis(
     opportunity_id: uuid.UUID, db: DB, user: Auth
-) -> dict[str, str]:
+) -> AnalyzeOpportunityResponse:
     """Trigger full AI capture assessment for an opportunity."""
     await _get_opp(db, user.tenant_id, opportunity_id)
     from cios.tasks.analysis import run_opportunity_analysis
@@ -172,7 +200,9 @@ async def trigger_opportunity_analysis(
     task = run_opportunity_analysis.delay(
         str(user.tenant_id), str(user.user_id), str(opportunity_id)
     )
-    return {"task_id": task.id, "status": "queued", "opportunity_id": str(opportunity_id)}
+    return AnalyzeOpportunityResponse(
+        task_id=task.id, status="queued", opportunity_id=str(opportunity_id)
+    )
 
 
 @router.post("/{opportunity_id}/watch")
