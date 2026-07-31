@@ -25,3 +25,7 @@ export type CapturePackageStatus = Schemas["CapturePackageStatus"];
 // Knowledge Vault
 export type KnowledgeDocument = Schemas["cios__api__v1__endpoints__knowledge_vault__DocumentResponse"];
 export type SearchResult = Schemas["SearchResultItem"];
+
+// Opportunity Intelligence
+export type Opportunity = Schemas["OpportunityResponse"];
+export type AnalyzeOpportunityResponse = Schemas["AnalyzeOpportunityResponse"];

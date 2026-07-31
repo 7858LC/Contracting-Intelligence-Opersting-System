@@ -73,7 +73,7 @@ async def _run_simulation_async(
     simulation_id: str,
     proposal_content: dict,
 ) -> dict:
-    from sqlalchemy import select
+    from sqlalchemy import select, text
 
     from cios.agents.award_simulator_agent import AwardSimulatorAgent
     from cios.agents.base import AgentContext
@@ -81,7 +81,31 @@ async def _run_simulation_async(
     from cios.models.award_simulation import AwardSimulation
     from cios.vector.tenant_store import TenantVectorStore
 
+    # Three short-lived sessions, never one spanning the whole task — see
+    # tasks/analysis.py for the full rationale and reproduction. Short
+    # version: agent.run() below is a real Claude call, often minutes; an
+    # AsyncSession holds its transaction open from its first statement until
+    # commit, so wrapping that call in one session parks the Postgres
+    # connection idle-in-transaction for the whole wait, which managed hosts
+    # kill — surfacing as "connection is closed" on whatever commit comes
+    # next, with no DB access in between to notice sooner. The old code also
+    # depended on that same possibly-dead connection for its own error
+    # path (`except: sim.status = "failed"; await db.commit()`), so a
+    # connection death didn't just lose the result, it silently lost the
+    # failure record too, since that commit would raise as well. The failure
+    # path below now writes through its own fresh session.
     async with async_session_factory() as db:
+        # award_simulations has FORCE ROW LEVEL SECURITY (migration 007) and
+        # TenantMixin. app.current_tenant is normally set by
+        # get_current_user's SET LOCAL on the request's session — this task
+        # runs outside that request lifecycle on its own session, so without
+        # this every query below silently returns zero rows (RLS, not a
+        # real "not found") and the task exits early having written nothing.
+        await db.execute(
+            text("SELECT set_config('app.current_tenant', :tenant_id, false)"),
+            {"tenant_id": tenant_id},
+        )
+
         result = await db.execute(
             select(AwardSimulation).where(AwardSimulation.id == uuid.UUID(simulation_id))
         )
@@ -92,46 +116,70 @@ async def _run_simulation_async(
 
         sim.status = "running"
         sim.started_at = datetime.now(UTC)
+
+        from cios.models.opportunity import Opportunity
+
+        opp_result = await db.execute(
+            select(Opportunity).where(Opportunity.id == sim.opportunity_id)
+        )
+        opp = opp_result.scalar_one_or_none()
+        opportunity_data = opp.to_dict() if opp else {}
+        evaluation_factors = sim.evaluation_factors or []
+        evaluation_methodology = sim.evaluation_methodology
+
         await db.commit()
 
+    try:
+        store = TenantVectorStore(tenant_id)
         try:
-            from cios.models.opportunity import Opportunity
-
-            opp_result = await db.execute(
-                select(Opportunity).where(Opportunity.id == sim.opportunity_id)
+            knowledge_context = await store.search(
+                query=opportunity_data.get("title", "procurement opportunity"),
+                top_k=10,
             )
-            opp = opp_result.scalar_one_or_none()
-            opportunity_data = opp.to_dict() if opp else {}
+        except Exception:
+            knowledge_context = []
 
-            store = TenantVectorStore(tenant_id)
-            try:
-                knowledge_context = await store.search(
-                    query=opportunity_data.get("title", "procurement opportunity"),
-                    top_k=10,
-                )
-            except Exception:
-                knowledge_context = []
+        context = AgentContext(
+            tenant_id=uuid.UUID(tenant_id),
+            user_id=uuid.UUID(user_id),
+            simulation_id=uuid.UUID(simulation_id),
+            rule_pack=opportunity_data.get("procurement_rule_pack", "us_federal_far"),
+        )
 
-            context = AgentContext(
-                tenant_id=uuid.UUID(tenant_id),
-                user_id=uuid.UUID(user_id),
-                simulation_id=uuid.UUID(simulation_id),
-                rule_pack=opportunity_data.get("procurement_rule_pack", "us_federal_far"),
+        agent = AwardSimulatorAgent()
+        output = await agent.run(
+            context,
+            opportunity_data=opportunity_data,
+            proposal_content=proposal_content,
+            knowledge_context=knowledge_context,
+            evaluation_factors=evaluation_factors,
+            evaluation_methodology=evaluation_methodology,
+        )
+
+        raw_result = output.get("result", {})
+        sim_data = raw_result.get("simulation", "{}")
+        parsed = _parse_claude_json(sim_data) if isinstance(sim_data, str) else sim_data
+
+        async with async_session_factory() as db:
+            # A second session is a second physical connection (NullPool on
+            # the worker, see core/database.py), so app.current_tenant does
+            # NOT carry over from the read session above — it has to be set
+            # again here or the re-select below returns zero rows under RLS.
+            await db.execute(
+                text("SELECT set_config('app.current_tenant', :tenant_id, false)"),
+                {"tenant_id": tenant_id},
             )
 
-            agent = AwardSimulatorAgent()
-            output = await agent.run(
-                context,
-                opportunity_data=opportunity_data,
-                proposal_content=proposal_content,
-                knowledge_context=knowledge_context,
-                evaluation_factors=sim.evaluation_factors or [],
-                evaluation_methodology=sim.evaluation_methodology,
+            # Re-fetch rather than reusing the instance from the first
+            # session: that one is detached now, and assigning to a
+            # detached instance would commit nothing at all.
+            result = await db.execute(
+                select(AwardSimulation).where(AwardSimulation.id == uuid.UUID(simulation_id))
             )
-
-            raw_result = output.get("result", {})
-            sim_data = raw_result.get("simulation", "{}")
-            parsed = _parse_claude_json(sim_data) if isinstance(sim_data, str) else sim_data
+            sim = result.scalar_one_or_none()
+            if not sim:
+                log.error("simulation_not_found_on_write", id=simulation_id)
+                return {"error": "simulation not found"}
 
             sim.status = "completed"
             sim.completed_at = datetime.now(UTC)
@@ -165,9 +213,23 @@ async def _run_simulation_async(
             log.info("simulation_complete", id=simulation_id)
             return {"simulation_id": simulation_id, "status": "completed"}
 
-        except Exception as e:
-            sim.status = "failed"
-            sim.error_message = str(e)[:1000]
-            await db.commit()
-            log.error("simulation_failed", id=simulation_id, error=str(e))
-            raise
+    except Exception as e:
+        log.error("simulation_failed", id=simulation_id, error=str(e))
+        # Deliberately a brand-new session, not the one the try block was
+        # using — if that one is what died (idle-in-transaction reaped
+        # mid-Claude-call), reusing it here would just raise a second time
+        # and lose the failure record along with the result.
+        async with async_session_factory() as db:
+            await db.execute(
+                text("SELECT set_config('app.current_tenant', :tenant_id, false)"),
+                {"tenant_id": tenant_id},
+            )
+            result = await db.execute(
+                select(AwardSimulation).where(AwardSimulation.id == uuid.UUID(simulation_id))
+            )
+            sim = result.scalar_one_or_none()
+            if sim:
+                sim.status = "failed"
+                sim.error_message = str(e)[:1000]
+                await db.commit()
+        raise

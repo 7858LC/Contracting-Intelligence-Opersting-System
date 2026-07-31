@@ -34,13 +34,33 @@ CORE PRINCIPLES:
 You think like a seasoned BD Director with 20+ years of federal contracting experience,
 combining analytical rigor with strategic insight.
 
-OUTPUT FORMAT: Always respond in structured JSON matching the Recommendation schema."""
+Use the principles above only as your internal analysis process. Do NOT reproduce that process
+in your output. Output ONLY the following JSON object — no markdown fences, no preamble or
+closing remarks, no extra top-level keys (no "metadata", no "executive_summary" wrapper), and
+no multi-paragraph fields:
+{
+  "gate_review_recommendation": "BID",
+  "award_probability": 0.0,
+  "confidence_score": 0.0,
+  "strategic_recommendation": "one paragraph, plain text",
+  "key_decision_factors": ["factor 1", "factor 2"],
+  "critical_risks": [{"risk": "specific risk, one sentence", "mitigation": "one sentence"}],
+  "alternatives": ["alternative course of action, one sentence"],
+  "regulation_citations": ["FAR 15.305"]
+}
+"gate_review_recommendation" is exactly one of "BID", "NO_BID", "CONDITIONAL_BID" — never
+"BID/NO-BID", never a sentence. "award_probability" and "confidence_score" are each a single
+number 0.0–1.0."""
 
 
 class CEOAgent(BaseAgent):
     name = "ceo_agent"
     model = settings.anthropic_model_ceo
-    max_tokens = 8192
+    # See capture_director.py's comment — 8192 truncated a comparably
+    # comprehensive JSON output (arrays of decision factors/risks/
+    # alternatives/citations) mid-object in that sibling agent; 16384
+    # matches AwardSimulatorAgent's already-proven-sufficient budget.
+    max_tokens = 16384
     temperature = 0.0
 
     async def _execute(self, context: AgentContext, **kwargs: Any) -> dict[str, Any]:
@@ -64,19 +84,13 @@ Tenant Context: {context.metadata.get("company_profile", "Not provided")}
 DIRECTOR INTELLIGENCE REPORTS:
 {evidence_block}
 
-Produce an executive-level synthesis with:
-1. Overall strategic recommendation
-2. Confidence score (0.0–1.0)
-3. Key decision factors (top 5)
-4. Critical risks (with mitigation options)
-5. Gate review recommendation: BID / NO-BID / CONDITIONAL-BID
-6. Alternative courses of action
-7. Procurement regulation citations
-
-Respond as structured JSON.
+Analyze internally: overall strategic recommendation, key decision factors, critical risks
+with mitigation options, gate review recommendation, alternative courses of action, and
+applicable procurement regulation citations. Then condense that analysis into the exact JSON
+schema specified in your system prompt; nothing else about your reasoning appears in the output.
 """
 
-        raw = await self._call_claude(CEO_SYSTEM_PROMPT, user_message)
+        raw = await self._call_claude(CEO_SYSTEM_PROMPT, user_message, raise_on_truncation=True)
 
         return {
             "executive_summary": raw,
@@ -109,17 +123,29 @@ Respond as structured JSON.
             RiskDirector(),
         ]
 
-        director_outputs = []
-        for director in directors:
+        # Each director is independent (same opportunity_data/knowledge_context
+        # in, own Claude call out — no director reads another's output), and
+        # each BaseAgent owns its own AsyncAnthropic client, so there's no
+        # shared state to race. Running them with asyncio.gather instead of
+        # a sequential loop turns 5 sequential Claude calls (bid_analysis.py's
+        # sibling 2-director task observed 130-180s per call in production —
+        # 5 sequential here would run 650-900s, on top of the CEO call after,
+        # against a 600s soft_time_limit) into one wall-clock cost of
+        # whichever director is slowest, which is what a "results in ~60
+        # seconds" UI promise actually needs to be true.
+        import asyncio
+
+        async def _run_director(director: Any) -> dict[str, Any]:
             try:
-                result = await director.run(
+                return await director.run(
                     context,
                     opportunity_data=opportunity_data,
                     knowledge_context=knowledge_context,
                 )
-                director_outputs.append(result)
             except Exception as e:
-                director_outputs.append({"agent": director.name, "error": str(e), "result": {}})
+                return {"agent": director.name, "error": str(e), "result": {}}
+
+        director_outputs = list(await asyncio.gather(*(_run_director(d) for d in directors)))
 
         synthesis = await self.run(
             context,
