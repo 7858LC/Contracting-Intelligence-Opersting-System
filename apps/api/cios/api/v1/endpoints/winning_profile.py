@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 
 from cios.core.dependencies import DB, Auth, Pages
+from cios.core.usage import current_month_start, enforce_usage_limit
 from cios.models.winning_profile import (
     WPHAlignment,
     WPHAssessment,
@@ -459,6 +460,24 @@ class SeedSampleResponse(BaseModel):
 # ── Helpers ──────────────────────────────────────────────────────────────────────
 
 
+async def _enforce_enrichment_limit(db: Any, user: Any) -> None:
+    """Deterministic profile generation is free; only the Claude narrative
+    call gated behind ``enrich=True`` (both here and in /run's vertical
+    slice) has a cost, so only it gets metered — same reasoning as
+    opportunities.py's opportunity_full_analyses_per_month."""
+    await enforce_usage_limit(
+        db,
+        user.plan,
+        "wph_narrative_enrichments_per_month",
+        select(func.count(WPHProfile.id)).where(
+            WPHProfile.tenant_id == user.tenant_id,
+            WPHProfile.narrative.is_not(None),
+            WPHProfile.created_at >= current_month_start(),
+        ),
+        label="Winning Profile narrative enrichments this month",
+    )
+
+
 async def _get_solicitation(db: Any, sol_id: uuid.UUID, tenant_id: uuid.UUID) -> WPHSolicitation:
     row = (
         await db.execute(
@@ -747,6 +766,8 @@ async def generate_profile(
     profile = await service.generate_profile(sol, user.tenant_id)
 
     if enrich:
+        await _enforce_enrichment_limit(db, user)
+
         from cios.agents.winning_profile_agent import enrich_profile_narrative
 
         pdc = await service.load_profile_dataclass(profile, user.tenant_id, sol.rule_pack)
@@ -996,6 +1017,8 @@ async def run_pipeline(
     profile = await service.generate_profile(sol, user.tenant_id)
 
     if enrich:
+        await _enforce_enrichment_limit(db, user)
+
         from cios.agents.winning_profile_agent import enrich_profile_narrative
 
         pdc = await service.load_profile_dataclass(profile, user.tenant_id, sol.rule_pack)

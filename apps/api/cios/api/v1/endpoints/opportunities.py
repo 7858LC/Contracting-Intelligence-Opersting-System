@@ -10,6 +10,7 @@ from sqlalchemy import func, or_, select
 
 from cios.core.dependencies import DB, Auth, Pages
 from cios.core.rate_limit import tenant_rate_limiter
+from cios.core.usage import current_month_start, enforce_usage_limit
 from cios.models.opportunity import JurisdictionType, Opportunity, OpportunityNote, OpportunityWatch
 
 router = APIRouter()
@@ -195,6 +196,23 @@ async def trigger_opportunity_analysis(
 ) -> AnalyzeOpportunityResponse:
     """Trigger full AI capture assessment for an opportunity."""
     await _get_opp(db, user.tenant_id, opportunity_id)
+
+    # The 10/hour rate limit above is a burst guard, not a cost cap — it's
+    # the same ceiling for a $0 trial signup and Enterprise, and 10/hour
+    # sustained is still ~7,200 six-Claude-call analyses a month. This is
+    # the actual plan-differentiated monthly ceiling on the most expensive
+    # AI operation in the platform (1 Opus + 5 Sonnet calls per run).
+    await enforce_usage_limit(
+        db,
+        user.plan,
+        "opportunity_full_analyses_per_month",
+        select(func.count(Opportunity.id)).where(
+            Opportunity.tenant_id == user.tenant_id,
+            Opportunity.analyzed_at >= current_month_start(),
+        ),
+        label="full opportunity analyses this month",
+    )
+
     from cios.tasks.analysis import run_opportunity_analysis
 
     task = run_opportunity_analysis.delay(

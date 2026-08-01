@@ -36,6 +36,19 @@ page's own FAQ describes an "Early Access Program" pricing pilot where
 tier boundaries plausibly aren't meant to be hard product walls yet.
 That's a real pricing/product decision, not something to enforce
 unilaterally alongside a naming cleanup.
+
+`opportunity_full_analyses_per_month` and `wph_narrative_enrichments_per_month`
+meter (not gate) the two AI call sites inside those deliberately-ungated
+modules: Opportunity `/analyze` fans out to 6 live Claude calls per request
+(CEO Agent on claude-opus-4-8 + all 5 Directors on claude-sonnet-4-6, see
+tasks/analysis.py) and previously had only a flat, plan-blind rate limit
+(10/hour, every tenant, see opportunities.py's _analyze_rate_limit) — no
+cost differentiation between a $0 trial signup and Enterprise, and no
+ceiling below "10/hour forever" on spend. WPH profile narrative enrichment
+(`generate-profile?enrich=true`) is a single bounded Sonnet call and had no
+limit at all. Access to both stays open on every tier per the policy above;
+only the number of Claude calls a plan can trigger per month is capped,
+the same pattern ai_reports_per_month already uses for PIR.
 """
 
 from __future__ import annotations
@@ -48,6 +61,8 @@ PLAN_FEATURES: dict[str, dict[str, bool | int]] = {
         "ai_reports_per_month": 10,
         "bulk_scan_jobs_per_month": 2,
         "seats": 3,
+        "opportunity_full_analyses_per_month": 5,
+        "wph_narrative_enrichments_per_month": 15,
         "api_access": False,
         "award_simulator": False,
         "competitive_intel": False,
@@ -61,6 +76,8 @@ PLAN_FEATURES: dict[str, dict[str, bool | int]] = {
         "ai_reports_per_month": 100,
         "bulk_scan_jobs_per_month": 20,
         "seats": 10,
+        "opportunity_full_analyses_per_month": 25,
+        "wph_narrative_enrichments_per_month": 100,
         "api_access": False,
         "award_simulator": False,
         "competitive_intel": False,
@@ -74,6 +91,8 @@ PLAN_FEATURES: dict[str, dict[str, bool | int]] = {
         "ai_reports_per_month": 500,
         "bulk_scan_jobs_per_month": 100,
         "seats": 25,
+        "opportunity_full_analyses_per_month": 100,
+        "wph_narrative_enrichments_per_month": 500,
         "api_access": False,
         "award_simulator": True,
         "competitive_intel": True,
@@ -87,6 +106,8 @@ PLAN_FEATURES: dict[str, dict[str, bool | int]] = {
         "ai_reports_per_month": -1,
         "bulk_scan_jobs_per_month": -1,
         "seats": -1,
+        "opportunity_full_analyses_per_month": -1,
+        "wph_narrative_enrichments_per_month": -1,
         "api_access": True,
         "award_simulator": True,
         "competitive_intel": True,
