@@ -4,8 +4,14 @@ import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowLeft, Target, FileText, Users, Clock } from "lucide-react";
+import { useEffect, useState } from "react";
 import { adminApi } from "@/lib/admin-api";
 import { canOperate } from "@/lib/admin-auth";
+
+// Mirrors admin.py's VALID_TENANT_PLANS — the four real Stripe-billed
+// tiers. "trial" is deliberately excluded, same reasoning as the backend:
+// it's what /auth/register assigns automatically, not a landlord action.
+const ASSIGNABLE_PLANS = ["starter", "professional", "growth", "enterprise"] as const;
 
 interface TenantDetail {
   tenant: {
@@ -54,6 +60,11 @@ export default function TenantDetailPage() {
     queryFn: () => adminApi.getTenant(id) as Promise<TenantDetail>,
   });
 
+  const [selectedPlan, setSelectedPlan] = useState<string>("");
+  useEffect(() => {
+    if (data?.tenant.plan) setSelectedPlan(data.tenant.plan);
+  }, [data?.tenant.plan]);
+
   const { data: auditData } = useQuery({
     queryKey: ["admin-tenant-audit", id],
     queryFn: () => adminApi.getTenantAuditLog(id, { page: 1, page_size: 20 }),
@@ -77,6 +88,16 @@ export default function TenantDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-tenant-audit", id] });
     },
     onError: () => toast.error("Failed to activate tenant"),
+  });
+
+  const updatePlan = useMutation({
+    mutationFn: (plan: string) => adminApi.updateTenantPlan(id, plan),
+    onSuccess: (result) => {
+      toast.success(`Plan changed to ${result.plan}`);
+      queryClient.invalidateQueries({ queryKey: ["admin-tenant", id] });
+      queryClient.invalidateQueries({ queryKey: ["admin-tenant-audit", id] });
+    },
+    onError: () => toast.error("Failed to change plan"),
   });
 
   const grantCouncil = useMutation({
@@ -135,6 +156,28 @@ export default function TenantDetailPage() {
             <span className="px-2.5 py-1 rounded-full bg-indigo-500/15 text-indigo-500 text-xs">
               council member
             </span>
+          )}
+          {operator && (
+            <div className="flex items-center gap-1.5">
+              <select
+                value={selectedPlan}
+                onChange={(e) => setSelectedPlan(e.target.value)}
+                className="text-sm rounded-md border border-border bg-background px-2 py-1.5"
+              >
+                {ASSIGNABLE_PLANS.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => updatePlan.mutate(selectedPlan)}
+                disabled={updatePlan.isPending || selectedPlan === data.tenant.plan}
+                className="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50"
+              >
+                Change Plan
+              </button>
+            </div>
           )}
           {operator &&
             (data.tenant.is_active ? (

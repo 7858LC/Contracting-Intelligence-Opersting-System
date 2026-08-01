@@ -112,6 +112,36 @@ export function latestPasswordResetToken(email: string): string {
   return out.toString().trim();
 }
 
+// Platform admins have no self-service signup (CLAUDE.md), so a real one is
+// provisioned straight against Postgres, same class of workaround as
+// upgradeTenantPlan above — except a password hash can't be faked with a
+// plain UPDATE, so this shells out to the API's own hash_password() via the
+// python3 that CI's e2e-test job installs `cios` into (see ci.yml's
+// "Install API dependencies" step) so the hash is one the real login
+// endpoint (bcrypt via passlib) will actually accept.
+export function createPlatformAdmin(role: "admin" | "support" = "admin"): {
+  email: string;
+  password: string;
+} {
+  const suffix = Math.random().toString(36).slice(2, 10);
+  const email = `e2e-admin-${suffix}@cios.ai`;
+  const password = "E2eAdminTestPassword!23";
+  const hash = execFileSync("python3", [
+    "-c",
+    "import sys; from cios.core.security import hash_password; print(hash_password(sys.argv[1]))",
+    password,
+  ])
+    .toString()
+    .trim();
+  execFileSync("psql", [
+    DATABASE_URL,
+    "-c",
+    `INSERT INTO platform_admins (id, email, password_hash, full_name, role, is_active, created_at, updated_at) ` +
+      `VALUES (gen_random_uuid(), '${email}', '${hash}', 'E2E Admin', '${role}', true, now(), now())`,
+  ]);
+  return { email, password };
+}
+
 export async function registerRawTenant(): Promise<{ email: string; password: string; tenantId: string }> {
   const suffix = Math.random().toString(36).slice(2, 10);
   const email = `e2e-reset-${suffix}@example.com`;

@@ -73,6 +73,11 @@ class CIOSAdminApiClient {
     return data;
   }
 
+  async updateTenantPlan(id: string, plan: string) {
+    const { data } = await this.client.post(`/tenants/${id}/plan`, { plan });
+    return data;
+  }
+
   async grantCouncilMembership(id: string) {
     const { data } = await this.client.post(`/tenants/${id}/council/grant`);
     return data;

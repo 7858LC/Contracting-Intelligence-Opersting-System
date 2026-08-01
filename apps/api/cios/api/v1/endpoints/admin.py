@@ -24,6 +24,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cios.core.dependencies import DB, Pages, PlatformAuth, PlatformOperatorAuth
+from cios.core.features import PLAN_FEATURES
 from cios.core.rate_limit import rate_limiter
 from cios.core.security import create_access_token, create_refresh_token, verify_password
 from cios.models.opportunity import Opportunity
@@ -34,6 +35,11 @@ from cios.models.winning_profile import WPHSolicitation
 
 router = APIRouter()
 log = structlog.get_logger(__name__)
+
+# The four real Stripe-billed tiers (matches subscriptions.py's checkout
+# price_map). "trial" is deliberately excluded — it's what /auth/register
+# assigns automatically, not a tier an admin should be setting by hand.
+VALID_TENANT_PLANS = tuple(PLAN_FEATURES)
 
 _admin_login_rate_limit = Depends(rate_limiter("admin_login", max_requests=10, window_seconds=300))
 
@@ -127,7 +133,11 @@ async def _get_tenant(db: AsyncSession, tenant_id: uuid.UUID) -> Tenant:
 
 
 async def _write_audit(
-    db: AsyncSession, tenant_id: uuid.UUID, admin: PlatformOperatorAuth, action: str
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    admin: PlatformOperatorAuth,
+    action: str,
+    changes: dict | None = None,
 ) -> None:
     db.add(
         AuditLog(
@@ -136,6 +146,7 @@ async def _write_audit(
             action=action,
             resource_type="tenant",
             resource_id=str(tenant_id),
+            changes=changes,
             extra_metadata={
                 "actor": "platform_admin",
                 "platform_admin_id": str(admin.admin_id),
@@ -306,6 +317,48 @@ async def activate_tenant(tenant_id: uuid.UUID, db: DB, admin: PlatformOperatorA
     return {"id": str(tenant.id), "is_active": True}
 
 
+class UpdateTenantPlanRequest(BaseModel):
+    plan: str
+
+
+class TenantPlanResponse(BaseModel):
+    id: str
+    plan: str
+
+
+@router.post("/tenants/{tenant_id}/plan", response_model=TenantPlanResponse)
+async def update_tenant_plan(
+    tenant_id: uuid.UUID,
+    body: UpdateTenantPlanRequest,
+    db: DB,
+    admin: PlatformOperatorAuth,
+) -> TenantPlanResponse:
+    """Landlord override for a tenant's plan — for support comps, manual
+    upgrades, or fixing a Stripe upgrade that didn't land (see
+    tasks/billing.py). Bypasses Stripe entirely; does not touch the
+    Subscription row, only the Tenant.plan that actually gates features."""
+    if body.plan not in VALID_TENANT_PLANS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown plan '{body.plan}' — must be one of {', '.join(VALID_TENANT_PLANS)}",
+        )
+    tenant = await _get_tenant(db, tenant_id)
+    if tenant.plan == body.plan:
+        return TenantPlanResponse(id=str(tenant.id), plan=tenant.plan)
+
+    old_plan = tenant.plan
+    tenant.plan = body.plan
+    await _write_audit(
+        db,
+        tenant_id,
+        admin,
+        "tenant.plan_changed",
+        changes={"old_plan": old_plan, "new_plan": body.plan},
+    )
+    await db.commit()
+    return TenantPlanResponse(id=str(tenant.id), plan=tenant.plan)
+
+
 @router.post("/tenants/{tenant_id}/council/grant", response_model=dict)
 async def grant_council_membership(
     tenant_id: uuid.UUID, db: DB, admin: PlatformOperatorAuth
@@ -349,6 +402,7 @@ async def tenant_audit_log(tenant_id: uuid.UUID, db: DB, admin: PlatformAuth, pa
                 "action": a.action,
                 "resource_type": a.resource_type,
                 "resource_id": a.resource_id,
+                "changes": a.changes,
                 "extra_metadata": a.extra_metadata,
                 "created_at": a.created_at.isoformat() if a.created_at else None,
             }
