@@ -22,6 +22,7 @@ from .teaming import TeamingPartner, TeamingRecommendation  # noqa: F401
 from .tenant import (  # noqa: F401
     ApiKey,
     AuditLog,
+    PasswordResetToken,
     PlatformAdmin,
     Tenant,
     TenantInvite,

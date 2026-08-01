@@ -79,6 +79,16 @@ class CIOSApiClient {
     return data;
   }
 
+  async forgotPassword(email: string) {
+    const { data } = await this.client.post("/auth/forgot-password", { email });
+    return data;
+  }
+
+  async resetPassword(payload: { token: string; new_password: string }) {
+    const { data } = await this.client.post("/auth/reset-password", payload);
+    return data;
+  }
+
   async inviteMember(payload: { email: string; role?: string }) {
     const { data } = await this.client.post("/tenants/members/invite", payload);
     return data;

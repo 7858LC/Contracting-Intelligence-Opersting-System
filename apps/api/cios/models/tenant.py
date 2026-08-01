@@ -80,6 +80,24 @@ class TenantInvite(Base, UUIDMixin, TimestampMixin):
     invited_by: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
 
 
+class PasswordResetToken(Base, UUIDMixin, TimestampMixin):
+    """Not RLS-scoped, same as TenantInvite above — looked up by token alone
+    from an unauthenticated request (POST /auth/reset-password), before any
+    tenant context exists to set app.current_tenant against."""
+
+    __tablename__ = "password_reset_tokens"
+
+    tenant_member_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("tenant_members.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    token: Mapped[str] = mapped_column(String(256), unique=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class ApiKey(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "api_keys"
 
