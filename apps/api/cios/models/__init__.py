@@ -3,7 +3,7 @@
 from .agent_run import AgentRun, AgentRunStep  # noqa: F401
 from .award_simulation import AwardSimulation, AwardSimulationSection  # noqa: F401
 from .bid_decision import BidDecision, BidDecisionFactor  # noqa: F401
-from .capability import Capability, CapabilityGap  # noqa: F401
+from .capability import Capability, CapabilityGap, CapabilityGapAnalysisRun  # noqa: F401
 from .competitor import Competitor, CompetitorIntelligence  # noqa: F401
 from .knowledge_vault import KnowledgeChunk, KnowledgeDocument  # noqa: F401
 from .opportunity import Opportunity, OpportunityNote, OpportunityWatch  # noqa: F401

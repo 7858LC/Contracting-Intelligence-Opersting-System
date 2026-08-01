@@ -91,6 +91,27 @@ export async function createCompetitor(
   return res.json();
 }
 
+export async function createCapability(
+  session: TenantSession,
+  overrides: { name?: string } = {}
+): Promise<{ id: string; name: string }> {
+  const res = await fetch(`${session.apiUrl}/capabilities`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.accessToken}`,
+    },
+    body: JSON.stringify({
+      name: overrides.name ?? `E2E Smoke Capability ${Date.now()}`,
+      category: "technical",
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`Capability creation failed: ${res.status} ${await res.text()}`);
+  }
+  return res.json();
+}
+
 export const test = base.extend<{ tenant: TenantSession }>({
   tenant: async ({ page }, use) => {
     const session = await registerTenant();

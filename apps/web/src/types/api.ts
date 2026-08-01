@@ -35,3 +35,8 @@ export type Competitor = Schemas["CompetitorResponse"];
 export type CompetitorIntel = Schemas["CompetitorIntelResponse"];
 export type LandscapeContender = Schemas["LandscapeContenderItem"];
 export type CompetitiveLandscapeAnalysis = Schemas["CompetitiveLandscapeAnalysisResponse"];
+
+// Capabilities & Gap Analysis
+export type Capability = Schemas["CapabilityResponse"];
+export type CapabilityGap = Schemas["CapabilityGapResponse"];
+export type CapabilityGapAnalysisRun = Schemas["CapabilityGapAnalysisRunResponse"];

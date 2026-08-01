@@ -1,26 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { Brain, Plus, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, TrendingUp } from "lucide-react";
-
-interface Capability {
-  id: string;
-  name: string;
-  description: string | null;
-  category: string;
-  proficiency_level: number;
-  is_certified: boolean;
-  certifications: string[];
-  gap_score: number | null;
-  gap_analysis: Record<string, unknown> | null;
-  improvement_plan: string | null;
-  naics_codes: string[];
-  created_at: string;
-}
+import type { Capability, CapabilityGap, CapabilityGapAnalysisRun, Opportunity } from "@/types/api";
+import {
+  Brain, Plus, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, TrendingUp,
+  Target, Loader2, XCircle, Clock, DollarSign, Users2,
+} from "lucide-react";
 
 const CATEGORIES = [
   "technical", "management", "past_performance", "financial",
@@ -29,12 +18,13 @@ const CATEGORIES = [
 
 const PROFICIENCY_LABELS = ["", "Beginner", "Basic", "Intermediate", "Advanced", "Expert"];
 
-function ProficiencyBar({ level }: { level: number }) {
+function ProficiencyBar({ level }: { level: number | null }) {
   const colors = ["", "bg-red-400", "bg-orange-400", "bg-amber-400", "bg-blue-400", "bg-emerald-400"];
+  const lvl = level ?? 0;
   return (
     <div className="flex gap-0.5">
       {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className={cn("h-2 w-5 rounded-sm", i < level ? colors[level] : "bg-secondary")} />
+        <div key={i} className={cn("h-2 w-5 rounded-sm", i < lvl ? colors[lvl] : "bg-secondary")} />
       ))}
     </div>
   );
@@ -77,6 +67,8 @@ export function CapabilityView() {
           Add Capability
         </button>
       </div>
+
+      <OpportunityGapAnalysisSection />
 
       {/* Summary cards */}
       {withGaps.length > 0 && (
@@ -143,7 +135,7 @@ export function CapabilityView() {
                   <div className="flex items-center gap-4 mr-2">
                     <div className="text-right">
                       <ProficiencyBar level={cap.proficiency_level} />
-                      <p className="text-xs text-muted-foreground mt-0.5">{PROFICIENCY_LABELS[cap.proficiency_level]}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{PROFICIENCY_LABELS[cap.proficiency_level ?? 0]}</p>
                     </div>
                     {cap.gap_score != null && (
                       <div className="text-right">
@@ -168,7 +160,7 @@ export function CapabilityView() {
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Certifications</p>
                       <div className="flex flex-wrap gap-1.5">
-                        {cap.certifications.map((cert) => (
+                        {(cap.certifications as string[]).map((cert) => (
                           <span key={cert} className="text-xs bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full">
                             {cert}
                           </span>
@@ -299,6 +291,228 @@ function AddCapabilityModal({ onClose, onCreated }: { onClose: () => void; onCre
           </div>
         </form>
       </div>
+    </div>
+  );
+}
+
+// A gap analysis run is a background Celery task (see run_capability_gap_analysis
+// in cios/tasks/gap_analysis.py) — same "pending until the poll shows a terminal
+// status" pattern as opportunity-view.tsx's "Run AI Analysis" and the Competitive
+// Intelligence landscape analysis.
+const ANALYSIS_TIMEOUT_SECONDS = 300;
+
+function formatElapsed(startMs: number, nowMs: number): string {
+  const elapsedSec = Math.max(0, Math.floor((nowMs - startMs) / 1000));
+  const minutes = Math.floor(elapsedSec / 60);
+  const seconds = elapsedSec % 60;
+  return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+}
+
+const SEVERITY_STYLES: Record<string, string> = {
+  critical: "border-red-500/40 bg-red-500/5",
+  major: "border-orange-500/40 bg-orange-500/5",
+  moderate: "border-amber-500/40 bg-amber-500/5",
+  minor: "border-border bg-card",
+};
+
+const SEVERITY_BADGE: Record<string, string> = {
+  critical: "bg-red-500/20 text-red-400",
+  major: "bg-orange-500/20 text-orange-400",
+  moderate: "bg-amber-500/20 text-amber-400",
+  minor: "bg-secondary text-muted-foreground",
+};
+
+function OpportunityGapAnalysisSection() {
+  const queryClient = useQueryClient();
+  const [opportunityId, setOpportunityId] = useState("");
+  const [pendingSince, setPendingSince] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (pendingSince == null) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [pendingSince]);
+
+  const { data: opportunities = [] } = useQuery({
+    queryKey: ["opportunities-for-gap-analysis"],
+    queryFn: async () => (await api.getOpportunities({ page_size: 100 }))?.items ?? [],
+  });
+  const opps = opportunities as Opportunity[];
+
+  const { data: run, isLoading: runLoading } = useQuery({
+    queryKey: ["capability-gap-analysis-run", opportunityId],
+    queryFn: async () => {
+      try {
+        return (await api.getLatestCapabilityGapAnalysisRun(opportunityId)) as CapabilityGapAnalysisRun;
+      } catch {
+        return null;
+      }
+    },
+    enabled: !!opportunityId,
+    refetchInterval: (query) => (query.state.data?.status === "pending" ? 5_000 : false),
+  });
+
+  const { data: gaps = [] } = useQuery({
+    queryKey: ["capability-gaps-for-opportunity", opportunityId, run?.id],
+    queryFn: () => api.getCapabilityGaps({ opportunity_id: opportunityId }),
+    enabled: !!opportunityId && run?.status === "completed",
+  });
+  const opportunityGaps = gaps as CapabilityGap[];
+
+  // Clear the pending marker (and toast) once a poll shows a terminal status,
+  // or once it's been in flight longer than makes sense to keep waiting.
+  useEffect(() => {
+    if (pendingSince == null) return;
+    if (run?.status === "completed") {
+      setPendingSince(null);
+      toast.success("Capability gap analysis complete");
+      queryClient.invalidateQueries({ queryKey: ["capability-gaps-for-opportunity"] });
+    } else if (run?.status === "failed") {
+      setPendingSince(null);
+      toast.error(run.error_message || "Capability gap analysis failed");
+    } else if (Date.now() - pendingSince > ANALYSIS_TIMEOUT_SECONDS * 1000) {
+      setPendingSince(null);
+      toast.error("Analysis is taking longer than expected — it may have failed. Try again.");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [run?.status, pendingSince]);
+
+  const analyzeMutation = useMutation({
+    mutationFn: () => api.analyzeCapabilityGaps(opportunityId),
+    onSuccess: (data) => {
+      setPendingSince(Date.now());
+      queryClient.setQueryData(["capability-gap-analysis-run", opportunityId], data);
+      toast.success("Capability gap analysis queued");
+    },
+    onError: () => toast.error("Failed to start analysis — please try again"),
+  });
+
+  const isPending = pendingSince != null || run?.status === "pending";
+
+  return (
+    <div className="bg-card border border-border rounded-lg p-4 space-y-4">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Target className="w-4 h-4 text-primary" />
+          <h2 className="font-semibold text-sm">Opportunity Gap Analysis</h2>
+        </div>
+        <div className="flex items-center gap-2">
+          <select
+            value={opportunityId}
+            onChange={(e) => setOpportunityId(e.target.value)}
+            className="px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 min-w-[220px]"
+          >
+            <option value="">Select an opportunity…</option>
+            {opps.map((o) => (
+              <option key={o.id} value={o.id}>{o.title}</option>
+            ))}
+          </select>
+          <button
+            onClick={() => analyzeMutation.mutate()}
+            disabled={!opportunityId || isPending}
+            className="flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
+            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Target className="w-4 h-4" />}
+            {isPending ? "Analyzing…" : "Analyze Gaps"}
+          </button>
+        </div>
+      </div>
+
+      {!opportunityId && (
+        <p className="text-xs text-muted-foreground">
+          Pick an opportunity to see what stands between your org and its Winning Profile —
+          each gap comes with a closure recommendation, timeline, and cost band.
+        </p>
+      )}
+
+      {opportunityId && isPending && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          Analyzing capability gaps{pendingSince != null ? ` — ${formatElapsed(pendingSince, now)} elapsed` : ""}
+        </div>
+      )}
+
+      {opportunityId && !isPending && !runLoading && run?.status === "failed" && (
+        <div className="flex items-start gap-2 text-xs text-red-400 bg-red-500/5 border border-red-500/30 rounded-md p-3">
+          <XCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium">Analysis failed</p>
+            <p className="mt-0.5 text-red-400/80">{run.error_message}</p>
+          </div>
+        </div>
+      )}
+
+      {opportunityId && !isPending && !runLoading && !run && (
+        <p className="text-xs text-muted-foreground">No analysis run yet for this opportunity.</p>
+      )}
+
+      {opportunityId && !isPending && run?.status === "completed" && (
+        <div className="space-y-2">
+          <div className="text-xs text-muted-foreground">
+            {run.gap_count ?? 0} gap{run.gap_count === 1 ? "" : "s"} identified
+          </div>
+          {opportunityGaps
+            .slice()
+            .sort((a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity))
+            .map((gap) => (
+              <GapCard key={gap.id} gap={gap} />
+            ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const SEVERITY_ORDER = ["critical", "major", "moderate", "minor"];
+
+function GapCard({ gap }: { gap: CapabilityGap }) {
+  const remediation = (gap.remediation_options?.[0] ?? null) as {
+    recommendation?: string;
+    action_type?: string;
+    effort?: string;
+    feasibility?: string;
+    cost_band?: string;
+  } | null;
+
+  return (
+    <div className={cn("border rounded-lg p-3", SEVERITY_STYLES[gap.severity] ?? SEVERITY_STYLES.minor)}>
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className={cn("text-xs px-1.5 py-0.5 rounded font-medium", SEVERITY_BADGE[gap.severity] ?? SEVERITY_BADGE.minor)}>
+          {gap.severity}
+        </span>
+        <p className="text-sm font-medium">{gap.gap_name}</p>
+        <span className="text-xs bg-secondary text-muted-foreground px-1.5 py-0.5 rounded">
+          {gap.category.replace("_", " ")}
+        </span>
+      </div>
+
+      {gap.description && (
+        <p className="text-xs text-muted-foreground mt-1.5">{gap.description}</p>
+      )}
+
+      <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
+        {gap.estimated_time_to_close_days != null && (
+          <span className="flex items-center gap-1"><Clock className="w-3 h-3" />
+            ~{Math.round(gap.estimated_time_to_close_days / 30)} mo to close
+          </span>
+        )}
+        {gap.estimated_cost_to_close != null && (
+          <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" />
+            {remediation?.cost_band ?? ""} (~${Math.round(gap.estimated_cost_to_close).toLocaleString()})
+          </span>
+        )}
+        {gap.teaming_recommendation && (
+          <span className="flex items-center gap-1 text-blue-400"><Users2 className="w-3 h-3" />Teaming opportunity</span>
+        )}
+      </div>
+
+      {remediation?.recommendation && (
+        <div className="bg-background/50 rounded-md p-2.5 mt-2">
+          <p className="text-xs font-medium text-muted-foreground mb-1">Recommended Closure</p>
+          <p className="text-xs">{remediation.recommendation}</p>
+        </div>
+      )}
     </div>
   );
 }

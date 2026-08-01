@@ -215,9 +215,24 @@ class CIOSApiClient {
     return data;
   }
 
-  async getCapabilityGaps() {
-    const { data } = await this.client.get("/capabilities/gaps");
+  async getCapabilityGaps(params?: Record<string, unknown>) {
+    const { data } = await this.client.get("/capabilities/gaps", { params });
     return data.gaps ?? data;
+  }
+
+  async analyzeCapabilityGaps(opportunityId: string) {
+    const { data } = await this.client.post("/capabilities/analyze-gaps", { opportunity_id: opportunityId });
+    return data;
+  }
+
+  async getCapabilityGapAnalysisRun(runId: string) {
+    const { data } = await this.client.get(`/capabilities/gaps/analyze/${runId}`);
+    return data;
+  }
+
+  async getLatestCapabilityGapAnalysisRun(opportunityId: string) {
+    const { data } = await this.client.get(`/capabilities/gaps/analyze/by-opportunity/${opportunityId}`);
+    return data;
   }
 
   // ── Past Performance (Module 6) ──────────────────────────────────────────

@@ -279,8 +279,8 @@ async def test_capabilities_module_smoke(client: AsyncClient):
         headers=headers,
         json={"opportunity_id": opp_id},
     )
-    assert analyze.status_code == 200, analyze.text
-    assert analyze.json()["status"] == "queued"
+    assert analyze.status_code == 201, analyze.text
+    assert analyze.json()["status"] == "pending"
 
     deleted = await client.delete(f"/api/v1/capabilities/{cap_id}", headers=headers)
     assert deleted.status_code == 200, deleted.text

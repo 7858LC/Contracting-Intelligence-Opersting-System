@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from cios.core.dependencies import DB, Auth
-from cios.models.capability import Capability, CapabilityGap
+from cios.models.capability import Capability, CapabilityGap, CapabilityGapAnalysisRun
 
 router = APIRouter()
 
@@ -60,16 +60,12 @@ class DeletedResponse(BaseModel):
 
 
 class GapAnalysisRequest(BaseModel):
-    opportunity_id: str
-
-
-class GapAnalysisQueuedResponse(BaseModel):
-    task_id: str
-    status: str
+    opportunity_id: uuid.UUID
 
 
 class CapabilityGapResponse(BaseModel):
     id: uuid.UUID
+    analysis_run_id: uuid.UUID | None
     opportunity_id: str | None
     gap_name: str
     category: str
@@ -91,6 +87,20 @@ class CapabilityGapResponse(BaseModel):
 
 class CapabilityGapListResponse(BaseModel):
     gaps: list[CapabilityGapResponse]
+
+
+class CapabilityGapAnalysisRunResponse(BaseModel):
+    id: uuid.UUID
+    opportunity_id: uuid.UUID
+    solicitation_id: uuid.UUID | None
+    status: str
+    error_message: str | None
+    gap_count: int | None
+    generated_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 @router.get("", response_model=CapabilityListResponse)
@@ -130,21 +140,80 @@ async def delete_capability(capability_id: str, db: DB, user: Auth) -> dict:
     return {"deleted": True}
 
 
-@router.post("/analyze-gaps", response_model=GapAnalysisQueuedResponse)
-async def analyze_capability_gaps(body: GapAnalysisRequest, db: DB, user: Auth) -> dict:
+@router.post(
+    "/analyze-gaps",
+    response_model=CapabilityGapAnalysisRunResponse,
+    status_code=201,
+)
+async def analyze_capability_gaps(
+    body: GapAnalysisRequest, db: DB, user: Auth
+) -> CapabilityGapAnalysisRun:
+    """Derive capability gaps for an opportunity from the tenant's own
+    Winning Profile alignment score. Requires Winning Profile analysis and
+    self-contractor alignment to have already run for this opportunity;
+    the task reports why via status="failed" + error_message if not,
+    rather than completing with nothing."""
+    run = CapabilityGapAnalysisRun(
+        tenant_id=user.tenant_id,
+        opportunity_id=body.opportunity_id,
+        status="pending",
+    )
+    db.add(run)
+    await db.commit()
+    await db.refresh(run)
+
     from cios.tasks.gap_analysis import run_capability_gap_analysis
 
-    task = run_capability_gap_analysis.delay(
-        str(user.tenant_id), str(user.user_id), body.opportunity_id
+    run_capability_gap_analysis.delay(
+        str(user.tenant_id), str(user.user_id), str(body.opportunity_id), str(run.id)
     )
-    return {"task_id": task.id, "status": "queued"}
+    return run
+
+
+@router.get("/gaps/analyze/{run_id}", response_model=CapabilityGapAnalysisRunResponse)
+async def get_capability_gap_analysis_run(
+    run_id: uuid.UUID, db: DB, user: Auth
+) -> CapabilityGapAnalysisRun:
+    result = await db.execute(
+        select(CapabilityGapAnalysisRun).where(
+            CapabilityGapAnalysisRun.id == run_id,
+            CapabilityGapAnalysisRun.tenant_id == user.tenant_id,
+        )
+    )
+    run = result.scalar_one_or_none()
+    if not run:
+        raise HTTPException(status_code=404, detail="Analysis run not found")
+    return run
+
+
+@router.get(
+    "/gaps/analyze/by-opportunity/{opportunity_id}",
+    response_model=CapabilityGapAnalysisRunResponse,
+)
+async def get_latest_capability_gap_analysis_run(
+    opportunity_id: uuid.UUID, db: DB, user: Auth
+) -> CapabilityGapAnalysisRun:
+    """Most recent analysis run for an opportunity — the polling target
+    after POST /analyze-gaps without needing to hold onto the returned id."""
+    result = await db.execute(
+        select(CapabilityGapAnalysisRun)
+        .where(
+            CapabilityGapAnalysisRun.opportunity_id == opportunity_id,
+            CapabilityGapAnalysisRun.tenant_id == user.tenant_id,
+        )
+        .order_by(CapabilityGapAnalysisRun.created_at.desc())
+    )
+    run = result.scalars().first()
+    if not run:
+        raise HTTPException(status_code=404, detail="No analysis run found for this opportunity")
+    return run
 
 
 @router.get("/gaps", response_model=CapabilityGapListResponse)
-async def list_gaps(db: DB, user: Auth) -> dict:
-    result = await db.execute(
-        select(CapabilityGap)
-        .where(CapabilityGap.tenant_id == user.tenant_id)
-        .order_by(CapabilityGap.severity, CapabilityGap.created_at.desc())
-    )
+async def list_gaps(db: DB, user: Auth, opportunity_id: str | None = None) -> dict:
+    q = select(CapabilityGap).where(CapabilityGap.tenant_id == user.tenant_id)
+    if opportunity_id:
+        q = q.where(CapabilityGap.opportunity_id == opportunity_id)
+    q = q.order_by(CapabilityGap.severity, CapabilityGap.created_at.desc())
+    result = await db.execute(q)
     return {"gaps": result.scalars().all()}
