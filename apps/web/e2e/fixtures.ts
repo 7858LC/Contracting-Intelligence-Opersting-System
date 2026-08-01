@@ -115,10 +115,14 @@ export function latestPasswordResetToken(email: string): string {
 // Platform admins have no self-service signup (CLAUDE.md), so a real one is
 // provisioned straight against Postgres, same class of workaround as
 // upgradeTenantPlan above — except a password hash can't be faked with a
-// plain UPDATE, so this shells out to the API's own hash_password() via the
-// python3 that CI's e2e-test job installs `cios` into (see ci.yml's
-// "Install API dependencies" step) so the hash is one the real login
-// endpoint (bcrypt via passlib) will actually accept.
+// plain UPDATE, so this shells out to passlib directly for the same bcrypt
+// hash cios.core.security.hash_password() produces. Deliberately not
+// `from cios.core.security import hash_password` — that module imports
+// cios.config at module load time, which validates DATABASE_URL/JWT_SECRET/
+// etc. as required settings even though hash_password itself never touches
+// them; this test step runs with none of those set (they're scoped to
+// ci.yml's earlier "Start API server" step, not this one), so that import
+// would fail here for reasons unrelated to what's actually being computed.
 export function createPlatformAdmin(role: "admin" | "support" = "admin"): {
   email: string;
   password: string;
@@ -128,7 +132,8 @@ export function createPlatformAdmin(role: "admin" | "support" = "admin"): {
   const password = "E2eAdminTestPassword!23";
   const hash = execFileSync("python3", [
     "-c",
-    "import sys; from cios.core.security import hash_password; print(hash_password(sys.argv[1]))",
+    "import sys; from passlib.context import CryptContext; " +
+      "print(CryptContext(schemes=['bcrypt']).hash(sys.argv[1]))",
     password,
   ])
     .toString()
