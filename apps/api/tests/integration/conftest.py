@@ -55,15 +55,17 @@ async def client():
         yield c
 
 
-async def upgrade_tenant_plan(tenant_id: str, plan: str = "professional") -> None:
+async def upgrade_tenant_plan(tenant_id: str, plan: str = "growth") -> None:
     """Test helper for exercising plan-gated routes (require_feature() in
     core/dependencies.py / api/v1/router.py) — /auth/register always issues
     plan="trial", which core/features.py treats as starter-equivalent (no
-    Competitive Intel / Capabilities / Teaming access). Bump Tenant.plan
-    directly rather than driving a real Stripe checkout for a test. The
-    caller still needs to log in again afterward — the plan is baked into
-    the JWT at issue time (see auth.py), so an already-issued token keeps
-    carrying the old plan until a fresh one is requested."""
+    Competitive Intel / Capabilities / Teaming / Award Simulator access,
+    which all require "growth" specifically per the pricing page — see
+    core/features.py's PLAN_FEATURES). Bump Tenant.plan directly rather
+    than driving a real Stripe checkout for a test. The caller still needs
+    to log in again afterward — the plan is baked into the JWT at issue
+    time (see auth.py), so an already-issued token keeps carrying the old
+    plan until a fresh one is requested."""
     import uuid
 
     from cios.core.database import async_session_factory

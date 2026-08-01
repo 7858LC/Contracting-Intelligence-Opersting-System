@@ -72,6 +72,53 @@ def send_invite_email(self, tenant_id: str, email: str, token: str) -> dict:
     return {"status": "sent", "email": email}
 
 
+@celery_app.task(bind=True, max_retries=3, default_retry_delay=30)
+def send_onboarding_welcome_email(self, tenant_id: str, email: str, summary: dict) -> dict:
+    """Real replacement for the onboarding-complete task's previous no-op
+    (tasks/onboarding.py's run_initial_analysis used to return a hardcoded
+    status string and do nothing) — confirms to a brand-new tenant that
+    what they entered during onboarding actually got saved, since there's
+    no meaningful AI analysis to run yet at account-creation time (no
+    opportunity assigned, no evidence documents uploaded)."""
+    import asyncio
+
+    from cios.config import settings
+
+    log.info("send_onboarding_welcome", email=email, tenant_id=tenant_id)
+    if not settings.sendgrid_api_key:
+        log.warning("sendgrid_not_configured")
+        return {"status": "skipped", "email": email}
+
+    items = "".join(
+        f"<li>{count} {label}</li>"
+        for label, count in [
+            ("capabilities", summary.get("capabilities", 0)),
+            ("past performance records", summary.get("past_performance", 0)),
+            ("tracked competitors", summary.get("competitors", 0)),
+            ("teaming partners", summary.get("teaming_partners", 0)),
+        ]
+        if count
+    )
+    dashboard_url = f"{settings.app_url}/dashboard"
+    try:
+        asyncio.run(
+            _send_via_sendgrid(
+                to_email=email,
+                subject="Your CIOS workspace is set up",
+                html_content=(
+                    "<p>Your onboarding data has been saved:</p>"
+                    f"<ul>{items}</ul>"
+                    f'<p><a href="{dashboard_url}">Open your dashboard</a></p>'
+                ),
+            )
+        )
+    except Exception as exc:
+        log.error("send_onboarding_welcome_failed", email=email, error=str(exc))
+        raise self.retry(exc=exc)
+
+    return {"status": "sent", "email": email}
+
+
 @celery_app.task(bind=True, max_retries=3)
 def send_simulation_complete_email(self, tenant_id: str, email: str, simulation_id: str) -> dict:
     log.info("send_simulation_complete", email=email, simulation_id=simulation_id)

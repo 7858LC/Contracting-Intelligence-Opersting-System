@@ -33,7 +33,7 @@ _GAP_ANALYSIS_PASSWORD = "GapAnalysisTest123!"
 
 
 async def _register(client: AsyncClient) -> tuple[dict, str]:
-    """Capabilities & Gap Analysis is gated Professional+ via
+    """Capabilities & Gap Analysis is gated Growth+ via
     require_feature() (api/v1/router.py) — register always issues
     plan="trial", so this bumps the tenant's plan and logs in again for a
     token that actually carries it (see conftest's upgrade_tenant_plan)."""

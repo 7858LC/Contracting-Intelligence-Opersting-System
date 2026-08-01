@@ -104,6 +104,7 @@ async def create_checkout_session(body: CreateCheckoutRequest, user: AdminAuth) 
     price_map = {
         "starter": settings.stripe_price_starter,
         "professional": settings.stripe_price_professional,
+        "growth": settings.stripe_price_growth,
         "enterprise": settings.stripe_price_enterprise,
     }
     price_id = price_map.get(body.plan)

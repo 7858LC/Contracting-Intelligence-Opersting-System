@@ -82,6 +82,7 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str = ""
     stripe_price_starter: str = ""
     stripe_price_professional: str = ""
+    stripe_price_growth: str = ""
     stripe_price_enterprise: str = ""
 
     # Email

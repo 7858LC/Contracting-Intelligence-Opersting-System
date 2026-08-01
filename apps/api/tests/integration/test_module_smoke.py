@@ -58,7 +58,7 @@ _SMOKE_PASSWORD = "SmokeTest123!"
 
 
 async def _register_professional(client: AsyncClient) -> dict:
-    """Like _register, but for modules gated Professional+ via
+    """Like _register, but for modules gated Growth+ via
     require_feature() (api/v1/router.py) — Competitive Intel, Capabilities,
     Teaming. Registering always issues plan="trial" (starter-equivalent, no
     access to those routers), so this bumps the tenant's plan and logs in
@@ -133,6 +133,32 @@ async def test_auth_register_and_login_round_trip(client: AsyncClient):
         headers=ip_header,
     )
     assert bad_login.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_register_persists_naics_codes_onto_tenant(client: AsyncClient):
+    """Regression test: the register form has always sent naics_codes, but
+    RegisterRequest didn't declare the field, so Pydantic silently dropped
+    it — every self-serve signup's primary NAICS code was thrown away
+    before ever reaching Tenant.naics_codes."""
+    suffix = uuid.uuid4().hex[:10]
+    register = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": f"naics-smoke-{suffix}@example.com",
+            "password": "NaicsSmokeTest123!",
+            "full_name": "Naics Smoke",
+            "company_name": f"Naics Smoke Co {suffix}",
+            "naics_codes": ["541512"],
+        },
+        headers={"X-Forwarded-For": _fake_client_ip()},
+    )
+    assert register.status_code == 201, register.text
+    headers = {"Authorization": f"Bearer {register.json()['access_token']}"}
+
+    profile = await client.get("/api/v1/tenants/profile", headers=headers)
+    assert profile.status_code == 200, profile.text
+    assert profile.json()["naics_codes"] == ["541512"]
 
 
 @pytest.mark.anyio
@@ -393,7 +419,7 @@ async def test_competitors_module_smoke(client: AsyncClient):
 
 @pytest.mark.anyio
 async def test_award_simulator_module_smoke(client: AsyncClient):
-    headers = await _register(client)
+    headers = await _register_professional(client)
     opp_id = await _create_opportunity(client, headers)
 
     resp = await client.post(

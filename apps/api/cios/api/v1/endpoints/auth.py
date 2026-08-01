@@ -35,6 +35,11 @@ class RegisterRequest(BaseModel):
     full_name: str = Field(..., min_length=1)
     company_name: str = Field(..., min_length=1)
     company_slug: str | None = None
+    # The register form has always collected a "Primary NAICS code" and
+    # sent it here — this field just didn't exist, so Pydantic silently
+    # dropped it (never a validation error, never persisted) instead of
+    # ever reaching Tenant.naics_codes below.
+    naics_codes: list[str] = []
 
     # Nothing normalized email case anywhere in this file (or tenants.py's
     # invite flow) — a user who registered as "Jane@Company.com" and later
@@ -104,7 +109,7 @@ async def register(body: RegisterRequest, db: DB) -> TokenResponse:
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Company slug already taken")
 
-    tenant = Tenant(name=body.company_name, slug=slug, plan="trial")
+    tenant = Tenant(name=body.company_name, slug=slug, plan="trial", naics_codes=body.naics_codes)
     db.add(tenant)
     await db.flush()
 

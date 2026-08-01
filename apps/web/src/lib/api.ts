@@ -313,6 +313,23 @@ class CIOSApiClient {
     return data;
   }
 
+  // ── Onboarding ───────────────────────────────────────────────────────────
+
+  async getOnboardingStatus() {
+    const { data } = await this.client.get("/onboarding/status");
+    return data;
+  }
+
+  async completeOnboardingStep(step: string, stepData: Record<string, unknown>) {
+    const { data } = await this.client.post(`/onboarding/steps/${step}`, { step, data: stepData });
+    return data;
+  }
+
+  async completeOnboarding() {
+    const { data } = await this.client.post("/onboarding/complete");
+    return data;
+  }
+
   // ── API Keys ─────────────────────────────────────────────────────────────
 
   async createApiKey(name: string) {

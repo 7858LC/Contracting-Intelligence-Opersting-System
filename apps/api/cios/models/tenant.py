@@ -36,6 +36,11 @@ class Tenant(Base, UUIDMixin, TimestampMixin):
     # admin.py, same audited pattern as suspend/activate.
     is_council_member: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    # Onboarding progress (api/v1/endpoints/onboarding.py) — step names from
+    # ONBOARDING_STEPS, in completion order, deduplicated.
+    onboarding_completed_steps: Mapped[list] = mapped_column(JSONB, default=list)
+    onboarding_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     members: Mapped[list["TenantMember"]] = relationship(back_populates="tenant")
     audit_logs: Mapped[list["AuditLog"]] = relationship(back_populates="tenant")
 

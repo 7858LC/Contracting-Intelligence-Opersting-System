@@ -48,7 +48,7 @@ export default function RegisterPage() {
       });
       saveTokens(data);
       toast.success("Welcome to CIOS! Your workspace is ready.");
-      router.push("/dashboard");
+      router.push("/onboarding");
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "Registration failed";
       toast.error(message);
