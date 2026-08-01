@@ -99,7 +99,10 @@ async def _run_async(tenant_id: str, opportunity_id: str, run_id: str) -> dict:
         self_contractor = (
             await db.execute(
                 select(WPHContractor)
-                .where(WPHContractor.tenant_id == uuid.UUID(tenant_id), WPHContractor.is_self.is_(True))
+                .where(
+                    WPHContractor.tenant_id == uuid.UUID(tenant_id),
+                    WPHContractor.is_self.is_(True),
+                )
                 .limit(1)
             )
         ).scalar_one_or_none()
