@@ -215,8 +215,40 @@ function TeamTab() {
   );
 }
 
+// Plan values as they actually appear in Tenant.plan / the JWT "plan" claim
+// (see core/features.py) — "trial" is starter-equivalent access, not a
+// distinct purchasable tier, so it's excluded from PLAN_INFO/upgrade offers.
+const PLAN_ORDER = ["trial", "starter", "professional", "growth", "enterprise"] as const;
+type PlanId = (typeof PLAN_ORDER)[number];
+type PaidPlanId = Exclude<PlanId, "trial">;
+
+// Names/prices/features mirror the public pricing page (app/(public)/pricing)
+// and core/features.py's PLAN_FEATURES — keep in sync with both if a tier changes.
+const PLAN_INFO: Record<PaidPlanId, { name: string; price: string; features: string[] }> = {
+  starter: {
+    name: "Radar",
+    price: "$399/mo",
+    features: ["250 tracked companies", "10 AI analysis reports/month", "3 seats"],
+  },
+  professional: {
+    name: "Professional",
+    price: "$1,299/mo",
+    features: ["Diagnostics, PDQ™, Knowledge Vault, Opportunities", "100 AI analysis reports/month", "10 seats"],
+  },
+  growth: {
+    name: "Growth",
+    price: "$2,499/mo",
+    features: ["Award Simulation™, Teaming, Competitive Intel, Capabilities & Gaps", "500 AI analysis reports/month", "25 seats"],
+  },
+  enterprise: {
+    name: "Enterprise",
+    price: "Custom",
+    features: ["Unlimited usage across every module", "API access, SSO/SAML, customer-owned keys", "Dedicated support"],
+  },
+};
+
 function SubscriptionTab() {
-  const { data: sub, isLoading } = useQuery({
+  const { data: sub } = useQuery({
     queryKey: ["subscription"],
     queryFn: () => api.getSubscription(),
   });
@@ -226,14 +258,31 @@ function SubscriptionTab() {
   });
 
   const subscription = sub as { plan?: string; status?: string; current_period_end?: string } | null;
+  const isAdmin = getUserRole() === "admin" || getUserRole() === "owner";
 
-  const PLAN_FEATURES: Record<string, string[]> = {
-    trial: ["5 opportunities", "Basic bid/no-bid", "3 AI analyses/month"],
-    professional: ["50 opportunities", "All 15 modules", "100 AI analyses/month", "Award Simulator (5/month)", "Knowledge Vault (10 docs)"],
-    enterprise: ["Unlimited everything", "Custom AI models", "Dedicated support", "SSO/SAML", "Customer-managed keys", "SLA guarantee"],
-  };
+  const checkoutMutation = useMutation({
+    mutationFn: (targetPlan: PaidPlanId) => api.createCheckout(targetPlan),
+    onSuccess: (data: { url?: string }) => {
+      if (data?.url) {
+        window.open(data.url, "_blank");
+      } else {
+        toast.error("Checkout session created but no redirect URL came back — contact support.");
+      }
+    },
+    onError: (err: unknown) => {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 503) toast.error("Billing isn't configured in this environment — contact support to upgrade.");
+      else if (status === 403) toast.error("Only a workspace admin can change the subscription plan.");
+      else toast.error("Couldn't start checkout — please try again.");
+    },
+  });
 
-  const plan = subscription?.plan || getUserPlan();
+  const plan = (subscription?.plan || getUserPlan()) as PlanId;
+  const currentPlanInfo = PLAN_INFO[(plan === "trial" ? "starter" : plan) as PaidPlanId];
+  const currentRank = PLAN_ORDER.indexOf(plan === "trial" ? "starter" : plan);
+  const upgradeOptions = PLAN_ORDER.filter(
+    (p, i): p is PaidPlanId => p !== "trial" && i > currentRank
+  );
 
   return (
     <div className="space-y-6">
@@ -243,7 +292,7 @@ function SubscriptionTab() {
             <h3 className="font-semibold">Current Plan</h3>
             <div className="flex items-center gap-2 mt-2">
               <span className="px-3 py-1 bg-primary/10 text-primary border border-primary/20 rounded-full text-sm font-bold uppercase">
-                {plan}
+                {currentPlanInfo?.name ?? plan}
               </span>
               <span className={cn("px-2 py-0.5 rounded text-xs font-medium",
                 subscription?.status === "active" ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400")}>
@@ -256,7 +305,7 @@ function SubscriptionTab() {
               </p>
             )}
           </div>
-          <button onClick={() => api.getCustomerPortal().then((r: { url?: string }) => { if (r?.url) window.open(r.url, "_blank"); })}
+          <button onClick={() => api.getCustomerPortal().then((r: { url?: string }) => { if (r?.url) window.open(r.url, "_blank"); }).catch(() => toast.error("Couldn't open billing portal — you may not have an active subscription yet."))}
             className="flex items-center gap-1.5 text-sm text-primary hover:underline">
             Manage billing
             <ExternalLink className="w-3.5 h-3.5" />
@@ -266,7 +315,7 @@ function SubscriptionTab() {
         <div className="mt-4 border-t border-border pt-4">
           <p className="text-xs text-muted-foreground mb-2">Included in your plan:</p>
           <ul className="space-y-1">
-            {(PLAN_FEATURES[plan] || PLAN_FEATURES.trial).map((f) => (
+            {(currentPlanInfo?.features ?? []).map((f) => (
               <li key={f} className="text-sm flex items-center gap-2">
                 <span className="text-emerald-400">✓</span>
                 {f}
@@ -276,17 +325,45 @@ function SubscriptionTab() {
         </div>
       </div>
 
-      {plan !== "enterprise" && (
+      {upgradeOptions.length > 0 && (
         <div className="bg-card border border-primary/30 rounded-lg p-6">
           <h3 className="font-semibold mb-1">Upgrade Your Plan</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Unlock unlimited opportunities, all AI modules, and the Award Simulator flagship feature.
+            Award Simulation™, Competitive Intelligence, Capabilities &amp; Gaps, and Teaming unlock at Growth and above.
           </p>
-          <button onClick={() => api.createCheckout("enterprise").then((r: { url?: string }) => { if (r?.url) window.open(r.url, "_blank"); })}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">
-            Upgrade to Enterprise
-            <ExternalLink className="w-3.5 h-3.5" />
-          </button>
+          {!isAdmin && (
+            <p className="text-xs text-amber-400 mb-4">
+              Only a workspace admin can change the subscription plan — ask an admin on your team to upgrade.
+            </p>
+          )}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {upgradeOptions.map((planId) => {
+              const info = PLAN_INFO[planId];
+              const pending = checkoutMutation.isPending && checkoutMutation.variables === planId;
+              return (
+                <div key={planId} className="border border-border rounded-md p-4 flex flex-col">
+                  <p className="font-semibold text-sm">{info.name}</p>
+                  <p className="text-xs text-muted-foreground mb-2">{info.price}</p>
+                  <ul className="space-y-1 mb-3 flex-1">
+                    {info.features.map((f) => (
+                      <li key={f} className="text-xs flex items-start gap-1.5">
+                        <span className="text-emerald-400 shrink-0">✓</span>
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={() => checkoutMutation.mutate(planId)}
+                    disabled={!isAdmin || pending}
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {pending ? "Starting checkout…" : `Upgrade to ${info.name}`}
+                    {!pending && <ExternalLink className="w-3 h-3" />}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
