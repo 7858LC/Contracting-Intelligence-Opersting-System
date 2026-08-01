@@ -10,7 +10,7 @@
  * testing. Each test seeds its own tenant/data via the `tenant` fixture, so
  * they don't depend on run order or shared state.
  */
-import { createOpportunity, expect, test } from "./fixtures";
+import { createCompetitor, createOpportunity, expect, test } from "./fixtures";
 
 test("Executive Dashboard renders a newly created opportunity instead of an empty state", async ({
   page,
@@ -43,4 +43,16 @@ test("Award Simulator's New Simulation form lists a newly created opportunity", 
   await expect(opportunitySelect.locator("option", { hasText: opp.title })).toHaveCount(1, {
     timeout: 10_000,
   });
+});
+
+test("Competitive Intelligence page renders a newly created competitor instead of an empty state", async ({
+  page,
+  tenant,
+}) => {
+  const competitor = await createCompetitor(tenant, {
+    company_name: `E2E Smoke Competitor ${Date.now()}`,
+  });
+  await page.goto("/dashboard/competitors");
+  await expect(page.getByText(competitor.company_name)).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("No competitors tracked yet")).not.toBeVisible();
 });

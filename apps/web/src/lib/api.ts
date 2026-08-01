@@ -271,6 +271,21 @@ class CIOSApiClient {
     return data;
   }
 
+  async analyzeCompetitiveLandscape(opportunityId: string) {
+    const { data } = await this.client.post("/competitors/analyze", { opportunity_id: opportunityId });
+    return data;
+  }
+
+  async getCompetitiveLandscapeAnalysis(analysisId: string) {
+    const { data } = await this.client.get(`/competitors/analyze/${analysisId}`);
+    return data;
+  }
+
+  async getLatestCompetitiveLandscapeAnalysis(opportunityId: string) {
+    const { data } = await this.client.get(`/competitors/analyze/by-opportunity/${opportunityId}`);
+    return data;
+  }
+
   // ── Tenant ───────────────────────────────────────────────────────────────
 
   async getTenantProfile() {
