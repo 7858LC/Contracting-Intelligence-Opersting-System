@@ -2332,6 +2332,22 @@ export interface components {
         Body_upload_document_api_v1_knowledge_vault_upload_post: {
             /** File */
             file: string;
+            /**
+             * Document Type
+             * @default general
+             */
+            document_type: string;
+            /** Title */
+            title?: string | null;
+            /** Description */
+            description?: string | null;
+            /**
+             * Tags
+             * @default
+             */
+            tags: string;
+            /** Attestation */
+            attestation: boolean;
         };
         /** CapabilityCreate */
         CapabilityCreate: {
@@ -6261,12 +6277,7 @@ export interface operations {
     };
     upload_document_api_v1_knowledge_vault_upload_post: {
         parameters: {
-            query?: {
-                document_type?: string;
-                title?: string | null;
-                description?: string | null;
-                tags?: string;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;

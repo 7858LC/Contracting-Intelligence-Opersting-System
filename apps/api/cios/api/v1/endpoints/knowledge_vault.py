@@ -5,12 +5,13 @@ from datetime import datetime
 from typing import Any
 
 import structlog
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy import select
 
 from cios.core.dependencies import DB, Auth
 from cios.models.knowledge_vault import KnowledgeDocument
+from cios.models.tenant import AuditLog
 
 router = APIRouter()
 log = structlog.get_logger(__name__)
@@ -107,12 +108,34 @@ async def upload_document(
     db: DB,
     user: Auth,
     file: UploadFile = File(...),
-    document_type: str = "general",
-    title: str | None = None,
-    description: str | None = None,
-    tags: str = "",
+    # These four were previously plain `str` params, which FastAPI reads as
+    # unused Query parameters once an UploadFile/File sibling is present —
+    # confirmed empirically against the pinned FastAPI version, not a style
+    # nit. The multipart form fields the frontend actually sends were
+    # silently discarded and every upload fell back to these defaults
+    # (document_type always "general" regardless of the UI's dropdown,
+    # tags/description always empty). Form(...) makes them real.
+    document_type: str = Form("general"),
+    title: str | None = Form(None),
+    description: str | None = Form(None),
+    tags: str = Form(""),
+    # Required, no default: an explicit representation that this document
+    # contains no CUI, classified, or export-controlled technical data (see
+    # docs/legal/cui-restriction-draft.md). Paired with the automated
+    # marking scan in tasks/ingestion.py — this is the attestation half,
+    # that's the technical backstop.
+    attestation: bool = Form(...),
 ) -> dict[str, Any]:
     """Upload a document to the Knowledge Vault. Ingestion and vectorization are async."""
+    if not attestation:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "You must confirm this document contains no CUI, classified, "
+                "or export-controlled technical data before uploading."
+            ),
+        )
+
     if file.content_type not in ALLOWED_MIME_TYPES:
         raise HTTPException(
             status_code=415,
@@ -168,6 +191,17 @@ async def upload_document(
     content_type = file.content_type or "application/octet-stream"
     await DocumentStorage().upload(storage_key, content, content_type)
     doc.s3_key = storage_key
+
+    db.add(
+        AuditLog(
+            tenant_id=user.tenant_id,
+            user_id=user.user_id,
+            action="knowledge_vault_upload_attested",
+            resource_type="knowledge_document",
+            resource_id=str(doc.id),
+            extra_metadata={"attestation_confirmed": True},
+        )
+    )
     await db.flush()
 
     from cios.tasks.ingestion import ingest_document

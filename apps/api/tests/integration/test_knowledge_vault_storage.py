@@ -60,7 +60,7 @@ async def test_upload_persists_original_file_to_object_storage(client: AsyncClie
         "/api/v1/knowledge-vault/upload",
         headers=headers,
         files={"file": ("rfp.txt", original_bytes, "text/plain")},
-        data={"document_type": "solicitation"},
+        data={"document_type": "solicitation", "attestation": "true"},
     )
     assert resp.status_code == 202, resp.text
     document_id = resp.json()["document_id"]
@@ -87,7 +87,7 @@ async def test_download_url_returns_the_original_bytes(client: AsyncClient):
         "/api/v1/knowledge-vault/upload",
         headers=headers,
         files={"file": ("capstmt.txt", original_bytes, "text/plain")},
-        data={"document_type": "capability_statement"},
+        data={"document_type": "capability_statement", "attestation": "true"},
     )
     assert upload.status_code == 202, upload.text
     document_id = upload.json()["document_id"]
@@ -115,7 +115,7 @@ async def test_download_url_is_tenant_scoped(client: AsyncClient):
         "/api/v1/knowledge-vault/upload",
         headers=owner_headers,
         files={"file": ("private.txt", b"secret", "text/plain")},
-        data={"document_type": "general"},
+        data={"document_type": "general", "attestation": "true"},
     )
     document_id = upload.json()["document_id"]
 
@@ -132,7 +132,7 @@ async def test_delete_removes_the_object_from_storage(client: AsyncClient):
         "/api/v1/knowledge-vault/upload",
         headers=headers,
         files={"file": ("temp.txt", b"delete me", "text/plain")},
-        data={"document_type": "general"},
+        data={"document_type": "general", "attestation": "true"},
     )
     document_id = upload.json()["document_id"]
     me = await client.get("/api/v1/auth/me", headers=headers)

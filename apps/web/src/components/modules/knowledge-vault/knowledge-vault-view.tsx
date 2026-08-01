@@ -20,6 +20,7 @@ import {
   Database,
   Layers,
   ScanSearch,
+  ShieldAlert,
 } from "lucide-react";
 
 // Generated from the backend's actual Pydantic response models — see
@@ -45,6 +46,12 @@ const STATUS_CONFIG = {
   processing: { icon: Loader2, label: "Vectorizing…", className: "text-blue-400 animate-spin" },
   completed: { icon: CheckCircle2, label: "Ready", className: "text-emerald-400" },
   failed: { icon: AlertCircle, label: "Failed", className: "text-red-400" },
+  blocked_cui: {
+    icon: ShieldAlert,
+    label: "Blocked (CUI)",
+    title: "Blocked — possible CUI, classified, or export-controlled marking detected",
+    className: "text-red-400",
+  },
 } as const;
 
 function getDocTypeConfig(value: string) {
@@ -78,6 +85,7 @@ export function KnowledgeVaultView() {
     description: "",
     tags: "",
   });
+  const [attested, setAttested] = useState(false);
   const [uploading, setUploading] = useState(false);
 
   const { data: documents = [], isLoading } = useQuery<KnowledgeDocument[]>({
@@ -112,6 +120,7 @@ export function KnowledgeVaultView() {
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedFile) { toast.error("Select a file first"); return; }
+    if (!attested) { toast.error("Confirm the CUI/classified data attestation first"); return; }
     setUploading(true);
     try {
       const formData = new FormData();
@@ -123,11 +132,13 @@ export function KnowledgeVaultView() {
         const tagList = uploadForm.tags.split(",").map((t) => t.trim()).filter(Boolean);
         formData.append("tags", JSON.stringify(tagList));
       }
+      formData.append("attestation", "true");
       await api.uploadKnowledgeDocument(formData);
       toast.success("Document uploaded — vectorization in progress");
       queryClient.invalidateQueries({ queryKey: ["knowledge-documents"] });
       setSelectedFile(null);
       setUploadForm({ title: "", document_type: "past_performance", description: "", tags: "" });
+      setAttested(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? "Upload failed";
@@ -276,9 +287,22 @@ export function KnowledgeVaultView() {
                 />
               </div>
 
+              <label className="flex items-start gap-2 text-xs text-muted-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={attested}
+                  onChange={(e) => setAttested(e.target.checked)}
+                  className="mt-0.5 shrink-0"
+                />
+                <span>
+                  I confirm this document does not contain Controlled Unclassified Information
+                  (CUI), classified information, or export-controlled (ITAR/EAR) technical data.
+                </span>
+              </label>
+
               <button
                 type="submit"
-                disabled={uploading || !selectedFile}
+                disabled={uploading || !selectedFile || !attested}
                 className="w-full py-2.5 bg-primary text-primary-foreground rounded-md text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {uploading ? (
@@ -355,7 +379,10 @@ export function KnowledgeVaultView() {
                         </div>
                       </div>
 
-                      <div className={cn("flex items-center gap-1.5 text-xs shrink-0", status.className)}>
+                      <div
+                        className={cn("flex items-center gap-1.5 text-xs shrink-0", status.className)}
+                        title={"title" in status ? status.title : undefined}
+                      >
                         <StatusIcon className="w-3.5 h-3.5" />
                         <span>{status.label}</span>
                       </div>
