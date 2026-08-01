@@ -112,6 +112,41 @@ export function latestPasswordResetToken(email: string): string {
   return out.toString().trim();
 }
 
+// Platform admins have no self-service signup (CLAUDE.md), so a real one is
+// provisioned straight against Postgres, same class of workaround as
+// upgradeTenantPlan above — except a password hash can't be faked with a
+// plain UPDATE, so this shells out to passlib directly for the same bcrypt
+// hash cios.core.security.hash_password() produces. Deliberately not
+// `from cios.core.security import hash_password` — that module imports
+// cios.config at module load time, which validates DATABASE_URL/JWT_SECRET/
+// etc. as required settings even though hash_password itself never touches
+// them; this test step runs with none of those set (they're scoped to
+// ci.yml's earlier "Start API server" step, not this one), so that import
+// would fail here for reasons unrelated to what's actually being computed.
+export function createPlatformAdmin(role: "admin" | "support" = "admin"): {
+  email: string;
+  password: string;
+} {
+  const suffix = Math.random().toString(36).slice(2, 10);
+  const email = `e2e-admin-${suffix}@cios.ai`;
+  const password = "E2eAdminTestPassword!23";
+  const hash = execFileSync("python3", [
+    "-c",
+    "import sys; from passlib.context import CryptContext; " +
+      "print(CryptContext(schemes=['bcrypt']).hash(sys.argv[1]))",
+    password,
+  ])
+    .toString()
+    .trim();
+  execFileSync("psql", [
+    DATABASE_URL,
+    "-c",
+    `INSERT INTO platform_admins (id, email, password_hash, full_name, role, is_active, created_at, updated_at) ` +
+      `VALUES (gen_random_uuid(), '${email}', '${hash}', 'E2E Admin', '${role}', true, now(), now())`,
+  ]);
+  return { email, password };
+}
+
 export async function registerRawTenant(): Promise<{ email: string; password: string; tenantId: string }> {
   const suffix = Math.random().toString(36).slice(2, 10);
   const email = `e2e-reset-${suffix}@example.com`;

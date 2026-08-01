@@ -19,6 +19,7 @@ async def _handle_async(event_type: str, event_data: dict) -> dict:
 
     from cios.core.database import async_session_factory
     from cios.models.subscription import Subscription
+    from cios.models.tenant import Tenant
 
     log.info("stripe_event", type=event_type)
 
@@ -31,7 +32,15 @@ async def _handle_async(event_type: str, event_data: dict) -> dict:
             sub = result.scalar_one_or_none()
             if sub:
                 sub.status = event_data.get("status", sub.status)
-                sub.plan = event_data.get("metadata", {}).get("plan", sub.plan)
+                new_plan = event_data.get("metadata", {}).get("plan", sub.plan)
+                sub.plan = new_plan
+                # Subscription.plan alone gates nothing — every feature check
+                # (hasFeature(), require_feature(), the JWT "plan" claim) reads
+                # Tenant.plan, so a completed upgrade has to land here too or
+                # the tenant keeps their old plan's access forever.
+                tenant = await db.get(Tenant, sub.tenant_id)
+                if tenant and new_plan:
+                    tenant.plan = new_plan
                 await db.commit()
 
     elif event_type == "invoice.payment_succeeded":

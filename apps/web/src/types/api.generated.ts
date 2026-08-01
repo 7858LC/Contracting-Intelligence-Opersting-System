@@ -1174,6 +1174,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/tenants/{tenant_id}/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Update Tenant Plan
+         * @description Landlord override for a tenant's plan — for support comps, manual
+         *     upgrades, or fixing a Stripe upgrade that didn't land (see
+         *     tasks/billing.py). Bypasses Stripe entirely; does not touch the
+         *     Subscription row, only the Tenant.plan that actually gates features.
+         */
+        post: operations["update_tenant_plan_api_v1_admin_tenants__tenant_id__plan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/tenants/{tenant_id}/council/grant": {
         parameters: {
             query?: never;
@@ -4511,6 +4534,13 @@ export interface components {
              */
             updated_at: string;
         };
+        /** TenantPlanResponse */
+        TenantPlanResponse: {
+            /** Id */
+            id: string;
+            /** Plan */
+            plan: string;
+        };
         /** TenantProfileResponse */
         TenantProfileResponse: {
             /**
@@ -4599,6 +4629,11 @@ export interface components {
             tenant_id: string;
             /** Role */
             role: string;
+            /** Plan */
+            plan: string;
+        };
+        /** UpdateTenantPlanRequest */
+        UpdateTenantPlanRequest: {
             /** Plan */
             plan: string;
         };
@@ -6995,6 +7030,41 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_tenant_plan_api_v1_admin_tenants__tenant_id__plan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTenantPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantPlanResponse"];
                 };
             };
             /** @description Validation Error */
