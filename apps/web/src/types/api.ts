@@ -40,3 +40,8 @@ export type CompetitiveLandscapeAnalysis = Schemas["CompetitiveLandscapeAnalysis
 export type Capability = Schemas["CapabilityResponse"];
 export type CapabilityGap = Schemas["CapabilityGapResponse"];
 export type CapabilityGapAnalysisRun = Schemas["CapabilityGapAnalysisRunResponse"];
+
+// Tenant / Onboarding
+export type TenantProfile = Schemas["TenantProfileResponse"];
+export type OnboardingStatus = Schemas["OnboardingStatusResponse"];
+export type OnboardingStepResult = Schemas["OnboardingStepResponse"];

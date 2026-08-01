@@ -31,7 +31,7 @@ function fakeClientIp(): string {
 }
 
 // Competitive Intelligence, Capabilities & Gaps, Teaming, and Award
-// Simulator are all gated Professional+ via require_feature()
+// Simulator are all gated Growth+ via require_feature()
 // (apps/api/cios/api/v1/router.py) — /auth/register always issues
 // plan="trial" (starter-equivalent, no access), so E2E tenants need a
 // real plan bump before they can exercise those modules. There's no API
@@ -70,8 +70,10 @@ async function registerTenant(): Promise<TenantSession> {
 
   // Plan is baked into the JWT at issue time (see auth.py), so the token
   // above still carries plan="trial" even after the DB row changes below —
-  // log in again for one that actually reflects "professional".
-  upgradeTenantPlan(data.tenant_id, "professional");
+  // log in again for one that actually reflects "growth" (Competitive
+  // Intel / Capabilities & Gaps / Teaming / Award Simulator all require
+  // "growth" specifically, not "professional" — see core/features.py).
+  upgradeTenantPlan(data.tenant_id, "growth");
   const loginRes = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Forwarded-For": fakeClientIp() },

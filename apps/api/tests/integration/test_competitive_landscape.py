@@ -36,7 +36,7 @@ _LANDSCAPE_PASSWORD = "LandscapeTest123!"
 
 
 async def _register(client: AsyncClient) -> tuple[dict, str]:
-    """Competitive Intelligence is gated Professional+ via require_feature()
+    """Competitive Intelligence is gated Growth+ via require_feature()
     (api/v1/router.py) — register always issues plan="trial", so this bumps
     the tenant's plan and logs in again for a token that actually carries
     it (see conftest's upgrade_tenant_plan)."""

@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
 from cios.core.dependencies import DB, Auth, Pages
+from cios.core.usage import current_month_start, enforce_usage_limit
 from cios.models.pir import (
     PIRAIAnalysis,
     PIRCompany,
@@ -279,6 +280,16 @@ async def create_company(payload: CompanyCreate, user: Auth, db: DB) -> PIRCompa
             detail=f"Company with domain '{payload.domain}' already exists",
         )
 
+    await enforce_usage_limit(
+        db,
+        user.plan,
+        "tracked_companies",
+        select(func.count(PIRCompany.id)).where(
+            PIRCompany.tenant_id == user.tenant_id, PIRCompany.is_active.is_(True)
+        ),
+        label="tracked companies",
+    )
+
     company = PIRCompany(
         tenant_id=user.tenant_id,
         **payload.model_dump(),
@@ -399,6 +410,17 @@ async def list_company_signals(
 async def trigger_ai_analysis(company_id: uuid.UUID, user: Auth, db: DB) -> PIRAIAnalysis:
     await _get_company_or_404(db, company_id, user.tenant_id)
 
+    await enforce_usage_limit(
+        db,
+        user.plan,
+        "ai_reports_per_month",
+        select(func.count(PIRAIAnalysis.id)).where(
+            PIRAIAnalysis.tenant_id == user.tenant_id,
+            PIRAIAnalysis.created_at >= current_month_start(),
+        ),
+        label="AI analysis reports this month",
+    )
+
     analysis = PIRAIAnalysis(
         tenant_id=user.tenant_id,
         company_id=company_id,
@@ -474,6 +496,14 @@ async def list_watchlists(user: Auth, db: DB) -> list[PIRWatchlist]:
 
 @router.post("/watchlists", response_model=WatchlistResponse, status_code=status.HTTP_201_CREATED)
 async def create_watchlist(payload: WatchlistCreate, user: Auth, db: DB) -> PIRWatchlist:
+    await enforce_usage_limit(
+        db,
+        user.plan,
+        "watchlist_slots",
+        select(func.count(PIRWatchlist.id)).where(PIRWatchlist.tenant_id == user.tenant_id),
+        label="watchlists",
+    )
+
     watchlist = PIRWatchlist(
         tenant_id=user.tenant_id,
         created_by=user.user_id,
@@ -538,6 +568,14 @@ async def list_saved_searches(user: Auth, db: DB) -> list[PIRSavedSearch]:
     "/saved-searches", response_model=SavedSearchResponse, status_code=status.HTTP_201_CREATED
 )
 async def create_saved_search(payload: SavedSearchCreate, user: Auth, db: DB) -> PIRSavedSearch:
+    await enforce_usage_limit(
+        db,
+        user.plan,
+        "saved_searches",
+        select(func.count(PIRSavedSearch.id)).where(PIRSavedSearch.tenant_id == user.tenant_id),
+        label="saved searches",
+    )
+
     search = PIRSavedSearch(
         tenant_id=user.tenant_id,
         created_by=user.user_id,
@@ -574,6 +612,18 @@ async def trigger_bulk_scan(
     days_back: int = Query(60, ge=1, le=365),
     watched_only: bool = Query(False),
 ) -> PIRScanJob:
+    await enforce_usage_limit(
+        db,
+        user.plan,
+        "bulk_scan_jobs_per_month",
+        select(func.count(PIRScanJob.id)).where(
+            PIRScanJob.tenant_id == user.tenant_id,
+            PIRScanJob.scan_type == "bulk_radar_scan",
+            PIRScanJob.created_at >= current_month_start(),
+        ),
+        label="bulk scan jobs this month",
+    )
+
     job = PIRScanJob(
         tenant_id=user.tenant_id,
         scan_type="bulk_radar_scan",

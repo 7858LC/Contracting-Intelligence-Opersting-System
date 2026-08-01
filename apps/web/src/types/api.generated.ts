@@ -925,10 +925,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Get Onboarding Status
-         * @description Return onboarding completion status.
-         */
+        /** Get Onboarding Status */
         get: operations["get_onboarding_status_api_v1_onboarding_status_get"];
         put?: never;
         post?: never;
@@ -966,7 +963,8 @@ export interface paths {
         put?: never;
         /**
          * Complete Onboarding
-         * @description Mark onboarding complete and trigger initial AI analysis.
+         * @description Force-complete onboarding (or re-send the welcome summary) without
+         *     needing to have hit every step individually.
          */
         post: operations["complete_onboarding_api_v1_onboarding_complete_post"];
         delete?: never;
@@ -3338,6 +3336,8 @@ export interface components {
             status: string;
             /** Next Step */
             next_step: string | null;
+            /** Onboarding Complete */
+            onboarding_complete: boolean;
         };
         /** OpportunityCreate */
         OpportunityCreate: {
@@ -3757,6 +3757,11 @@ export interface components {
             company_name: string;
             /** Company Slug */
             company_slug?: string | null;
+            /**
+             * Naics Codes
+             * @default []
+             */
+            naics_codes: string[];
         };
         /** RelevanceQueuedResponse */
         RelevanceQueuedResponse: {

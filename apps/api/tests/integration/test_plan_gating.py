@@ -3,17 +3,22 @@
 Previously PLAN_FEATURES existed only as display metadata returned by
 GET /subscriptions — nothing checked it as an authorization gate, so every
 subscription tier's feature list (Competitive Intelligence, Capabilities &
-Gaps, Teaming, Award Simulator — all sold as Professional+ on the pricing
-page) was enforced by nothing but which sidebar link happened to render on
-the frontend. core/features.py + core/dependencies.require_feature() +
-the dependencies= on those routers in api/v1/router.py are the fix; this
-is the regression test for it.
+Gaps, Teaming, Award Simulator — all sold as Growth+ on the pricing page)
+was enforced by nothing but which sidebar link happened to render on the
+frontend. core/features.py + core/dependencies.require_feature() + the
+dependencies= on those routers in api/v1/router.py are the fix; this is
+the regression test for it.
 
 A freshly registered tenant gets plan="trial" (see auth.py's /register),
 which core/features.py treats as starter-equivalent — no gated features.
 Bumping Tenant.plan directly in the DB and logging in again (login always
 re-reads tenant.plan fresh, see auth.py's /login) is how a test gets a
 token for a plan tier without needing real Stripe checkout.
+
+Award Simulation/Teaming/Competitive Intel/Capabilities all require
+"growth" specifically, not just "professional" — the pricing page lists
+all four as Growth-and-up only, so this also regression-tests that a
+professional-plan tenant is still blocked, not just trial.
 """
 
 from __future__ import annotations
@@ -26,6 +31,13 @@ from httpx import AsyncClient
 
 from cios.core.database import async_session_factory
 from cios.models.tenant import Tenant
+
+_GATED_PATHS = [
+    ("/api/v1/competitors", "competitive_intel"),
+    ("/api/v1/capabilities", "capabilities"),
+    ("/api/v1/teaming/partners", "teaming"),
+    ("/api/v1/award-simulations", "award_simulator"),
+]
 
 
 def _fake_client_ip() -> str:
@@ -69,14 +81,7 @@ async def _set_tenant_plan(tenant_id: str, plan: str) -> None:
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize(
-    ("path", "feature"),
-    [
-        ("/api/v1/competitors", "competitive_intel"),
-        ("/api/v1/capabilities", "capabilities"),
-        ("/api/v1/teaming/partners", "teaming"),
-    ],
-)
+@pytest.mark.parametrize(("path", "feature"), _GATED_PATHS)
 async def test_trial_plan_is_blocked_from_gated_modules(
     client: AsyncClient, path: str, feature: str
 ):
@@ -87,30 +92,27 @@ async def test_trial_plan_is_blocked_from_gated_modules(
 
 
 @pytest.mark.anyio
-async def test_award_simulator_is_available_on_every_plan_today(client: AsyncClient):
-    """award_simulator is True for every tier in PLAN_FEATURES already —
-    a deliberate, pre-existing value this change didn't touch (tightening
-    it would take away something starter customers already have, which is
-    a business call, not an engineering one). The router still carries
-    require_feature("award_simulator") so the enforcement mechanism is in
-    place the moment that value is ever changed."""
-    headers, _, _ = await _register(client)
-    resp = await client.get("/api/v1/award-simulations", headers=headers)
-    assert resp.status_code == 200, resp.text
+@pytest.mark.parametrize(("path", "feature"), _GATED_PATHS)
+async def test_professional_plan_is_still_blocked_from_gated_modules(
+    client: AsyncClient, path: str, feature: str
+):
+    """Regression test for the pricing-page reconciliation: these four
+    modules moved from "professional and up" to "growth and up" to match
+    how the pricing page actually lists them — professional alone must
+    stay blocked."""
+    headers, tenant_id, email = await _register(client)
+    await _set_tenant_plan(tenant_id, "professional")
+    fresh_headers = await _login(client, email, "GatingTest123!")
+    resp = await client.get(path, headers=fresh_headers)
+    assert resp.status_code == 403, resp.text
+    assert feature.replace("_", " ") in resp.json()["detail"]
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize(
-    "path",
-    [
-        "/api/v1/competitors",
-        "/api/v1/capabilities",
-        "/api/v1/teaming/partners",
-    ],
-)
-async def test_professional_plan_can_reach_gated_modules(client: AsyncClient, path: str):
+@pytest.mark.parametrize("path", [p for p, _ in _GATED_PATHS])
+async def test_growth_plan_can_reach_gated_modules(client: AsyncClient, path: str):
     headers, tenant_id, email = await _register(client)
-    await _set_tenant_plan(tenant_id, "professional")
+    await _set_tenant_plan(tenant_id, "growth")
 
     # The trial-issued token still carries plan="trial" until re-issued —
     # confirms plan changes need a fresh token, not just a DB update.

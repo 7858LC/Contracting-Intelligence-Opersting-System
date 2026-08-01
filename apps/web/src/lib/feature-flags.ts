@@ -1,14 +1,14 @@
 // Mirrors cios/core/features.py's PLAN_FEATURES — the tiers here are the
 // real values Tenant.plan/the JWT "plan" claim carry (trial/starter/
-// professional/enterprise, see lib/auth.ts's getUserPlan()), NOT the
-// marketing pricing page's four-tier naming (radar/professional/growth/
-// enterprise). Reconciling those two vocabularies is a separate product
-// decision; this file only needs to match what the backend actually
-// enforces, since that's what a mismatch here would silently hide behind.
+// professional/growth/enterprise, see lib/auth.ts's getUserPlan()), now
+// matching the marketing pricing page's four paid tiers exactly (see
+// features.py's module docstring for why "growth" was previously missing
+// here and what it unlocks).
 export const SubscriptionTier = {
   Trial: "trial",
   Starter: "starter",
   Professional: "professional",
+  Growth: "growth",
   Enterprise: "enterprise",
 } as const;
 
@@ -44,8 +44,9 @@ const UNGATED_MODULES: Feature[] = [
   Feature.BidDecisions,
 ];
 
-// Gated server-side via require_feature() in router.py — must stay in sync
-// with cios/core/features.py's PLAN_FEATURES.
+// Gated server-side via require_feature() in router.py, growth-and-up only
+// (award_simulator/competitive_intel/capabilities/teaming in
+// core/features.py's PLAN_FEATURES) — must stay in sync with that table.
 const GATED_MODULES: Feature[] = [
   Feature.AwardSimulation,
   Feature.Teaming,
@@ -56,7 +57,8 @@ const GATED_MODULES: Feature[] = [
 const TIER_FEATURES: Record<SubscriptionTier, Feature[]> = {
   trial: UNGATED_MODULES,
   starter: UNGATED_MODULES,
-  professional: [...UNGATED_MODULES, ...GATED_MODULES],
+  professional: UNGATED_MODULES,
+  growth: [...UNGATED_MODULES, ...GATED_MODULES],
   enterprise: [...UNGATED_MODULES, ...GATED_MODULES, Feature.ExecutiveDashboard],
 };
 

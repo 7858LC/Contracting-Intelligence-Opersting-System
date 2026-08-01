@@ -5,11 +5,12 @@ from datetime import datetime
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr, field_validator
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from cios.core.dependencies import DB, AdminAuth, Auth
 from cios.core.security import generate_api_key
-from cios.models.tenant import ApiKey, Tenant, TenantMember
+from cios.core.usage import enforce_usage_limit_value
+from cios.models.tenant import ApiKey, Tenant, TenantInvite, TenantMember
 
 router = APIRouter()
 
@@ -152,8 +153,32 @@ async def invite_member(body: InviteMemberRequest, db: DB, user: AdminAuth) -> I
     from datetime import UTC, timedelta
 
     from cios.config import settings
-    from cios.models.tenant import TenantInvite
     from cios.tasks.email import send_invite_email
+
+    # Seats counts active members plus outstanding (unaccepted, unexpired)
+    # invites — an invite in flight is a reserved seat even before it's
+    # accepted, so sending 20 invites against a 10-seat plan can't be used
+    # to bypass the limit.
+    member_count = (
+        await db.execute(
+            select(func.count(TenantMember.id)).where(
+                TenantMember.tenant_id == user.tenant_id,
+                TenantMember.is_active == True,  # noqa: E712
+            )
+        )
+    ).scalar_one()
+    pending_invite_count = (
+        await db.execute(
+            select(func.count(TenantInvite.id)).where(
+                TenantInvite.tenant_id == user.tenant_id,
+                TenantInvite.accepted_at.is_(None),
+                TenantInvite.expires_at > datetime.now(UTC),
+            )
+        )
+    ).scalar_one()
+    enforce_usage_limit_value(
+        user.plan, "seats", member_count + pending_invite_count, label="seats"
+    )
 
     token = secrets.token_urlsafe(32)
     invite = TenantInvite(
