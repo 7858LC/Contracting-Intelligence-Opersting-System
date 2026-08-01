@@ -228,6 +228,36 @@ jobs:
           psql -h localhost -U cios_user -d cios_test -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO cios_app;"
           psql -h localhost -U cios_user -d cios_test -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO cios_app;"
 
+      - name: Start mock S3 (moto)
+        # Knowledge Vault upload (POST /knowledge-vault/upload) writes the
+        # original file to object storage before queueing ingestion — see
+        # cios/core/storage.py. Without an S3-compatible endpoint here, that
+        # call has nowhere to go and the upload silently fails the moment an
+        # E2E test drives a real upload through the UI (see
+        # e2e/smoke.spec.ts's Knowledge Vault test). api-test's pytest tier
+        # gets this for free via tests/integration/conftest.py's
+        # ThreadedMotoServer fixture; this job starts the real uvicorn
+        # process directly, so it needs the same server started by hand.
+        working-directory: apps/api
+        run: |
+          nohup python3 -c "
+          from moto.server import ThreadedMotoServer
+          server = ThreadedMotoServer(port=5099, verbose=False)
+          server.start()
+          import time
+          while True:
+              time.sleep(3600)
+          " > /tmp/e2e-moto.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:5099 -o /dev/null && break; sleep 1; done
+          curl -sf http://127.0.0.1:5099 -o /dev/null || { cat /tmp/e2e-moto.log; exit 1; }
+          python3 -c "
+          import boto3
+          boto3.client(
+              's3', endpoint_url='http://localhost:5099',
+              aws_access_key_id='test', aws_secret_access_key='test', region_name='us-east-1',
+          ).create_bucket(Bucket='cios-test-documents')
+          "
+
       - name: Start API server
         working-directory: apps/api
         env:
@@ -237,6 +267,11 @@ jobs:
           ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
           ANTHROPIC_API_KEY: test_key
           APP_ENV: development
+          S3_ENDPOINT: http://localhost:5099
+          S3_ACCESS_KEY_ID: test
+          S3_SECRET_ACCESS_KEY: test
+          S3_BUCKET_DOCUMENTS: cios-test-documents
+          S3_REGION: us-east-1
         run: |
           nohup uvicorn cios.main:app --host 127.0.0.1 --port 8000 > /tmp/e2e-api.log 2>&1 &
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/health && break; sleep 1; done
