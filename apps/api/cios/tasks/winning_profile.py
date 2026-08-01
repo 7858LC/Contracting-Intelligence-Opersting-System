@@ -75,6 +75,14 @@ async def _async_run_pipeline(
             profile = await service.generate_profile(sol, tenant_id)
 
             if enrich:
+                # No caller exists yet (nothing in cios/api/ invokes
+                # run_pipeline.delay() — grep confirmed this before adding
+                # the enforce_usage_limit check in winning_profile.py's two
+                # HTTP call sites). Whoever wires this up must call
+                # core.usage.enforce_usage_limit(..., "wph_narrative_enrichments_per_month", ...)
+                # before this block, the same as both HTTP endpoints do —
+                # a plan-blind bulk/async path would bypass the monthly cap
+                # entirely otherwise.
                 from cios.agents.winning_profile_agent import enrich_profile_narrative
 
                 pdc = await service.load_profile_dataclass(profile, tenant_id, sol.rule_pack)

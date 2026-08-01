@@ -91,6 +91,11 @@ dev = [
     "faker>=30.0.0",
     "mypy>=1.11.0",
     "ruff>=0.6.0",
+    # Knowledge Vault's object storage (cios/core/storage.py) talks real
+    # S3-compatible HTTP via aiobotocore — moto's ThreadedMotoServer gives
+    # tests a real S3-speaking endpoint to hit instead of mocking the
+    # client itself, same "hit something real" bar as Postgres/Redis.
+    "moto[s3,server]>=5.0.0",
 ]
 
 [tool.hatch.build.targets.wheel]

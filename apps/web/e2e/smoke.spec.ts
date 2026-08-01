@@ -69,6 +69,33 @@ test("Capabilities page renders a newly created capability instead of an empty s
   await expect(page.getByText("No capabilities registered")).not.toBeVisible();
 });
 
+test("Knowledge Vault upload stays disabled until the CUI attestation is checked, then lists the new document", async ({
+  page,
+  tenant,
+}) => {
+  const fileTitle = `e2e-smoke-kv-${Date.now()}`;
+  await page.goto("/dashboard/knowledge-vault");
+
+  await page.locator('input[type="file"]').setInputFiles({
+    name: `${fileTitle}.txt`,
+    mimeType: "text/plain",
+    buffer: Buffer.from("Ordinary past performance narrative for E2E smoke test."),
+  });
+
+  const submitButton = page.getByRole("button", { name: "Upload & Vectorize" });
+  // Backend requires the attestation field (cios/api/v1/endpoints/knowledge_vault.py
+  // rejects its absence with a 422) — this proves the UI actually gates on it
+  // instead of just relying on the backend to reject a bad request.
+  await expect(submitButton).toBeDisabled();
+
+  await page.getByRole("checkbox").check();
+  await expect(submitButton).toBeEnabled();
+  await submitButton.click();
+
+  await expect(page.getByText("Document uploaded")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(fileTitle)).toBeVisible({ timeout: 10_000 });
+});
+
 test("Capabilities page's Opportunity Gap Analysis picker lists a newly created opportunity", async ({
   page,
   tenant,

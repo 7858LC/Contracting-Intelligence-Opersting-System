@@ -92,6 +92,47 @@ async function registerTenant(): Promise<TenantSession> {
   };
 }
 
+// Same class of workaround as upgradeTenantPlan above — POST /auth/forgot-password
+// deliberately never returns the reset token/link in its response (unlike the
+// invite flow, which is already admin-authenticated), so the only way for a
+// test to get a real token is to go straight at the same Postgres the API uses.
+export function latestPasswordResetToken(email: string): string {
+  const out = execFileSync(
+    "psql",
+    [
+      DATABASE_URL,
+      "-tA",
+      "-c",
+      `SELECT prt.token FROM password_reset_tokens prt ` +
+        `JOIN tenant_members tm ON tm.id = prt.tenant_member_id ` +
+        `WHERE tm.email = '${email}' ORDER BY prt.created_at DESC LIMIT 1`,
+    ],
+    { stdio: "pipe" }
+  );
+  return out.toString().trim();
+}
+
+export async function registerRawTenant(): Promise<{ email: string; password: string; tenantId: string }> {
+  const suffix = Math.random().toString(36).slice(2, 10);
+  const email = `e2e-reset-${suffix}@example.com`;
+  const password = "E2eSmokeTestPassword!23";
+  const res = await fetch(`${API_URL}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Forwarded-For": fakeClientIp() },
+    body: JSON.stringify({
+      email,
+      password,
+      full_name: "E2E Reset Test",
+      company_name: `E2E Reset Co ${suffix}`,
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`Tenant registration failed: ${res.status} ${await res.text()}`);
+  }
+  const data = await res.json();
+  return { email, password, tenantId: data.tenant_id };
+}
+
 export async function createOpportunity(
   session: TenantSession,
   overrides: { title?: string } = {}

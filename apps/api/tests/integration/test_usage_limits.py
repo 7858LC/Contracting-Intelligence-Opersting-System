@@ -22,8 +22,10 @@ from httpx import AsyncClient
 from sqlalchemy import text
 
 from cios.core.database import async_session_factory
+from cios.models.opportunity import Opportunity
 from cios.models.pir import PIRAIAnalysis, PIRCompany
 from cios.models.tenant import Tenant
+from cios.models.winning_profile import WPHProfile
 
 
 def _fake_client_ip() -> str:
@@ -168,6 +170,102 @@ async def test_ai_reports_blocked_at_starter_limit_of_ten_per_month(client: Asyn
     blocked = await client.post(f"/api/v1/radar/companies/{company_id}/analyze", headers=headers)
     assert blocked.status_code == 402, blocked.text
     assert "AI analysis reports" in blocked.json()["detail"]
+
+
+@pytest.mark.anyio
+async def test_opportunity_analyses_blocked_at_starter_limit_of_five_per_month(
+    client: AsyncClient,
+):
+    """Opportunity /analyze fans out to 6 live Claude calls (CEO Agent on
+    Opus + 5 Directors on Sonnet) and previously had only a flat, plan-blind
+    10/hour rate limit — no monthly ceiling and no cost differentiation
+    between a $0 trial signup and Enterprise. This proves the new
+    opportunity_full_analyses_per_month cap actually blocks at the
+    boundary, the same way ai_reports_per_month already does for PIR."""
+    headers, tenant_id, _ = await _register(client)
+
+    async with async_session_factory() as db:
+        await _set_tenant(db, tenant_id)
+        from datetime import UTC, datetime
+
+        db.add_all(
+            [
+                Opportunity(
+                    tenant_id=uuid.UUID(tenant_id),
+                    title=f"Seeded Opp {i}",
+                    source="manual",
+                    analyzed_at=datetime.now(UTC),
+                )
+                for i in range(5)
+            ]
+        )
+        db.add(Opportunity(tenant_id=uuid.UUID(tenant_id), title="Target Opp", source="manual"))
+        await db.commit()
+
+        target_id = (
+            await db.execute(
+                text(
+                    "SELECT id FROM opportunities WHERE tenant_id = :t "
+                    "AND title = 'Target Opp'"
+                ),
+                {"t": tenant_id},
+            )
+        ).scalar_one()
+
+    blocked = await client.post(
+        f"/api/v1/opportunities/{target_id}/analyze", headers=headers
+    )
+    assert blocked.status_code == 402, blocked.text
+    assert "full opportunity analyses" in blocked.json()["detail"]
+
+
+@pytest.mark.anyio
+async def test_wph_enrichment_blocked_at_starter_limit_of_fifteen_per_month(
+    client: AsyncClient,
+):
+    """generate-profile?enrich=true triggers a Claude Sonnet call
+    (WinningProfileAgent) with no prior limit at all. Deterministic
+    (non-enriched) profile generation must stay free — only the enrich
+    path should ever 402."""
+    headers, tenant_id, _ = await _register(client)
+
+    sol_resp = await client.post(
+        "/api/v1/winning-profile/solicitations",
+        headers=headers,
+        json={"title": "WPH Enrichment Limit Test Solicitation"},
+    )
+    assert sol_resp.status_code == 201, sol_resp.text
+    sol_id = sol_resp.json()["id"]
+
+    async with async_session_factory() as db:
+        await _set_tenant(db, tenant_id)
+        db.add_all(
+            [
+                WPHProfile(
+                    tenant_id=uuid.UUID(tenant_id),
+                    solicitation_id=uuid.UUID(sol_id),
+                    version=i + 1,
+                    is_current=False,
+                    narrative="Seeded narrative for boundary test.",
+                )
+                for i in range(15)
+            ]
+        )
+        await db.commit()
+
+    blocked = await client.post(
+        f"/api/v1/winning-profile/solicitations/{sol_id}/generate-profile?enrich=true",
+        headers=headers,
+    )
+    assert blocked.status_code == 402, blocked.text
+    assert "narrative enrichments" in blocked.json()["detail"]
+
+    # Deterministic generation without enrich must stay unmetered/free.
+    ok = await client.post(
+        f"/api/v1/winning-profile/solicitations/{sol_id}/generate-profile",
+        headers=headers,
+    )
+    assert ok.status_code == 200, ok.text
 
 
 @pytest.mark.anyio

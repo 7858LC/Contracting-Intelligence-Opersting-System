@@ -16,7 +16,7 @@ from cios.core.security import (
     hash_password,
     verify_password,
 )
-from cios.models.tenant import Tenant, TenantInvite, TenantMember
+from cios.models.tenant import PasswordResetToken, Tenant, TenantInvite, TenantMember
 
 router = APIRouter()
 
@@ -26,6 +26,12 @@ _register_rate_limit = Depends(rate_limiter("register", max_requests=5, window_s
 _login_rate_limit = Depends(rate_limiter("login", max_requests=10, window_seconds=300))
 _accept_invite_rate_limit = Depends(
     rate_limiter("accept_invite", max_requests=5, window_seconds=300)
+)
+_forgot_password_rate_limit = Depends(
+    rate_limiter("forgot_password", max_requests=5, window_seconds=300)
+)
+_reset_password_rate_limit = Depends(
+    rate_limiter("reset_password", max_requests=10, window_seconds=300)
 )
 
 
@@ -92,6 +98,28 @@ class MeResponse(BaseModel):
     email: str
     role: str
     plan: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+    @field_validator("email", mode="after")
+    @classmethod
+    def _lowercase_email(cls, v: str) -> str:
+        return v.lower()
+
+
+class ForgotPasswordResponse(BaseModel):
+    status: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(..., min_length=8)
+
+
+class ResetPasswordResponse(BaseModel):
+    status: str
 
 
 @router.post(
@@ -260,6 +288,79 @@ async def login(body: LoginRequest, db: DB) -> TokenResponse:
         role=member.role,
         plan=tenant.plan,
     )
+
+
+@router.post(
+    "/forgot-password",
+    response_model=ForgotPasswordResponse,
+    dependencies=[_forgot_password_rate_limit],
+)
+async def forgot_password(body: ForgotPasswordRequest, db: DB) -> ForgotPasswordResponse:
+    """Always returns the same generic response whether or not the email
+    matches an account — the response itself must not reveal which emails
+    are registered. Unlike POST /tenants/members/invite (already
+    admin-authenticated), the reset link is never returned in the API
+    response here; it only ever reaches the account holder via email."""
+    import secrets
+    from datetime import timedelta
+
+    from cios.tasks.email import send_password_reset_email
+
+    result = await db.execute(
+        select(TenantMember).where(
+            func.lower(TenantMember.email) == body.email,
+            TenantMember.is_active == True,  # noqa: E712
+            TenantMember.password_hash.is_not(None),
+        )
+    )
+    for member in result.scalars().all():
+        token = secrets.token_urlsafe(32)
+        db.add(
+            PasswordResetToken(
+                tenant_member_id=member.id,
+                token=token,
+                expires_at=datetime.now(UTC) + timedelta(hours=1),
+            )
+        )
+        await db.flush()
+        send_password_reset_email.delay(member.email, token)
+
+    return ForgotPasswordResponse(status="ok")
+
+
+@router.post(
+    "/reset-password",
+    response_model=ResetPasswordResponse,
+    dependencies=[_reset_password_rate_limit],
+)
+async def reset_password(body: ResetPasswordRequest, db: DB) -> ResetPasswordResponse:
+    result = await db.execute(
+        select(PasswordResetToken).where(PasswordResetToken.token == body.token)
+    )
+    reset_token = result.scalar_one_or_none()
+    if not reset_token:
+        raise HTTPException(status_code=404, detail="Invalid or expired reset link")
+    if reset_token.used_at is not None:
+        raise HTTPException(status_code=409, detail="This reset link has already been used")
+    if reset_token.expires_at < datetime.now(UTC):
+        raise HTTPException(status_code=410, detail="This reset link has expired")
+
+    member_result = await db.execute(
+        select(TenantMember).where(TenantMember.id == reset_token.tenant_member_id)
+    )
+    member = member_result.scalar_one_or_none()
+    if not member or not member.is_active:
+        raise HTTPException(status_code=404, detail="Account no longer exists")
+
+    # JWTs are stateless and there's no server-side session/revocation store
+    # anywhere in this codebase (see core/security.py) — any access/refresh
+    # token already issued before this reset stays valid until it naturally
+    # expires (1hr access / settings.jwt_refresh_expiry_days refresh), same
+    # as every other credential change today. Not a new gap introduced here.
+    member.password_hash = hash_password(body.new_password)
+    reset_token.used_at = datetime.now(UTC)
+
+    return ResetPasswordResponse(status="ok")
 
 
 @router.post("/refresh", response_model=TokenResponse)

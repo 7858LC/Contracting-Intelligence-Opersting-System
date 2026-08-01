@@ -73,6 +73,43 @@ def send_invite_email(self, tenant_id: str, email: str, token: str) -> dict:
 
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=30)
+def send_password_reset_email(self, email: str, token: str) -> dict:
+    import asyncio
+
+    from cios.config import settings
+
+    log.info("send_password_reset", email=email)
+    if not settings.sendgrid_api_key:
+        # Same non-fatal skip as send_invite_email above — POST /auth/forgot-password
+        # deliberately never returns the token/link itself (unlike the invite
+        # endpoint, which is already admin-authenticated), so without SendGrid
+        # configured there is genuinely no way to complete a reset in this
+        # environment. That's expected in dev/CI; production requires the key.
+        log.warning("sendgrid_not_configured")
+        return {"status": "skipped", "email": email}
+
+    reset_url = f"{settings.app_url}/auth/reset-password?token={token}"
+    try:
+        asyncio.run(
+            _send_via_sendgrid(
+                to_email=email,
+                subject="Reset your CIOS password",
+                html_content=(
+                    "<p>A password reset was requested for your CIOS account.</p>"
+                    f'<p><a href="{reset_url}">Reset your password</a></p>'
+                    "<p>This link expires in 1 hour. If you didn't request this, "
+                    "you can safely ignore this email.</p>"
+                ),
+            )
+        )
+    except Exception as exc:
+        log.error("send_password_reset_failed", email=email, error=str(exc))
+        raise self.retry(exc=exc)
+
+    return {"status": "sent", "email": email}
+
+
+@celery_app.task(bind=True, max_retries=3, default_retry_delay=30)
 def send_onboarding_welcome_email(self, tenant_id: str, email: str, summary: dict) -> dict:
     """Real replacement for the onboarding-complete task's previous no-op
     (tasks/onboarding.py's run_initial_analysis used to return a hardcoded
