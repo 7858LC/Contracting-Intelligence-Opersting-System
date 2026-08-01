@@ -16,6 +16,7 @@ import {
   BookMarked,
   TrendingUp,
   Shield,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
@@ -357,7 +358,13 @@ function SimulationReport({ sim }: { sim: Simulation }) {
   );
 }
 
-function SimulationCard({ sim, onClick, expanded }: { sim: Simulation; onClick: () => void; expanded: boolean }) {
+function SimulationCard({ sim, onClick, expanded, onDelete, isDeleting }: {
+  sim: Simulation;
+  onClick: () => void;
+  expanded: boolean;
+  onDelete: () => void;
+  isDeleting: boolean;
+}) {
   const isCompleted = sim.status === "completed";
   const isRunning = sim.status === "running" || sim.status === "queued";
   const isFailed = sim.status === "failed";
@@ -418,6 +425,20 @@ function SimulationCard({ sim, onClick, expanded }: { sim: Simulation; onClick: 
 
         {isCompleted && (
           <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform shrink-0", expanded && "rotate-180")} />
+        )}
+
+        {!isRunning && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (window.confirm(`Delete "${sim.name}"? This cannot be undone.`)) onDelete();
+            }}
+            disabled={isDeleting}
+            title="Delete simulation"
+            className="p-1.5 rounded-md text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40 shrink-0"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
         )}
       </div>
 
@@ -617,6 +638,16 @@ export function AwardSimulatorView() {
     onError: () => toast.error("Failed to create simulation"),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.deleteSimulation(id),
+    onSuccess: (_data, id) => {
+      qc.invalidateQueries({ queryKey: ["simulations"] });
+      if (selectedSim === id) setSelectedSim(null);
+      toast.success("Simulation deleted");
+    },
+    onError: () => toast.error("Failed to delete simulation"),
+  });
+
   const simulations: Simulation[] = simsData?.items ?? [];
   const opportunities: { id: string; title: string }[] = oppsData?.items ?? [];
   const running = simulations.filter((s) => s.status === "running" || s.status === "queued").length;
@@ -677,6 +708,8 @@ export function AwardSimulatorView() {
               sim={sim}
               onClick={() => setSelectedSim(sim.id === selectedSim ? null : sim.id)}
               expanded={sim.id === selectedSim}
+              onDelete={() => deleteMutation.mutate(sim.id)}
+              isDeleting={deleteMutation.isPending && deleteMutation.variables === sim.id}
             />
           ))
         )}

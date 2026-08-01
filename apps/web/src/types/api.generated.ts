@@ -751,7 +751,8 @@ export interface paths {
         get: operations["get_simulation_api_v1_award_simulations__sim_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Delete Simulation */
+        delete: operations["delete_simulation_api_v1_award_simulations__sim_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -6364,6 +6365,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SimulationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_simulation_api_v1_award_simulations__sim_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sim_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletedResponse"];
                 };
             };
             /** @description Validation Error */

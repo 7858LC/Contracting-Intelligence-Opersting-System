@@ -184,6 +184,11 @@ class CIOSApiClient {
     return data;
   }
 
+  async deleteSimulation(id: string) {
+    const { data } = await this.client.delete(`/award-simulations/${id}`);
+    return data;
+  }
+
   // ── Knowledge Vault ──────────────────────────────────────────────────────
 
   async getKnowledgeDocuments(params?: Record<string, unknown>) {
