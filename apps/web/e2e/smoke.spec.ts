@@ -10,7 +10,7 @@
  * testing. Each test seeds its own tenant/data via the `tenant` fixture, so
  * they don't depend on run order or shared state.
  */
-import { createOpportunity, expect, test } from "./fixtures";
+import { createCapability, createCompetitor, createOpportunity, expect, test } from "./fixtures";
 
 test("Executive Dashboard renders a newly created opportunity instead of an empty state", async ({
   page,
@@ -40,6 +40,42 @@ test("Award Simulator's New Simulation form lists a newly created opportunity", 
   // (Evaluation Methodology is the second) — coupled to NewSimulationForm's
   // current field order in award-simulator-view.tsx.
   const opportunitySelect = page.locator("select").first();
+  await expect(opportunitySelect.locator("option", { hasText: opp.title })).toHaveCount(1, {
+    timeout: 10_000,
+  });
+});
+
+test("Competitive Intelligence page renders a newly created competitor instead of an empty state", async ({
+  page,
+  tenant,
+}) => {
+  const competitor = await createCompetitor(tenant, {
+    company_name: `E2E Smoke Competitor ${Date.now()}`,
+  });
+  await page.goto("/dashboard/competitors");
+  await expect(page.getByText(competitor.company_name)).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("No competitors tracked yet")).not.toBeVisible();
+});
+
+test("Capabilities page renders a newly created capability instead of an empty state", async ({
+  page,
+  tenant,
+}) => {
+  const capability = await createCapability(tenant, {
+    name: `E2E Smoke Capability ${Date.now()}`,
+  });
+  await page.goto("/dashboard/capabilities");
+  await expect(page.getByText(capability.name)).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("No capabilities registered")).not.toBeVisible();
+});
+
+test("Capabilities page's Opportunity Gap Analysis picker lists a newly created opportunity", async ({
+  page,
+  tenant,
+}) => {
+  const opp = await createOpportunity(tenant, { title: `E2E Smoke — Gap Analysis ${Date.now()}` });
+  await page.goto("/dashboard/capabilities");
+  const opportunitySelect = page.getByRole("combobox").first();
   await expect(opportunitySelect.locator("option", { hasText: opp.title })).toHaveCount(1, {
     timeout: 10_000,
   });

@@ -29,3 +29,14 @@ export type SearchResult = Schemas["SearchResultItem"];
 // Opportunity Intelligence
 export type Opportunity = Schemas["OpportunityResponse"];
 export type AnalyzeOpportunityResponse = Schemas["AnalyzeOpportunityResponse"];
+
+// Competitive Intelligence
+export type Competitor = Schemas["CompetitorResponse"];
+export type CompetitorIntel = Schemas["CompetitorIntelResponse"];
+export type LandscapeContender = Schemas["LandscapeContenderItem"];
+export type CompetitiveLandscapeAnalysis = Schemas["CompetitiveLandscapeAnalysisResponse"];
+
+// Capabilities & Gap Analysis
+export type Capability = Schemas["CapabilityResponse"];
+export type CapabilityGap = Schemas["CapabilityGapResponse"];
+export type CapabilityGapAnalysisRun = Schemas["CapabilityGapAnalysisRunResponse"];

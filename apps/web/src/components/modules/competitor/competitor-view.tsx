@@ -1,39 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { Building2, Plus, Shield, TrendingUp, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
+import type { Competitor, CompetitiveLandscapeAnalysis, LandscapeContender, Opportunity } from "@/types/api";
+import {
+  Building2,
+  Plus,
+  Shield,
+  TrendingUp,
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  Crosshair,
+  Loader2,
+  Users,
+  XCircle,
+} from "lucide-react";
 
-interface Competitor {
-  id: string;
-  company_name: string;
-  cage_code: string | null;
-  annual_contract_volume: number | null;
-  primary_naics_codes: string[];
-  strengths: string[];
-  weaknesses: string[];
-  typical_price_positioning: string | null;
-  socioeconomic_statuses: string[];
-  active_clearances: string[];
-  certifications: string[];
-  win_rate_estimate: number | null;
-  threat_level: string | null;
-  notes: string | null;
-}
+// A landscape analysis is a background Celery task (see run_competitive_analysis
+// in cios/tasks/competitive_intel.py) — same "pending until the poll shows a
+// terminal status" pattern as opportunity-view.tsx's "Run AI Analysis".
+const ANALYSIS_TIMEOUT_SECONDS = 300;
 
-interface CompetitorIntel {
-  id: string;
-  competitor_id: string;
-  intel_type: string;
-  title: string;
-  content: string;
-  source: string | null;
-  confidence: number | null;
-  opportunity_id: string | null;
-  created_at: string;
+function formatElapsed(startMs: number, nowMs: number): string {
+  const elapsedSec = Math.max(0, Math.floor((nowMs - startMs) / 1000));
+  const minutes = Math.floor(elapsedSec / 60);
+  const seconds = elapsedSec % 60;
+  return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
 }
 
 const THREAT_STYLES: Record<string, string> = {
@@ -93,6 +89,8 @@ export function CompetitorView() {
         </button>
       </div>
 
+      <LandscapeAnalysisSection />
+
       {/* Threat matrix summary */}
       <div className="grid grid-cols-4 gap-3">
         {[
@@ -125,7 +123,13 @@ export function CompetitorView() {
         </div>
       ) : (
         <div className="space-y-3">
-          {comps.map((comp) => (
+          {comps.map((comp) => {
+            const strengths = (comp.known_strengths ?? []) as string[];
+            const weaknesses = (comp.known_weaknesses ?? []) as string[];
+            const socioeconomicStatuses = (comp.socioeconomic_statuses ?? []) as string[];
+            const activeClearances = (comp.active_clearances ?? []) as string[];
+            const certifications = (comp.certifications ?? []) as string[];
+            return (
             <div key={comp.id}
               className={cn("border rounded-lg overflow-hidden", THREAT_STYLES[comp.threat_level || "low"])}>
               <button onClick={() => setExpanded(expanded === comp.id ? null : comp.id)}
@@ -144,14 +148,14 @@ export function CompetitorView() {
                       {comp.cage_code && <span>CAGE: {comp.cage_code}</span>}
                       {comp.annual_contract_volume && <span>{formatVolume(comp.annual_contract_volume)}/yr</span>}
                       {comp.win_rate_estimate != null && <span>{(comp.win_rate_estimate * 100).toFixed(0)}% win rate</span>}
-                      {comp.typical_price_positioning && <span>{comp.typical_price_positioning}</span>}
+                      {comp.pricing_tendency && <span>{comp.pricing_tendency}</span>}
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-1 max-w-[200px]">
-                    {comp.socioeconomic_statuses?.slice(0, 2).map((s) => (
+                    {socioeconomicStatuses.slice(0, 2).map((s) => (
                       <span key={s} className="text-xs bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded">{s}</span>
                     ))}
-                    {comp.active_clearances?.slice(0, 2).map((c) => (
+                    {activeClearances.slice(0, 2).map((c) => (
                       <span key={c} className="text-xs bg-violet-500/10 text-violet-400 px-1.5 py-0.5 rounded flex items-center gap-0.5">
                         <Shield className="w-2.5 h-2.5" />{c}
                       </span>
@@ -167,14 +171,14 @@ export function CompetitorView() {
               {expanded === comp.id && (
                 <div className="px-4 pb-4 border-t border-border/50 pt-4 space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    {comp.strengths?.length > 0 && (
+                    {strengths.length > 0 && (
                       <div>
                         <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
                           <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
                           Strengths
                         </p>
                         <ul className="space-y-1">
-                          {comp.strengths.map((s) => (
+                          {strengths.map((s) => (
                             <li key={s} className="text-xs flex items-start gap-1.5">
                               <span className="text-emerald-400 shrink-0">+</span>
                               {s}
@@ -183,14 +187,14 @@ export function CompetitorView() {
                         </ul>
                       </div>
                     )}
-                    {comp.weaknesses?.length > 0 && (
+                    {weaknesses.length > 0 && (
                       <div>
                         <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
                           <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
                           Weaknesses
                         </p>
                         <ul className="space-y-1">
-                          {comp.weaknesses.map((w) => (
+                          {weaknesses.map((w) => (
                             <li key={w} className="text-xs flex items-start gap-1.5">
                               <span className="text-amber-400 shrink-0">−</span>
                               {w}
@@ -201,11 +205,11 @@ export function CompetitorView() {
                     )}
                   </div>
 
-                  {comp.certifications?.length > 0 && (
+                  {certifications.length > 0 && (
                     <div>
                       <p className="text-xs text-muted-foreground mb-1.5">Certifications</p>
                       <div className="flex flex-wrap gap-1.5">
-                        {comp.certifications.map((c) => (
+                        {certifications.map((c) => (
                           <span key={c} className="text-xs bg-secondary text-muted-foreground px-2 py-0.5 rounded">{c}</span>
                         ))}
                       </div>
@@ -221,7 +225,8 @@ export function CompetitorView() {
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -235,11 +240,215 @@ export function CompetitorView() {
   );
 }
 
+function LandscapeAnalysisSection() {
+  const queryClient = useQueryClient();
+  const [opportunityId, setOpportunityId] = useState("");
+  const [pendingSince, setPendingSince] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (pendingSince == null) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [pendingSince]);
+
+  const { data: opportunities = [] } = useQuery({
+    queryKey: ["opportunities-for-landscape"],
+    queryFn: async () => (await api.getOpportunities({ page_size: 100 }))?.items ?? [],
+  });
+  const opps = opportunities as Opportunity[];
+
+  const { data: analysis, isLoading: analysisLoading } = useQuery({
+    queryKey: ["competitive-landscape-analysis", opportunityId],
+    queryFn: async () => {
+      try {
+        return (await api.getLatestCompetitiveLandscapeAnalysis(opportunityId)) as CompetitiveLandscapeAnalysis;
+      } catch {
+        return null;
+      }
+    },
+    enabled: !!opportunityId,
+    refetchInterval: (query) => (query.state.data?.status === "pending" ? 5_000 : false),
+  });
+
+  // Clear the pending marker (and toast) once a poll shows a terminal status,
+  // or once it's been in flight longer than makes sense to keep waiting.
+  useEffect(() => {
+    if (pendingSince == null) return;
+    if (analysis?.status === "completed") {
+      setPendingSince(null);
+      toast.success("Competitive landscape analysis complete");
+    } else if (analysis?.status === "failed") {
+      setPendingSince(null);
+      toast.error(analysis.error_message || "Competitive landscape analysis failed");
+    } else if (Date.now() - pendingSince > ANALYSIS_TIMEOUT_SECONDS * 1000) {
+      setPendingSince(null);
+      toast.error("Analysis is taking longer than expected — it may have failed. Try again.");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analysis?.status, pendingSince]);
+
+  const analyzeMutation = useMutation({
+    mutationFn: () => api.analyzeCompetitiveLandscape(opportunityId),
+    onSuccess: (data) => {
+      setPendingSince(Date.now());
+      queryClient.setQueryData(["competitive-landscape-analysis", opportunityId], data);
+      toast.success("Competitive landscape analysis queued");
+    },
+    onError: () => toast.error("Failed to start analysis — please try again"),
+  });
+
+  const isPending = pendingSince != null || analysis?.status === "pending";
+
+  return (
+    <div className="bg-card border border-border rounded-lg p-4 space-y-4">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Crosshair className="w-4 h-4 text-primary" />
+          <h2 className="font-semibold text-sm">Competitive Landscape Analysis</h2>
+        </div>
+        <div className="flex items-center gap-2">
+          <select
+            value={opportunityId}
+            onChange={(e) => setOpportunityId(e.target.value)}
+            className="px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 min-w-[220px]"
+          >
+            <option value="">Select an opportunity…</option>
+            {opps.map((o) => (
+              <option key={o.id} value={o.id}>{o.title}</option>
+            ))}
+          </select>
+          <button
+            onClick={() => analyzeMutation.mutate()}
+            disabled={!opportunityId || isPending}
+            className="flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
+            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Crosshair className="w-4 h-4" />}
+            {isPending ? "Analyzing…" : "Analyze"}
+          </button>
+        </div>
+      </div>
+
+      {!opportunityId && (
+        <p className="text-xs text-muted-foreground">
+          Pick an opportunity to see who you&apos;re up against, ranked by Winning Profile alignment.
+        </p>
+      )}
+
+      {opportunityId && isPending && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          Analyzing competitive landscape{pendingSince != null ? ` — ${formatElapsed(pendingSince, now)} elapsed` : ""}
+        </div>
+      )}
+
+      {opportunityId && !isPending && !analysisLoading && analysis?.status === "failed" && (
+        <div className="flex items-start gap-2 text-xs text-red-400 bg-red-500/5 border border-red-500/30 rounded-md p-3">
+          <XCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium">Analysis failed</p>
+            <p className="mt-0.5 text-red-400/80">{analysis.error_message}</p>
+          </div>
+        </div>
+      )}
+
+      {opportunityId && !isPending && !analysisLoading && !analysis && (
+        <p className="text-xs text-muted-foreground">No analysis run yet for this opportunity.</p>
+      )}
+
+      {opportunityId && !isPending && analysis?.status === "completed" && (
+        <div className="space-y-3">
+          <div className="text-xs text-muted-foreground">
+            {analysis.candidate_pool_size ?? 0} competing contractor{analysis.candidate_pool_size === 1 ? "" : "s"} identified
+          </div>
+          {analysis.front_runner && (
+            <ContenderCard contender={analysis.front_runner} isFrontRunner />
+          )}
+          {analysis.next_tiers?.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5" />
+                Next Tier
+              </p>
+              {analysis.next_tiers.map((c) => (
+                <ContenderCard key={c.contractor_id} contender={c} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ContenderCard({ contender, isFrontRunner }: { contender: LandscapeContender; isFrontRunner?: boolean }) {
+  const strengths = (contender.known_strengths ?? []) as string[];
+  const weaknesses = (contender.known_weaknesses ?? []) as string[];
+  return (
+    <div
+      className={cn(
+        "border rounded-lg p-3",
+        isFrontRunner ? "border-primary/50 bg-primary/5" : THREAT_STYLES[contender.threat_level || "low"]
+      )}
+    >
+      <div className="flex items-center gap-2 flex-wrap">
+        {isFrontRunner && (
+          <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-primary/20 text-primary">
+            Front Runner
+          </span>
+        )}
+        {contender.rank != null && (
+          <span className="text-xs text-muted-foreground">Rank #{contender.rank}</span>
+        )}
+        <p className="text-sm font-medium">{contender.contractor_name ?? "Unknown contractor"}</p>
+        {contender.threat_level && (
+          <span className={cn("text-xs px-1.5 py-0.5 rounded font-medium", THREAT_BADGE[contender.threat_level])}>
+            {contender.threat_level}
+          </span>
+        )}
+        {contender.alignment_score != null && (
+          <span className="text-xs text-muted-foreground ml-auto">
+            Alignment: {contender.alignment_score.toFixed(0)}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+        {contender.pricing_tendency && <span>Pricing: {contender.pricing_tendency}</span>}
+      </div>
+      {(strengths.length > 0 || weaknesses.length > 0) && (
+        <div className="grid grid-cols-2 gap-3 mt-2">
+          {strengths.length > 0 && (
+            <ul className="space-y-0.5">
+              {strengths.slice(0, 3).map((s) => (
+                <li key={s} className="text-xs flex items-start gap-1.5">
+                  <span className="text-emerald-400 shrink-0">+</span>
+                  {s}
+                </li>
+              ))}
+            </ul>
+          )}
+          {weaknesses.length > 0 && (
+            <ul className="space-y-0.5">
+              {weaknesses.slice(0, 3).map((w) => (
+                <li key={w} className="text-xs flex items-start gap-1.5">
+                  <span className="text-amber-400 shrink-0">−</span>
+                  {w}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      {contender.notes && <p className="text-xs text-muted-foreground mt-2">{contender.notes}</p>}
+    </div>
+  );
+}
+
 function AddCompetitorModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     company_name: "", cage_code: "", annual_contract_volume: "",
-    strengths: "", weaknesses: "", typical_price_positioning: "",
+    known_strengths: "", known_weaknesses: "", pricing_tendency: "",
     socioeconomic_statuses: "", active_clearances: "", certifications: "",
     win_rate_estimate: "", threat_level: "medium", notes: "",
   });
@@ -253,9 +462,9 @@ function AddCompetitorModal({ onClose, onCreated }: { onClose: () => void; onCre
         company_name: form.company_name,
         cage_code: form.cage_code || null,
         annual_contract_volume: form.annual_contract_volume ? parseFloat(form.annual_contract_volume) : null,
-        strengths: split(form.strengths),
-        weaknesses: split(form.weaknesses),
-        typical_price_positioning: form.typical_price_positioning || null,
+        known_strengths: split(form.known_strengths),
+        known_weaknesses: split(form.known_weaknesses),
+        pricing_tendency: form.pricing_tendency || null,
         socioeconomic_statuses: split(form.socioeconomic_statuses),
         active_clearances: split(form.active_clearances),
         certifications: split(form.certifications),
@@ -310,19 +519,19 @@ function AddCompetitorModal({ onClose, onCreated }: { onClose: () => void; onCre
           </div>
           <div>
             <label className="block text-xs font-medium mb-1 text-muted-foreground">Strengths (comma separated)</label>
-            <input value={form.strengths} onChange={(e) => setForm({ ...form, strengths: e.target.value })}
+            <input value={form.known_strengths} onChange={(e) => setForm({ ...form, known_strengths: e.target.value })}
               className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
               placeholder="Incumbent, strong past performance, low pricing" />
           </div>
           <div>
             <label className="block text-xs font-medium mb-1 text-muted-foreground">Weaknesses (comma separated)</label>
-            <input value={form.weaknesses} onChange={(e) => setForm({ ...form, weaknesses: e.target.value })}
+            <input value={form.known_weaknesses} onChange={(e) => setForm({ ...form, known_weaknesses: e.target.value })}
               className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
               placeholder="High overhead, staff turnover, limited clearances" />
           </div>
           <div>
             <label className="block text-xs font-medium mb-1 text-muted-foreground">Price Positioning</label>
-            <select value={form.typical_price_positioning} onChange={(e) => setForm({ ...form, typical_price_positioning: e.target.value })}
+            <select value={form.pricing_tendency} onChange={(e) => setForm({ ...form, pricing_tendency: e.target.value })}
               className="w-full px-3 py-2 bg-background border border-border rounded-md text-sm focus:outline-none">
               <option value="">Unknown</option>
               <option value="lowest">Lowest price aggressive</option>

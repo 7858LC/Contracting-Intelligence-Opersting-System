@@ -417,8 +417,53 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Analyze Capability Gaps */
+        /**
+         * Analyze Capability Gaps
+         * @description Derive capability gaps for an opportunity from the tenant's own
+         *     Winning Profile alignment score. Requires Winning Profile analysis and
+         *     self-contractor alignment to have already run for this opportunity;
+         *     the task reports why via status="failed" + error_message if not,
+         *     rather than completing with nothing.
+         */
         post: operations["analyze_capability_gaps_api_v1_capabilities_analyze_gaps_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/capabilities/gaps/analyze/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Capability Gap Analysis Run */
+        get: operations["get_capability_gap_analysis_run_api_v1_capabilities_gaps_analyze__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/capabilities/gaps/analyze/by-opportunity/{opportunity_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Latest Capability Gap Analysis Run
+         * @description Most recent analysis run for an opportunity — the polling target
+         *     after POST /analyze-gaps without needing to hold onto the returned id.
+         */
+        get: operations["get_latest_capability_gap_analysis_run_api_v1_capabilities_gaps_analyze_by_opportunity__opportunity_id__get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2301,6 +2346,39 @@ export interface components {
              */
             tools_and_technologies: string[];
         };
+        /** CapabilityGapAnalysisRunResponse */
+        CapabilityGapAnalysisRunResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Opportunity Id
+             * Format: uuid
+             */
+            opportunity_id: string;
+            /** Solicitation Id */
+            solicitation_id: string | null;
+            /** Status */
+            status: string;
+            /** Error Message */
+            error_message: string | null;
+            /** Gap Count */
+            gap_count: number | null;
+            /** Generated At */
+            generated_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** CapabilityGapItem */
         CapabilityGapItem: {
             /** Attribute Key */
@@ -2334,6 +2412,8 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Analysis Run Id */
+            analysis_run_id: string | null;
             /** Opportunity Id */
             opportunity_id: string | null;
             /** Gap Name */
@@ -3039,16 +3119,12 @@ export interface components {
             /** Pipeline Status */
             pipeline_status: string;
         };
-        /** GapAnalysisQueuedResponse */
-        GapAnalysisQueuedResponse: {
-            /** Task Id */
-            task_id: string;
-            /** Status */
-            status: string;
-        };
         /** GapAnalysisRequest */
         GapAnalysisRequest: {
-            /** Opportunity Id */
+            /**
+             * Opportunity Id
+             * Format: uuid
+             */
             opportunity_id: string;
         };
         /** GapClosureItem */
@@ -5494,12 +5570,74 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CapabilityGapAnalysisRunResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_capability_gap_analysis_run_api_v1_capabilities_gaps_analyze__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["GapAnalysisQueuedResponse"];
+                    "application/json": components["schemas"]["CapabilityGapAnalysisRunResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_latest_capability_gap_analysis_run_api_v1_capabilities_gaps_analyze_by_opportunity__opportunity_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CapabilityGapAnalysisRunResponse"];
                 };
             };
             /** @description Validation Error */
@@ -5515,7 +5653,9 @@ export interface operations {
     };
     list_gaps_api_v1_capabilities_gaps_get: {
         parameters: {
-            query?: never;
+            query?: {
+                opportunity_id?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -5529,6 +5669,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CapabilityGapListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -215,9 +215,24 @@ class CIOSApiClient {
     return data;
   }
 
-  async getCapabilityGaps() {
-    const { data } = await this.client.get("/capabilities/gaps");
+  async getCapabilityGaps(params?: Record<string, unknown>) {
+    const { data } = await this.client.get("/capabilities/gaps", { params });
     return data.gaps ?? data;
+  }
+
+  async analyzeCapabilityGaps(opportunityId: string) {
+    const { data } = await this.client.post("/capabilities/analyze-gaps", { opportunity_id: opportunityId });
+    return data;
+  }
+
+  async getCapabilityGapAnalysisRun(runId: string) {
+    const { data } = await this.client.get(`/capabilities/gaps/analyze/${runId}`);
+    return data;
+  }
+
+  async getLatestCapabilityGapAnalysisRun(opportunityId: string) {
+    const { data } = await this.client.get(`/capabilities/gaps/analyze/by-opportunity/${opportunityId}`);
+    return data;
   }
 
   // ── Past Performance (Module 6) ──────────────────────────────────────────
@@ -268,6 +283,21 @@ class CIOSApiClient {
 
   async addCompetitorIntel(competitorId: string, payload: Record<string, unknown>) {
     const { data } = await this.client.post(`/competitors/${competitorId}/intel`, payload);
+    return data;
+  }
+
+  async analyzeCompetitiveLandscape(opportunityId: string) {
+    const { data } = await this.client.post("/competitors/analyze", { opportunity_id: opportunityId });
+    return data;
+  }
+
+  async getCompetitiveLandscapeAnalysis(analysisId: string) {
+    const { data } = await this.client.get(`/competitors/analyze/${analysisId}`);
+    return data;
+  }
+
+  async getLatestCompetitiveLandscapeAnalysis(opportunityId: string) {
+    const { data } = await this.client.get(`/competitors/analyze/by-opportunity/${opportunityId}`);
     return data;
   }
 
