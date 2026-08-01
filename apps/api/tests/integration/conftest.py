@@ -20,6 +20,12 @@ os.environ.setdefault("ANTHROPIC_API_KEY", "test_key")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
 os.environ.setdefault("TENANT_KEY_DERIVATION_SALT", "test_salt")
 
+os.environ.setdefault("S3_ENDPOINT", "http://localhost:5099")
+os.environ.setdefault("S3_ACCESS_KEY_ID", "test")
+os.environ.setdefault("S3_SECRET_ACCESS_KEY", "test")
+os.environ.setdefault("S3_BUCKET_DOCUMENTS", "cios-test-documents")
+os.environ.setdefault("S3_REGION", "us-east-1")
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -27,6 +33,35 @@ from httpx import ASGITransport, AsyncClient
 @pytest.fixture
 def anyio_backend():
     return "asyncio"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _knowledge_vault_object_storage():
+    """Knowledge Vault's upload/download/delete/publish-to-vault flows
+    (cios/core/storage.py) call a real S3-compatible HTTP endpoint via
+    aiobotocore — no client-level mocking, same "hit something real" bar
+    as Postgres/Redis above. ThreadedMotoServer speaks real S3-over-HTTP,
+    so aiobotocore talks to it exactly as it would talk to AWS or R2; only
+    S3_ENDPOINT differs. Session-scoped and thread-based (not asyncio), so
+    it's safe across the per-test event loops _fresh_connections_per_test
+    resets below."""
+    from moto.server import ThreadedMotoServer
+
+    server = ThreadedMotoServer(port=5099, verbose=False)
+    server.start()
+
+    import boto3
+
+    boto3.client(
+        "s3",
+        endpoint_url="http://localhost:5099",
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+        region_name="us-east-1",
+    ).create_bucket(Bucket="cios-test-documents")
+
+    yield
+    server.stop()
 
 
 @pytest.fixture(autouse=True)

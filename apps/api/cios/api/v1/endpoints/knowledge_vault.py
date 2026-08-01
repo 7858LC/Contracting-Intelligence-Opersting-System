@@ -76,6 +76,11 @@ class SearchResponse(BaseModel):
     count: int
 
 
+class DownloadUrlResponse(BaseModel):
+    download_url: str
+    expires_in: int
+
+
 @router.get("", response_model=DocumentListResponse)
 async def list_documents(
     db: DB,
@@ -148,9 +153,26 @@ async def upload_document(
     db.add(doc)
     await db.flush()
 
+    from cios.core.storage import DocumentStorage, build_storage_key
+
+    # Persist the original file before queueing ingestion — previously the
+    # raw bytes only ever existed transiently inside the Celery task (see
+    # tasks/ingestion.py), passed through Redis as a task argument and
+    # discarded after text extraction. Nothing about the source document
+    # survived, and there was no way for a tenant to ever retrieve what
+    # they uploaded. Uploading here first, then queueing the task with the
+    # storage key instead of the raw bytes, fixes both: the document is
+    # actually kept, and the broker payload is a short string instead of
+    # up to MAX_FILE_SIZE_MB of inline bytes.
+    storage_key = build_storage_key(str(user.tenant_id), str(doc.id), file.filename)
+    content_type = file.content_type or "application/octet-stream"
+    await DocumentStorage().upload(storage_key, content, content_type)
+    doc.s3_key = storage_key
+    await db.flush()
+
     from cios.tasks.ingestion import ingest_document
 
-    task = ingest_document.delay(str(user.tenant_id), str(doc.id), content, file.content_type)
+    task = ingest_document.delay(str(user.tenant_id), str(doc.id), storage_key, file.content_type)
 
     return {
         "document_id": str(doc.id),
@@ -184,6 +206,35 @@ async def search_knowledge_vault(body: SearchRequest, user: Auth) -> dict[str, A
         for r in raw
     ]
     return {"results": results, "query": body.query, "count": len(results)}
+
+
+@router.get("/{document_id}/download", response_model=DownloadUrlResponse)
+async def get_document_download_url(document_id: uuid.UUID, db: DB, user: Auth) -> dict[str, Any]:
+    """Presigned URL to fetch the original uploaded file. Short-lived and
+    tenant-scoped like every other document lookup here — the tenant_id
+    filter below is what stops a document_id guess from leaking another
+    tenant's file, since the presigned URL itself carries no tenant check
+    once issued."""
+    result = await db.execute(
+        select(KnowledgeDocument).where(
+            KnowledgeDocument.id == document_id,
+            KnowledgeDocument.tenant_id == user.tenant_id,
+        )
+    )
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if not doc.s3_key:
+        raise HTTPException(
+            status_code=404,
+            detail="No stored file for this document (uploaded before object storage was wired up)",
+        )
+
+    from cios.core.storage import DocumentStorage
+
+    expires_in = 300
+    url = await DocumentStorage().presigned_download_url(doc.s3_key, expires_in=expires_in)
+    return {"download_url": url, "expires_in": expires_in}
 
 
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -221,6 +272,21 @@ async def delete_document(document_id: uuid.UUID, db: DB, user: Auth) -> None:
             # delete the user's own document at all.
             log.warning(
                 "knowledge_vault_qdrant_delete_failed",
+                document_id=str(document_id),
+                tenant_id=str(user.tenant_id),
+                exc_info=True,
+            )
+
+    if doc.s3_key:
+        from cios.core.storage import DocumentStorage
+
+        try:
+            await DocumentStorage().delete(doc.s3_key)
+        except Exception:
+            # Same reasoning as the Qdrant cleanup above: an object-storage
+            # hiccup must not block deleting the user's own row.
+            log.warning(
+                "knowledge_vault_s3_delete_failed",
                 document_id=str(document_id),
                 tenant_id=str(user.tenant_id),
                 exc_info=True,

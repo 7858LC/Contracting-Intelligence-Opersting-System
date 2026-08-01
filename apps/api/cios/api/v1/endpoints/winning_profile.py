@@ -1379,7 +1379,14 @@ async def publish_capture_package_to_vault(sol_id: uuid.UUID, user: Auth, db: DB
     db.add(doc)
     await db.flush()
 
-    task = ingest_document.delay(str(user.tenant_id), str(doc.id), text.encode(), "text/plain")
+    from cios.core.storage import DocumentStorage, build_storage_key
+
+    storage_key = build_storage_key(str(user.tenant_id), str(doc.id), doc.file_name)
+    await DocumentStorage().upload(storage_key, text.encode(), "text/plain")
+    doc.s3_key = storage_key
+    await db.flush()
+
+    task = ingest_document.delay(str(user.tenant_id), str(doc.id), storage_key, "text/plain")
 
     package.knowledge_vault_document_id = doc.id
     await db.commit()

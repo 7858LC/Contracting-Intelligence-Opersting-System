@@ -8,11 +8,13 @@ from cios.tasks import celery_app
 
 
 @celery_app.task(bind=True, max_retries=3, soft_time_limit=300)
-def ingest_document(self, tenant_id: str, document_id: str, content: bytes, mime_type: str) -> dict:
-    return asyncio.run(_ingest_async(tenant_id, document_id, content, mime_type))
+def ingest_document(
+    self, tenant_id: str, document_id: str, storage_key: str, mime_type: str
+) -> dict:
+    return asyncio.run(_ingest_async(tenant_id, document_id, storage_key, mime_type))
 
 
-async def _ingest_async(tenant_id: str, document_id: str, content: bytes, mime_type: str) -> dict:
+async def _ingest_async(tenant_id: str, document_id: str, storage_key: str, mime_type: str) -> dict:
     from datetime import UTC, datetime
 
     from sqlalchemy import select
@@ -32,8 +34,17 @@ async def _ingest_async(tenant_id: str, document_id: str, content: bytes, mime_t
         await db.commit()
 
         try:
+            from cios.core.storage import DocumentStorage
             from cios.vector.tenant_store import TenantVectorStore
 
+            # Previously the caller (knowledge_vault.py's upload endpoint)
+            # passed the raw file bytes straight through as a task argument
+            # — up to MAX_FILE_SIZE_MB inline in the Celery/Redis broker,
+            # and never persisted anywhere, so the original document was
+            # unrecoverable the moment this task finished. The endpoint now
+            # uploads to object storage first and hands this task a short
+            # key instead.
+            content = await DocumentStorage().download(storage_key)
             text = _extract_text(content, mime_type)
             chunks = _chunk_text(text)
             content_hash = hashlib.sha256(content).hexdigest()
