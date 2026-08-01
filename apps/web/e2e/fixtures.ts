@@ -5,9 +5,15 @@
  * tokens before any app code runs, so tests start already logged in instead
  * of re-driving the login form on every run.
  */
+import { execFileSync } from "node:child_process";
 import { test as base, expect } from "@playwright/test";
 
 const API_URL = process.env.E2E_API_URL || "http://localhost:8000/api/v1";
+// Matches the local dev Postgres credentials used throughout this repo
+// (docker-compose.yml, apps/api's own test fixtures) — CI's e2e-test job
+// overrides this to point at its service-container Postgres.
+const DATABASE_URL =
+  process.env.E2E_DATABASE_URL || "postgresql://cios_user:cios_pass@localhost:5432/cios_test";
 
 export interface TenantSession {
   accessToken: string;
@@ -24,14 +30,35 @@ function fakeClientIp(): string {
   return `10.${octet()}.${octet()}.${octet()}`;
 }
 
+// Competitive Intelligence, Capabilities & Gaps, Teaming, and Award
+// Simulator are all gated Professional+ via require_feature()
+// (apps/api/cios/api/v1/router.py) — /auth/register always issues
+// plan="trial" (starter-equivalent, no access), so E2E tenants need a
+// real plan bump before they can exercise those modules. There's no API
+// route for this yet (it's meant to flow through Stripe checkout, not a
+// self-serve endpoint), so this goes straight at the same Postgres the
+// API itself uses — the same class of workaround
+// tests/integration/conftest.py's upgrade_tenant_plan() uses on the
+// pytest side, just via psql instead of a SQLAlchemy session since this
+// fixture has no ORM access into the API's database layer.
+function upgradeTenantPlan(tenantId: string, plan: string): void {
+  execFileSync(
+    "psql",
+    [DATABASE_URL, "-c", `UPDATE tenants SET plan = '${plan}' WHERE id = '${tenantId}'`],
+    { stdio: "pipe" }
+  );
+}
+
 async function registerTenant(): Promise<TenantSession> {
   const suffix = Math.random().toString(36).slice(2, 10);
+  const email = `e2e-${suffix}@example.com`;
+  const password = "E2eSmokeTestPassword!23";
   const res = await fetch(`${API_URL}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Forwarded-For": fakeClientIp() },
     body: JSON.stringify({
-      email: `e2e-${suffix}@example.com`,
-      password: "E2eSmokeTestPassword!23",
+      email,
+      password,
       full_name: "E2E Smoke Test",
       company_name: `E2E Smoke Co ${suffix}`,
     }),
@@ -40,9 +67,24 @@ async function registerTenant(): Promise<TenantSession> {
     throw new Error(`Tenant registration failed: ${res.status} ${await res.text()}`);
   }
   const data = await res.json();
+
+  // Plan is baked into the JWT at issue time (see auth.py), so the token
+  // above still carries plan="trial" even after the DB row changes below —
+  // log in again for one that actually reflects "professional".
+  upgradeTenantPlan(data.tenant_id, "professional");
+  const loginRes = await fetch(`${API_URL}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Forwarded-For": fakeClientIp() },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!loginRes.ok) {
+    throw new Error(`Post-upgrade login failed: ${loginRes.status} ${await loginRes.text()}`);
+  }
+  const loginData = await loginRes.json();
+
   return {
-    accessToken: data.access_token,
-    refreshToken: data.refresh_token,
+    accessToken: loginData.access_token,
+    refreshToken: loginData.refresh_token,
     tenantId: data.tenant_id,
     apiUrl: API_URL,
   };

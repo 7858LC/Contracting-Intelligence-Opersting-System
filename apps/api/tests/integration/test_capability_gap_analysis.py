@@ -29,21 +29,40 @@ def _fake_client_ip() -> str:
     return f"10.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(1, 254)}"
 
 
+_GAP_ANALYSIS_PASSWORD = "GapAnalysisTest123!"
+
+
 async def _register(client: AsyncClient) -> tuple[dict, str]:
+    """Capabilities & Gap Analysis is gated Professional+ via
+    require_feature() (api/v1/router.py) — register always issues
+    plan="trial", so this bumps the tenant's plan and logs in again for a
+    token that actually carries it (see conftest's upgrade_tenant_plan)."""
+    from tests.integration.conftest import upgrade_tenant_plan
+
     suffix = uuid.uuid4().hex[:10]
+    email = f"cga-{suffix}@example.com"
+    ip_header = {"X-Forwarded-For": _fake_client_ip()}
     resp = await client.post(
         "/api/v1/auth/register",
         json={
-            "email": f"cga-{suffix}@example.com",
-            "password": "GapAnalysisTest123!",
+            "email": email,
+            "password": _GAP_ANALYSIS_PASSWORD,
             "full_name": "Gap Analysis Test",
             "company_name": f"Gap Analysis Co {suffix}",
         },
-        headers={"X-Forwarded-For": _fake_client_ip()},
+        headers=ip_header,
     )
     assert resp.status_code == 201, resp.text
-    body = resp.json()
-    return {"Authorization": f"Bearer {body['access_token']}"}, body["tenant_id"]
+    tenant_id = resp.json()["tenant_id"]
+    await upgrade_tenant_plan(tenant_id)
+
+    login = await client.post(
+        "/api/v1/auth/login",
+        json={"email": email, "password": _GAP_ANALYSIS_PASSWORD},
+        headers=ip_header,
+    )
+    assert login.status_code == 200, login.text
+    return {"Authorization": f"Bearer {login.json()['access_token']}"}, tenant_id
 
 
 async def _set_tenant(db, tenant_id: str) -> None:

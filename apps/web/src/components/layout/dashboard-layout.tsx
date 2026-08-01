@@ -22,16 +22,12 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { clearTokens, getAccessToken } from "@/lib/auth";
+import { clearTokens, getAccessToken, getUserPlan } from "@/lib/auth";
 import {
   Feature,
   SubscriptionTier,
   hasFeature,
 } from "@/lib/feature-flags";
-
-// TODO: Replace with subscription tier from user profile API once endpoint is available.
-// Currently defaults to Enterprise so no existing functionality is gated.
-const ACTIVE_TIER: SubscriptionTier = SubscriptionTier.Enterprise;
 
 interface NavItem {
   href: string;
@@ -58,10 +54,6 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { href: "/dashboard/settings", label: "Settings", icon: Settings, feature: null },
 ];
 
-const NAV_ITEMS = ALL_NAV_ITEMS.filter(
-  (item) => item.feature === null || hasFeature(ACTIVE_TIER, item.feature)
-);
-
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -71,6 +63,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       router.replace("/auth/login");
     }
   }, [router]);
+
+  // getUserPlan() reads localStorage (client-only) and defaults to "trial"
+  // during SSR/before hydration — safe, since that's also the least-access
+  // fallback, so the nav never briefly over-shows a gated module.
+  const activeTier = getUserPlan() as SubscriptionTier;
+  const navItems = ALL_NAV_ITEMS.filter(
+    (item) => item.feature === null || hasFeature(activeTier, item.feature)
+  );
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
@@ -98,7 +98,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
         {/* Navigation */}
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
             return (
               <Link
@@ -132,7 +132,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {/* Top bar */}
         <header className="h-16 border-b border-border bg-card px-6 flex items-center justify-between shrink-0">
           <div className="text-sm text-muted-foreground">
-            {NAV_ITEMS.find((i) => pathname.startsWith(i.href) && (i.href !== "/dashboard" || pathname === "/dashboard"))?.label}
+            {navItems.find((i) => pathname.startsWith(i.href) && (i.href !== "/dashboard" || pathname === "/dashboard"))?.label}
           </div>
           <button
             onClick={() => { clearTokens(); window.location.href = "/auth/login"; }}

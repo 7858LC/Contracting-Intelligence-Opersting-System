@@ -1,6 +1,8 @@
 """API v1 router — all CIOS modules."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+
+from cios.core.dependencies import require_feature
 
 from .endpoints import (
     admin,
@@ -38,7 +40,14 @@ api_router.include_router(opportunities.router, prefix="/opportunities", tags=["
 api_router.include_router(bid_decisions.router, prefix="/bid-decisions", tags=["Bid Decisions"])
 
 # Modules 5 & 15 — Capability & Organizational Intelligence
-api_router.include_router(capabilities.router, prefix="/capabilities", tags=["Capabilities"])
+# Sold as a whole module (Professional+) on the pricing page, so the gate
+# applies to the whole router — not just the AI gap-analysis trigger.
+api_router.include_router(
+    capabilities.router,
+    prefix="/capabilities",
+    tags=["Capabilities"],
+    dependencies=[Depends(require_feature("capabilities"))],
+)
 
 # Module 6 — Past Performance Intelligence
 api_router.include_router(
@@ -46,14 +55,27 @@ api_router.include_router(
 )
 
 # Module 7 — Teaming Recommendation Engine
-api_router.include_router(teaming.router, prefix="/teaming", tags=["Teaming"])
+api_router.include_router(
+    teaming.router,
+    prefix="/teaming",
+    tags=["Teaming"],
+    dependencies=[Depends(require_feature("teaming"))],
+)
 
 # Module 8 — Competitive Intelligence
-api_router.include_router(competitors.router, prefix="/competitors", tags=["Competitors"])
+api_router.include_router(
+    competitors.router,
+    prefix="/competitors",
+    tags=["Competitors"],
+    dependencies=[Depends(require_feature("competitive_intel"))],
+)
 
 # Module 13 — Award Simulator (flagship)
 api_router.include_router(
-    award_simulations.router, prefix="/award-simulations", tags=["Award Simulator"]
+    award_simulations.router,
+    prefix="/award-simulations",
+    tags=["Award Simulator"],
+    dependencies=[Depends(require_feature("award_simulator"))],
 )
 
 # Knowledge Vault

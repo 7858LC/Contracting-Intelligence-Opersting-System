@@ -9,6 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cios.core.database import get_db
+from cios.core.features import plan_has_feature
 from cios.core.security import decode_token
 
 bearer = HTTPBearer()
@@ -92,6 +93,25 @@ async def require_admin(user: Annotated[CurrentUser, Depends(get_current_user)])
     if not user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin required")
     return user
+
+
+def require_feature(feature: str):
+    """Router-level gate: 403s any request whose tenant plan doesn't include
+    ``feature`` (see core/features.py for the plan->feature table). Apply via
+    ``include_router(..., dependencies=[Depends(require_feature("x"))])`` so
+    it covers every route under that prefix, not just one — Competitive
+    Intelligence, Capabilities & Gaps, Teaming, and Award Simulator are each
+    sold as a whole module on the pricing page, not per-endpoint."""
+
+    async def _check(user: Annotated[CurrentUser, Depends(get_current_user)]) -> None:
+        if not plan_has_feature(user.plan, feature):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Your current plan does not include {feature.replace('_', ' ')}. "
+                "Upgrade your subscription to access this feature.",
+            )
+
+    return _check
 
 
 class CurrentPlatformAdmin:
