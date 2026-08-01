@@ -270,6 +270,12 @@ jobs:
         env:
           E2E_API_URL: http://localhost:8000/api/v1
           E2E_BASE_URL: http://localhost:3000
+          # fixtures.ts's tenant fixture bumps every E2E tenant to
+          # "professional" directly in Postgres (psql) so it can exercise
+          # Professional+ modules (Competitive Intel, Capabilities & Gaps,
+          # Teaming, Award Simulator — see core/dependencies.require_feature())
+          # without a real Stripe checkout.
+          E2E_DATABASE_URL: postgresql://cios_user:cios_pass@localhost:5432/cios_test
         run: npx playwright test
 
       - name: Upload Playwright report

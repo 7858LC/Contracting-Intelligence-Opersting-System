@@ -10,6 +10,7 @@ from sqlalchemy import select
 
 from cios.config import settings
 from cios.core.dependencies import DB, AdminAuth, Auth
+from cios.core.features import features_for_plan
 from cios.models.subscription import Invoice, Subscription
 
 router = APIRouter()
@@ -24,40 +25,6 @@ class CreateCheckoutRequest(BaseModel):
 
 class PortalRequest(BaseModel):
     return_url: str = "/dashboard/settings"
-
-
-PLAN_FEATURES = {
-    "starter": {
-        "opportunities": 50,
-        "simulations": 5,
-        "knowledge_vault_mb": 500,
-        "seats": 3,
-        "api_access": False,
-        "award_simulator": True,
-        "competitive_intel": False,
-    },
-    "professional": {
-        "opportunities": 500,
-        "simulations": 50,
-        "knowledge_vault_mb": 5000,
-        "seats": 10,
-        "api_access": True,
-        "award_simulator": True,
-        "competitive_intel": True,
-    },
-    "enterprise": {
-        "opportunities": -1,
-        "simulations": -1,
-        "knowledge_vault_mb": -1,
-        "seats": -1,
-        "api_access": True,
-        "award_simulator": True,
-        "competitive_intel": True,
-        "customer_owned_keys": True,
-        "sso": True,
-        "dedicated_support": True,
-    },
-}
 
 
 class SubscriptionResponse(BaseModel):
@@ -124,8 +91,8 @@ async def get_subscription(db: DB, user: Auth) -> dict:
     )
     sub = result.scalars().first()
     if not sub:
-        return {"plan": "trial", "status": "active", "features": PLAN_FEATURES.get("starter", {})}
-    return {**sub.to_dict(), "features": PLAN_FEATURES.get(sub.plan, {})}
+        return {"plan": "trial", "status": "active", "features": features_for_plan("trial")}
+    return {**sub.to_dict(), "features": features_for_plan(sub.plan)}
 
 
 @router.post("/checkout", response_model=CheckoutSessionResponse)
