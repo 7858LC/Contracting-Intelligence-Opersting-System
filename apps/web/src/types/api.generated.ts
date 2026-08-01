@@ -793,6 +793,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/knowledge-vault/{document_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Document Download Url
+         * @description Presigned URL to fetch the original uploaded file. Short-lived and
+         *     tenant-scoped like every other document lookup here — the tenant_id
+         *     filter below is what stops a document_id guess from leaking another
+         *     tenant's file, since the presigned URL itself carries no tenant check
+         *     once issued.
+         */
+        get: operations["get_document_download_url_api_v1_knowledge_vault__document_id__download_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/knowledge-vault/{document_id}": {
         parameters: {
             query?: never;
@@ -3089,6 +3113,13 @@ export interface components {
         DocumentListResponse: {
             /** Items */
             items: components["schemas"]["cios__api__v1__endpoints__knowledge_vault__DocumentResponse"][];
+        };
+        /** DownloadUrlResponse */
+        DownloadUrlResponse: {
+            /** Download Url */
+            download_url: string;
+            /** Expires In */
+            expires_in: number;
         };
         /**
          * EvidenceDocumentType
@@ -6286,6 +6317,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_document_download_url_api_v1_knowledge_vault__document_id__download_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DownloadUrlResponse"];
                 };
             };
             /** @description Validation Error */
