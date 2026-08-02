@@ -63,9 +63,14 @@ class SAMGovScanner(BaseScanner):
         result = ScanResult(source=self.source_name)
         t0 = datetime.now(UTC)
 
-        # 1. Scan for recently registered / updated entities matching target NAICS codes
+        # 1. Look up the target company directly by legal business name, plus
+        # (optionally) narrow by NAICS. Without a name filter this endpoint
+        # only returns an arbitrary page of entities, so an established
+        # registrant that isn't freshly registering/updating (e.g. Leidos)
+        # would almost never show up by chance.
         naics_filter = kwargs.get("naics_codes", [])
-        await self._scan_entities(result, naics_filter)
+        company_name = keywords[0] if keywords else None
+        await self._scan_entities(result, naics_filter, legal_business_name=company_name)
 
         # 2. Scan recent contract awards for signals
         days_back = kwargs.get("days_back", 30)
@@ -74,8 +79,13 @@ class SAMGovScanner(BaseScanner):
         result.duration_ms = int((datetime.now(UTC) - t0).total_seconds() * 1000)
         return result
 
-    async def _scan_entities(self, result: ScanResult, naics_codes: list[str]) -> None:
-        """Pull entities registered or updated in the last 30 days."""
+    async def _scan_entities(
+        self,
+        result: ScanResult,
+        naics_codes: list[str],
+        legal_business_name: str | None = None,
+    ) -> None:
+        """Look up active entities by legal business name (and optionally NAICS)."""
         params: dict[str, Any] = {
             "api_key": self._api_key,
             "registrationStatus": "A",
@@ -86,6 +96,8 @@ class SAMGovScanner(BaseScanner):
         }
         if naics_codes:
             params["naicsCode"] = ",".join(naics_codes[:10])
+        if legal_business_name:
+            params["legalBusinessName"] = legal_business_name
 
         resp = await self._get(_ENTITY_API, params=params)
         if not resp:
