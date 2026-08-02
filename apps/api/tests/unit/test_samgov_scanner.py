@@ -81,3 +81,22 @@ def test_uses_configured_setting_when_present():
         assert scanner._api_key == "REAL_CONFIGURED_KEY"
     finally:
         settings.sam_gov_api_key = original
+
+
+async def test_awards_scan_sends_posted_to_alongside_posted_from():
+    """Regression test: live-confirmed HTTP 400 from SAM.gov's opportunities
+    search — postedFrom is a required paired parameter with postedTo on
+    that endpoint. Without postedTo, every awards scan failed outright
+    ("SAM.gov awards API returned no response" was always a 400, never a
+    real empty result)."""
+    scanner = SAMGovScanner(api_key="TEST_KEY")
+    scanner._get = AsyncMock(  # type: ignore[method-assign]
+        return_value=_empty_response({"opportunitiesData": []})
+    )
+
+    await scanner.scan(keywords=["Leidos"], naics_codes=[], days_back=30)
+
+    awards_call = scanner._get.call_args_list[1]
+    params = awards_call.kwargs["params"]
+    assert "postedFrom" in params
+    assert "postedTo" in params

@@ -185,10 +185,15 @@ class SAMGovScanner(BaseScanner):
     async def _scan_awards(self, result: ScanResult, days_back: int) -> None:
         """Pull recent contract awards from SAM.gov opportunities API."""
         since = (datetime.now(UTC) - timedelta(days=days_back)).strftime("%m/%d/%Y")
+        today = datetime.now(UTC).strftime("%m/%d/%Y")
         params = {
             "api_key": self._api_key,
-            "typeOfSetAsideDescription": "",
+            # postedFrom is a required paired parameter with postedTo on
+            # this endpoint — SAM.gov 400s outright without both (confirmed
+            # live: "SAM.gov awards API returned no response" was always an
+            # HTTP 400, never a real empty result).
             "postedFrom": since,
+            "postedTo": today,
             "limit": 100,
             "offset": 0,
             "status": "active",

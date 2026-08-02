@@ -198,7 +198,7 @@ class USASpendingScanner(BaseScanner):
                 "fields": [
                     "Award ID",
                     "Recipient Name",
-                    "recipient_uei",
+                    "Recipient UEI",
                     "Award Amount",
                     "Awarding Agency",
                     "Award Type",
@@ -248,7 +248,7 @@ class USASpendingScanner(BaseScanner):
         if not recipient or recipient.lower() in ("unknown", "n/a", ""):
             return
 
-        uei = award.get("recipient_uei", "")
+        uei = award.get("Recipient UEI", "")
         amount = award.get("Award Amount") or 0
         agency = award.get("Awarding Agency", "")
         award_type = award.get("Award Type", "")
@@ -304,7 +304,7 @@ class USASpendingScanner(BaseScanner):
             },
             "fields": [
                 "Recipient Name",
-                "recipient_uei",
+                "Recipient UEI",
                 "Award Amount",
                 "Awarding Agency",
                 "Action Date",
@@ -339,7 +339,7 @@ class USASpendingScanner(BaseScanner):
                 recipient = award.get("Recipient Name", "")
                 if not recipient:
                     continue
-                uei = award.get("recipient_uei", "")
+                uei = award.get("Recipient UEI", "")
                 agency = award.get("Awarding Agency", "")
                 action_date = award.get("Action Date", "")
                 naics = award.get("NAICS Code", "")
