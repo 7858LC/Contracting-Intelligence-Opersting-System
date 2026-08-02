@@ -20,6 +20,7 @@ os.environ.setdefault("ANTHROPIC_API_KEY", "test_key")
 
 from unittest.mock import AsyncMock, MagicMock
 
+from cios.config import settings
 from cios.scanners.samgov import SAMGovScanner
 
 
@@ -54,3 +55,29 @@ async def test_scan_with_no_keywords_omits_name_filter():
     params = entity_call.kwargs["params"]
     assert "legalBusinessName" not in params
     assert params["naicsCode"] == "541511"
+
+
+def test_falls_back_to_demo_key_when_setting_is_unset():
+    """Regression test: settings.sam_gov_api_key is a real Pydantic field
+    defaulting to "" — it always exists, so the old
+    getattr(settings, "sam_gov_api_key", "DEMO_KEY") could never actually
+    fall through to DEMO_KEY when the env var was left unconfigured (that
+    default only applies to a genuinely missing attribute). Every request
+    went out with api_key="", which SAM.gov rejects outright."""
+    original = settings.sam_gov_api_key
+    settings.sam_gov_api_key = ""
+    try:
+        scanner = SAMGovScanner()
+        assert scanner._api_key == "DEMO_KEY"
+    finally:
+        settings.sam_gov_api_key = original
+
+
+def test_uses_configured_setting_when_present():
+    original = settings.sam_gov_api_key
+    settings.sam_gov_api_key = "REAL_CONFIGURED_KEY"
+    try:
+        scanner = SAMGovScanner()
+        assert scanner._api_key == "REAL_CONFIGURED_KEY"
+    finally:
+        settings.sam_gov_api_key = original

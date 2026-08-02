@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { saveTokens } from "@/lib/auth";
+import { getRequestErrorMessage } from "@/lib/utils";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,8 +21,7 @@ export default function LoginPage() {
       saveTokens(data);
       router.push("/dashboard");
     } catch (err: unknown) {
-      const message = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || "Invalid credentials";
-      toast.error(message);
+      toast.error(getRequestErrorMessage(err, "Invalid credentials"));
     } finally {
       setLoading(false);
     }

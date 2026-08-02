@@ -58,3 +58,18 @@ export function getDaysUntil(dateStr: string | null | undefined): number | null 
 export function truncate(str: string, maxLength: number): string {
   return str.length > maxLength ? `${str.slice(0, maxLength)}…` : str;
 }
+
+/**
+ * Extracts a user-facing message from a failed axios request. A response
+ * with a real `detail` (401 "Invalid credentials", 429 rate-limited, etc.)
+ * shows that verbatim. Without one — a network error, timeout, or CORS
+ * failure never reached the server at all — falls back to a message that
+ * doesn't imply the credentials/input were checked and rejected.
+ */
+export function getRequestErrorMessage(err: unknown, fallback: string): string {
+  const axiosErr = err as { response?: { data?: { detail?: string } } };
+  const detail = axiosErr?.response?.data?.detail;
+  if (detail) return detail;
+  if (axiosErr?.response) return fallback;
+  return "Unable to reach the server. Check your connection and try again.";
+}

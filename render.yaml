@@ -140,3 +140,13 @@ services:
         sync: false
       - key: S3_REGION
         sync: false
+      # scan_company/bulk_radar_scan (cios/tasks/pir.py) run SAMGovScanner
+      # here, not in cios-api. Never wired up here before, so every SAM.gov
+      # entity/award lookup went out with an empty api_key — SAM.gov rejects
+      # that outright — and every Procurement Radar scan silently failed
+      # before it could find anything, for any company. Get a real key from
+      # https://sam.gov/data-services; the scanner falls back to the
+      # heavily rate-limited "DEMO_KEY" if this is left unset, not to
+      # nothing, but that's only for evaluation, not sustained production use.
+      - key: SAM_GOV_API_KEY
+        sync: false
