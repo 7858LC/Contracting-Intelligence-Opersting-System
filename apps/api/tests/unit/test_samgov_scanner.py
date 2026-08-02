@@ -100,3 +100,23 @@ async def test_awards_scan_sends_posted_to_alongside_posted_from():
     params = awards_call.kwargs["params"]
     assert "postedFrom" in params
     assert "postedTo" in params
+
+
+async def test_entity_scan_omits_include_sections():
+    """Regression test: live-confirmed HTTP 400 from SAM.gov's entity
+    search, isolated by testing this endpoint's other params individually
+    against the real API — legalBusinessName, registrationStatus, and
+    purposeOfRegistrationCode all work fine on their own, so
+    includeSections was the only remaining suspect and turned out to be
+    the cause. It's also unnecessary: the API returns entityRegistration,
+    coreData, assertions, and pointsOfContact in full by default."""
+    scanner = SAMGovScanner(api_key="TEST_KEY")
+    scanner._get = AsyncMock(  # type: ignore[method-assign]
+        return_value=_empty_response({"entityData": []})
+    )
+
+    await scanner.scan(keywords=["Leidos"], naics_codes=[], days_back=30)
+
+    entity_call = scanner._get.call_args_list[0]
+    params = entity_call.kwargs["params"]
+    assert "includeSections" not in params

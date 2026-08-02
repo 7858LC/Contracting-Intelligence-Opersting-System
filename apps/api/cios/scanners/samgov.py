@@ -97,7 +97,12 @@ class SAMGovScanner(BaseScanner):
             "api_key": self._api_key,
             "registrationStatus": "A",
             "purposeOfRegistrationCode": "Z2",  # All awards
-            "includeSections": "entityRegistration,assertions,pointsOfContact",
+            # No includeSections here — live-confirmed 400 (isolated by testing
+            # this endpoint's other params individually against the real API;
+            # legalBusinessName/registrationStatus/purposeOfRegistrationCode
+            # all work fine on their own). Not needed anyway: the default
+            # response already includes entityRegistration, coreData,
+            # assertions, and pointsOfContact in full without it.
             "page": 0,
             "size": 100,
         }
