@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { ShieldAlert } from "lucide-react";
 import { adminApi } from "@/lib/admin-api";
 import { saveAdminTokens } from "@/lib/admin-auth";
+import { getRequestErrorMessage } from "@/lib/utils";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -20,10 +21,7 @@ export default function AdminLoginPage() {
       saveAdminTokens(data);
       router.push("/admin");
     } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
-        "Invalid credentials";
-      toast.error(message);
+      toast.error(getRequestErrorMessage(err, "Invalid credentials"));
     } finally {
       setLoading(false);
     }

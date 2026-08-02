@@ -57,7 +57,14 @@ class SAMGovScanner(BaseScanner):
 
     def __init__(self, api_key: str | None = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self._api_key = api_key or getattr(settings, "sam_gov_api_key", "DEMO_KEY")
+        # settings.sam_gov_api_key is a real field defaulting to "" — it
+        # always exists, so getattr(..., "DEMO_KEY") could never actually
+        # fall through to DEMO_KEY when unconfigured (its default only
+        # applies to a genuinely missing attribute). That meant every scan
+        # went out with api_key="" whenever SAM_GOV_API_KEY wasn't set in
+        # the deployment env — which render.yaml never wires up — so SAM.gov
+        # rejected the request outright before any entity search happened.
+        self._api_key = api_key or settings.sam_gov_api_key or "DEMO_KEY"
 
     async def scan(self, keywords: list[str], **kwargs: Any) -> ScanResult:
         result = ScanResult(source=self.source_name)
