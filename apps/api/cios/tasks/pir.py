@@ -129,9 +129,27 @@ async def _async_scan_company(
                         db.add(sig)
                         signals_created += 1
                     errors.extend(result.errors)
+                    if result.errors:
+                        # Mirror the user-visible diagnostics into worker logs
+                        # too — same strings, so a screenshot of the UI banner
+                        # and a log line are interchangeable evidence.
+                        log.warning(
+                            "scanner_reported_errors",
+                            scanner=scanner.source_name,
+                            errors=result.errors,
+                        )
                 except Exception as e:
-                    errors.append(f"{scanner.source_name}: {e}")
-                    log.warning("scanner_error", scanner=scanner.source_name, error=str(e))
+                    # Include the exception class: "PIRSignal: 'NoneType' object
+                    # ..." and "PIRSignal: [Errno -2] Name or service not known"
+                    # are very different problems and str(e) alone hides which.
+                    errors.append(f"{scanner.source_name}: {type(e).__name__}: {e}")
+                    log.warning(
+                        "scanner_error",
+                        scanner=scanner.source_name,
+                        error_type=type(e).__name__,
+                        error=str(e),
+                        exc_info=True,
+                    )
 
         # Update company scan timestamp
         company.last_scanned_at = datetime.now(UTC)

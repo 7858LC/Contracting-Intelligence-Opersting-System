@@ -604,6 +604,14 @@ async def test_radar_scan_actually_reaches_the_company_row(client: AsyncClient):
     assert "error" not in result, result
     assert result["company_id"] == company_id
 
+    # Whatever the runner's network can or can't reach, the errors this
+    # records have to name the real cause. "returned no response" was emitted
+    # identically for an HTTP 400, an HTTP 403, a rate-limited DEMO_KEY, a DNS
+    # failure and a connect timeout, which made every scan failure
+    # undiagnosable from anywhere except the Celery worker's own logs.
+    for err in result["errors"]:
+        assert "returned no response" not in err, err
+
     fetched = await client.get(f"/api/v1/radar/companies/{company_id}", headers=headers)
     assert fetched.status_code == 200, fetched.text
     assert fetched.json()["last_scanned_at"] is not None

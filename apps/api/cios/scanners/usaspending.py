@@ -8,7 +8,7 @@ from typing import Any
 
 from cios.models.pir import SignalSource, SignalType
 
-from .base import BaseScanner, ScannedSignal, ScanResult
+from .base import _JSON_API_HEADERS, BaseScanner, ScannedSignal, ScanResult
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +50,8 @@ _AWARD_TYPE_CODE_GROUPS: list[list[str]] = [_CONTRACT_TYPE_CODES, _IDV_TYPE_CODE
 class USASpendingScanner(BaseScanner):
     source_name = SignalSource.USASPENDING
     _rate_limit_delay = 0.3
+    # api.usaspending.gov is a JSON API, not a web page — see _JSON_API_HEADERS.
+    default_headers = _JSON_API_HEADERS
 
     async def aggregate_agency_period(
         self,
@@ -119,7 +121,8 @@ class USASpendingScanner(BaseScanner):
                 )
                 if not resp:
                     errors.append(
-                        f"{agency_name}: no response on page {page} ({type_codes[0]} group)"
+                        f"{agency_name}: page {page} ({type_codes[0]} group) failed: "
+                        f"{self.failure_detail()}"
                     )
                     break
 
@@ -224,7 +227,8 @@ class USASpendingScanner(BaseScanner):
             )
             if not resp:
                 result.add_error(
-                    f"USASpending award search returned no response ({type_codes[0]} group)"
+                    f"USASpending award search failed ({type_codes[0]} group): "
+                    f"{self.failure_detail()}"
                 )
                 continue
 
@@ -323,11 +327,18 @@ class USASpendingScanner(BaseScanner):
             headers={"Accept": "application/json"},
         )
         if not resp:
+            # Used to swallow this entirely, which hid a third of this
+            # scanner's failures from the scan job's error report.
+            result.add_error(f"USASpending recompete search failed: {self.failure_detail()}")
             return
 
         try:
             data = resp.json()
         except Exception:
+            result.add_error(
+                "USASpending recompete search: invalid JSON — body starts with: "
+                f"{resp.text[:160]!r}"
+            )
             return
 
         # Mark high-value re-awards as recompete signals

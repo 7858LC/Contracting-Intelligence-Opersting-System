@@ -18,7 +18,10 @@ os.environ.setdefault("JWT_SECRET", "test_secret_minimum_32_characters_long")
 os.environ.setdefault("ENCRYPTION_KEY", "0" * 64)
 os.environ.setdefault("ANTHROPIC_API_KEY", "test_key")
 
+from collections.abc import Callable
 from unittest.mock import AsyncMock, MagicMock
+
+import httpx
 
 from cios.config import settings
 from cios.scanners.samgov import SAMGovScanner
@@ -28,6 +31,23 @@ def _empty_response(payload: dict) -> MagicMock:
     resp = MagicMock()
     resp.json.return_value = payload
     return resp
+
+
+def _wire_transport(
+    scanner: SAMGovScanner, handler: Callable[[httpx.Request], httpx.Response]
+) -> None:
+    """Point the scanner at a fake transport, exercising the real _get path.
+
+    Deliberately does NOT mock _get — the whole point of these diagnostics is
+    what BaseScanner._request records when a real httpx call fails.
+    """
+    scanner._http = httpx.AsyncClient(
+        transport=httpx.MockTransport(handler),
+        headers=scanner.default_headers,
+        follow_redirects=True,
+    )
+    scanner.max_retries = 1
+    scanner._rate_limit_delay = 0.0
 
 
 async def test_scan_passes_company_name_as_legal_business_name_filter():
@@ -120,3 +140,123 @@ async def test_entity_scan_omits_include_sections():
     entity_call = scanner._get.call_args_list[0]
     params = entity_call.kwargs["params"]
     assert "includeSections" not in params
+
+
+# ── Failure diagnostics ────────────────────────────────────────────────────────
+#
+# Every one of these used to collapse to the single string "SAM.gov entity API
+# returned no response", which is emitted identically for an HTTP 400, an HTTP
+# 403, a DEMO_KEY 429, a DNS failure and a connect timeout. That message is what
+# the user sees in the browser, and it was never enough to tell which of those
+# had happened — every round of this investigation stalled waiting on Render
+# worker logs nobody in the loop could read.
+
+
+async def test_http_error_surfaces_status_code_and_body_snippet():
+    scanner = SAMGovScanner(api_key="TEST_KEY_WXYZ")
+    _wire_transport(
+        scanner,
+        lambda request: httpx.Response(
+            403, text='{"error":{"code":"API_KEY_INVALID","message":"An invalid api_key"}}'
+        ),
+    )
+
+    result = await scanner.scan(keywords=["Leidos"], naics_codes=[], days_back=30)
+
+    joined = " | ".join(result.errors)
+    assert "HTTP 403" in joined
+    assert "API_KEY_INVALID" in joined
+    assert "api.sam.gov/entity-information/v3/entities" in joined
+    assert "returned no response" not in joined
+
+
+async def test_transport_error_surfaces_exception_type_and_message():
+    scanner = SAMGovScanner(api_key="TEST_KEY_WXYZ")
+
+    def _boom(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("[Errno -2] Name or service not known")
+
+    _wire_transport(scanner, _boom)
+
+    result = await scanner.scan(keywords=["Leidos"], naics_codes=[], days_back=30)
+
+    joined = " | ".join(result.errors)
+    assert "ConnectError" in joined
+    assert "Name or service not known" in joined
+    assert "returned no response" not in joined
+
+
+async def test_timeout_surfaces_as_timeout_not_generic_failure():
+    scanner = SAMGovScanner(api_key="TEST_KEY_WXYZ")
+
+    def _slow(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectTimeout("timed out")
+
+    _wire_transport(scanner, _slow)
+
+    result = await scanner.scan(keywords=["Leidos"], naics_codes=[], days_back=30)
+
+    assert "ConnectTimeout" in " | ".join(result.errors)
+
+
+async def test_error_reports_a_real_key_by_masked_tail_only():
+    scanner = SAMGovScanner(api_key="sam-live-key-ABCD1234")
+    _wire_transport(scanner, lambda request: httpx.Response(400, text="Bad Request"))
+
+    result = await scanner.scan(keywords=["Leidos"], naics_codes=[], days_back=30)
+
+    joined = " | ".join(result.errors)
+    assert "...1234" in joined
+    assert "21 chars" in joined
+    # The key itself must never reach a persisted, browser-rendered string.
+    assert "sam-live-key-ABCD1234" not in joined
+
+
+async def test_error_says_so_when_running_on_the_demo_key_fallback(monkeypatch):
+    """A DEMO_KEY 429 and a real-key failure are indistinguishable otherwise."""
+    monkeypatch.setattr(settings, "sam_gov_api_key", "")
+    scanner = SAMGovScanner()
+    _wire_transport(scanner, lambda request: httpx.Response(429, text="rate limit exceeded"))
+    # 429 is the retry path; don't actually sleep through the backoff.
+    monkeypatch.setattr("cios.scanners.base.asyncio.sleep", AsyncMock())
+
+    result = await scanner.scan(keywords=["Leidos"], naics_codes=[], days_back=30)
+
+    joined = " | ".join(result.errors)
+    assert "DEMO_KEY fallback" in joined
+    assert "SAM_GOV_API_KEY is unset" in joined
+    assert "HTTP 429" in joined
+
+
+async def test_api_key_is_never_echoed_back_out_of_a_response_body():
+    key = "sam-live-key-ABCD1234"
+    scanner = SAMGovScanner(api_key=key)
+    _wire_transport(scanner, lambda request: httpx.Response(400, text=f"bad api_key={key}"))
+
+    result = await scanner.scan(keywords=["Leidos"], naics_codes=[], days_back=30)
+
+    joined = " | ".join(result.errors)
+    assert key not in joined
+    assert "[REDACTED_API_KEY]" in joined
+
+
+async def test_requests_identify_as_a_json_api_client_not_a_fake_browser():
+    """api.sam.gov is a JSON API. Claiming to be Chrome from a Python client —
+    with none of a browser's other headers and a Python TLS fingerprint — is
+    what bot-management layers in front of federal API gateways score as an
+    impersonating client, and `Accept: text/html` on a JSON endpoint invites a
+    406 besides. The browser headers exist for jobs.py's HTML scraping only."""
+    seen: dict[str, str] = {}
+
+    def _capture(request: httpx.Request) -> httpx.Response:
+        seen.update(request.headers)
+        return httpx.Response(200, json={"entityData": []})
+
+    scanner = SAMGovScanner(api_key="TEST_KEY")
+    _wire_transport(scanner, _capture)
+
+    await scanner.scan(keywords=["Leidos"], naics_codes=[], days_back=30)
+
+    assert "Mozilla" not in seen["user-agent"]
+    assert seen["user-agent"].startswith("CIOS-ProcurementRadar/")
+    assert seen["accept"] == "application/json"
