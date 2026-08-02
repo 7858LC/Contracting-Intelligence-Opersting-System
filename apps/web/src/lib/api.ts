@@ -502,6 +502,11 @@ class CIOSApiClient {
     return data;
   }
 
+  async getScanJob(jobId: string) {
+    const { data } = await this.client.get(`/radar/scans/${jobId}`);
+    return data;
+  }
+
   // ── Winning Profile Hypothesis™ (pre-award intelligence) ─────────────────
 
   async listSolicitations(params?: Record<string, unknown>) {

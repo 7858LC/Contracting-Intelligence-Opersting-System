@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -181,11 +181,48 @@ function ProbabilityBar({ value }: { value: number }) {
 export function CompanyDetail({ companyId }: { companyId: string }) {
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<"signals" | "analysis">("signals");
+  const [activeScanJobId, setActiveScanJobId] = useState<string | null>(null);
 
   const { data: company, isLoading } = useQuery<Company>({
     queryKey: ["radar-company", companyId],
     queryFn: () => api.getCompany(companyId),
   });
+
+  const { data: activeScanJob } = useQuery({
+    queryKey: ["radar-scan-job", activeScanJobId],
+    queryFn: () => api.getScanJob(activeScanJobId as string),
+    enabled: !!activeScanJobId,
+    refetchInterval: (query) =>
+      query.state.data?.status === "running" || query.state.data?.status === "pending"
+        ? 3_000
+        : false,
+  });
+
+  // The scan runs in the Celery worker, not this request — POST /scan just
+  // queues it (see trigger_company_scan/scan_company in the API). Without
+  // this, the UI has no way to know whether it succeeded, failed, or is
+  // still running; clicking Scan looked like it did nothing even when it
+  // worked, since the signals list was never refetched afterward either.
+  useEffect(() => {
+    if (!activeScanJob) return;
+    if (activeScanJob.status === "completed") {
+      setActiveScanJobId(null);
+      qc.invalidateQueries({ queryKey: ["radar-signals", companyId] });
+      qc.invalidateQueries({ queryKey: ["radar-company", companyId] });
+      if (activeScanJob.errors > 0) {
+        toast.error(activeScanJob.error_message || "Scan completed with errors.");
+      } else {
+        toast.success(
+          activeScanJob.signals_detected > 0
+            ? `Scan complete — found ${activeScanJob.signals_detected} signal${activeScanJob.signals_detected === 1 ? "" : "s"}.`
+            : "Scan complete — no new signals found."
+        );
+      }
+    } else if (activeScanJob.status === "failed") {
+      setActiveScanJobId(null);
+      toast.error(activeScanJob.error_message || "Scan failed.");
+    }
+  }, [activeScanJob, qc, companyId]);
 
   const { data: signalsData } = useQuery({
     queryKey: ["radar-signals", companyId],
@@ -210,7 +247,11 @@ export function CompanyDetail({ companyId }: { companyId: string }) {
 
   const scanMutation = useMutation({
     mutationFn: () => api.triggerCompanyScan(companyId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["radar-company", companyId] }),
+    onSuccess: (data: { job_id: string }) => {
+      setActiveScanJobId(data.job_id);
+      qc.invalidateQueries({ queryKey: ["radar-company", companyId] });
+      toast.info("Scan started — this can take a few seconds.");
+    },
   });
 
   const analyzeMutation = useMutation({
