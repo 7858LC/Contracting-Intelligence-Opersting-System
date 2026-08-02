@@ -9,12 +9,14 @@ from typing import Any
 from cios.config import settings
 from cios.models.pir import SignalSource, SignalType
 
-from .base import BaseScanner, ScannedSignal, ScanResult
+from .base import _JSON_API_HEADERS, BaseScanner, ScannedSignal, ScanResult
 
 logger = logging.getLogger(__name__)
 
 _ENTITY_API = "https://api.sam.gov/entity-information/v3/entities"
 _AWARDS_API = "https://api.sam.gov/opportunities/v2/search"
+
+_DEMO_KEY = "DEMO_KEY"
 
 # SAM.gov small business set-aside program codes → signal types
 _SETASIDE_SIGNAL: dict[str, str] = {
@@ -54,6 +56,8 @@ def _naics_from_entity(entity: dict) -> list[str]:
 class SAMGovScanner(BaseScanner):
     source_name = SignalSource.SAMGOV
     _rate_limit_delay = 0.5
+    # api.sam.gov is a JSON API, not a web page — see _JSON_API_HEADERS.
+    default_headers = _JSON_API_HEADERS
 
     def __init__(self, api_key: str | None = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -62,9 +66,40 @@ class SAMGovScanner(BaseScanner):
         # fall through to DEMO_KEY when unconfigured (its default only
         # applies to a genuinely missing attribute). That meant every scan
         # went out with api_key="" whenever SAM_GOV_API_KEY wasn't set in
-        # the deployment env — which render.yaml never wires up — so SAM.gov
-        # rejected the request outright before any entity search happened.
-        self._api_key = api_key or settings.sam_gov_api_key or "DEMO_KEY"
+        # the deployment env — which render.yaml didn't wire up at the time —
+        # so SAM.gov rejected the request outright before any entity search
+        # happened.
+        if api_key:
+            self._api_key = api_key
+            self._api_key_source = "explicit argument"
+        elif settings.sam_gov_api_key:
+            self._api_key = settings.sam_gov_api_key
+            self._api_key_source = "SAM_GOV_API_KEY env"
+        else:
+            self._api_key = _DEMO_KEY
+            self._api_key_source = "DEMO_KEY fallback"
+
+    @property
+    def key_label(self) -> str:
+        """Masked description of which key this scan actually went out with.
+
+        DEMO_KEY is real but heavily rate-limited, so a scan running on it
+        fails with ordinary HTTP errors that look identical to a scan running
+        on a misconfigured real key. Nobody outside the worker process can
+        tell those apart, and worker logs have been the bottleneck on every
+        round of this investigation — so this rides along in the user-visible
+        error instead. Never emits the key itself, only its last 4 chars.
+        """
+        if self._api_key == _DEMO_KEY:
+            return "key: DEMO_KEY fallback, SAM_GOV_API_KEY is unset"
+        tail = self._api_key[-4:] if len(self._api_key) >= 4 else "????"
+        return f"key: {self._api_key_source}, ...{tail} ({len(self._api_key)} chars)"
+
+    def _redact(self, text: str) -> str:
+        """Keep the API key out of persisted, user-visible diagnostics."""
+        if self._api_key and self._api_key != _DEMO_KEY:
+            return text.replace(self._api_key, "[REDACTED_API_KEY]")
+        return text
 
     async def scan(self, keywords: list[str], **kwargs: Any) -> ScanResult:
         result = ScanResult(source=self.source_name)
@@ -113,13 +148,18 @@ class SAMGovScanner(BaseScanner):
 
         resp = await self._get(_ENTITY_API, params=params)
         if not resp:
-            result.add_error("SAM.gov entity API returned no response")
+            result.add_error(
+                f"SAM.gov entity API failed [{self.key_label}]: {self.failure_detail()}"
+            )
             return
 
         try:
             data = resp.json()
         except Exception:
-            result.add_error("SAM.gov entity API: invalid JSON")
+            result.add_error(
+                "SAM.gov entity API: invalid JSON — body starts with: "
+                f"{self._redact(resp.text[:160])!r}"
+            )
             return
 
         entities = data.get("entityData", [])
@@ -206,13 +246,18 @@ class SAMGovScanner(BaseScanner):
 
         resp = await self._get(_AWARDS_API, params=params)
         if not resp:
-            result.add_error("SAM.gov awards API returned no response")
+            result.add_error(
+                f"SAM.gov awards API failed [{self.key_label}]: {self.failure_detail()}"
+            )
             return
 
         try:
             data = resp.json()
         except Exception:
-            result.add_error("SAM.gov awards API: invalid JSON")
+            result.add_error(
+                "SAM.gov awards API: invalid JSON — body starts with: "
+                f"{self._redact(resp.text[:160])!r}"
+            )
             return
 
         for opp in data.get("opportunitiesData", []):

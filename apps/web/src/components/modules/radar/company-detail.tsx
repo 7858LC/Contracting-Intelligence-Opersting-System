@@ -182,6 +182,11 @@ export function CompanyDetail({ companyId }: { companyId: string }) {
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<"signals" | "analysis">("signals");
   const [activeScanJobId, setActiveScanJobId] = useState<string | null>(null);
+  // Scan diagnostics have to persist and be copyable, not flash past in a
+  // toast: they are the only view anyone outside the Celery worker gets of
+  // *why* a source failed (HTTP status + the API's own error body), and
+  // reading them off the screen is what replaces having Render log access.
+  const [scanDiagnostics, setScanDiagnostics] = useState<string | null>(null);
 
   const { data: company, isLoading } = useQuery<Company>({
     queryKey: ["radar-company", companyId],
@@ -210,8 +215,12 @@ export function CompanyDetail({ companyId }: { companyId: string }) {
       qc.invalidateQueries({ queryKey: ["radar-signals", companyId] });
       qc.invalidateQueries({ queryKey: ["radar-company", companyId] });
       if (activeScanJob.errors > 0) {
-        toast.error(activeScanJob.error_message || "Scan completed with errors.");
+        setScanDiagnostics(activeScanJob.error_message || "Scan completed with errors.");
+        toast.error(
+          `Scan completed with ${activeScanJob.errors} source error${activeScanJob.errors === 1 ? "" : "s"} — see details below.`
+        );
       } else {
+        setScanDiagnostics(null);
         toast.success(
           activeScanJob.signals_detected > 0
             ? `Scan complete — found ${activeScanJob.signals_detected} signal${activeScanJob.signals_detected === 1 ? "" : "s"}.`
@@ -220,7 +229,8 @@ export function CompanyDetail({ companyId }: { companyId: string }) {
       }
     } else if (activeScanJob.status === "failed") {
       setActiveScanJobId(null);
-      toast.error(activeScanJob.error_message || "Scan failed.");
+      setScanDiagnostics(activeScanJob.error_message || "Scan failed.");
+      toast.error("Scan failed — see details below.");
     }
   }, [activeScanJob, qc, companyId]);
 
@@ -369,6 +379,50 @@ export function CompanyDetail({ companyId }: { companyId: string }) {
           </button>
         </div>
       </div>
+
+      {/* Scan diagnostics — one line per failed signal source */}
+      {scanDiagnostics && (
+        <div
+          data-testid="scan-diagnostics"
+          className="bg-red-500/5 border border-red-500/30 rounded-lg p-4 space-y-2"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-red-600 dark:text-red-400">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              Last scan could not reach every signal source
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(scanDiagnostics);
+                  toast.success("Diagnostics copied to clipboard");
+                }}
+                className="flex items-center gap-1.5 px-2 py-1 rounded text-xs border border-border hover:bg-secondary transition-colors"
+                title="Copy scan diagnostics to clipboard"
+              >
+                <Copy className="w-3 h-3" />
+                Copy
+              </button>
+              <button
+                onClick={() => setScanDiagnostics(null)}
+                className="px-2 py-1 rounded text-xs text-muted-foreground hover:bg-secondary transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+          <ul className="space-y-1.5">
+            {scanDiagnostics.split("; ").map((line, i) => (
+              <li
+                key={i}
+                className="text-xs font-mono text-muted-foreground break-words whitespace-pre-wrap"
+              >
+                {line}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Scores */}
       <div className="bg-card border border-border rounded-lg p-5">
