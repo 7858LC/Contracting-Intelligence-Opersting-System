@@ -28,6 +28,10 @@ class SimulationCreate(BaseModel):
     proposal_content: dict[str, str] = {}
 
 
+class DeletedResponse(BaseModel):
+    deleted: bool
+
+
 class SimulationResponse(BaseModel):
     id: uuid.UUID
     opportunity_id: uuid.UUID
@@ -127,6 +131,25 @@ async def get_simulation(sim_id: uuid.UUID, db: DB, user: Auth) -> AwardSimulati
     if not sim:
         raise HTTPException(status_code=404, detail="Simulation not found")
     return sim
+
+
+@router.delete("/{sim_id}", response_model=DeletedResponse)
+async def delete_simulation(sim_id: uuid.UUID, db: DB, user: Auth) -> dict:
+    result = await db.execute(
+        select(AwardSimulation).where(
+            AwardSimulation.id == sim_id,
+            AwardSimulation.tenant_id == user.tenant_id,
+        )
+    )
+    sim = result.scalar_one_or_none()
+    if not sim:
+        raise HTTPException(status_code=404, detail="Simulation not found")
+    if sim.status in ("queued", "running"):
+        raise HTTPException(
+            status_code=409, detail=f"Cannot delete a simulation that is {sim.status}"
+        )
+    await db.delete(sim)
+    return {"deleted": True}
 
 
 @router.get("/{sim_id}/report")

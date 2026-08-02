@@ -211,6 +211,36 @@ export async function createCompetitor(
   return res.json();
 }
 
+export async function createFailedSimulation(
+  session: TenantSession,
+  opportunityId: string,
+  overrides: { name?: string } = {}
+): Promise<{ id: string; name: string }> {
+  const name = overrides.name ?? `E2E Smoke Simulation ${Date.now()}`;
+  const res = await fetch(`${session.apiUrl}/award-simulations`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.accessToken}`,
+    },
+    body: JSON.stringify({ opportunity_id: opportunityId, name }),
+  });
+  if (!res.ok) {
+    throw new Error(`Simulation creation failed: ${res.status} ${await res.text()}`);
+  }
+  const data = await res.json();
+  // A real run means a real Claude call — flip status straight in Postgres
+  // instead, same workaround as upgradeTenantPlan, so the delete button
+  // (disabled while queued/running, see award-simulator-view.tsx) is
+  // actually clickable without waiting on a live simulation pipeline.
+  execFileSync("psql", [
+    DATABASE_URL,
+    "-c",
+    `UPDATE award_simulations SET status = 'failed' WHERE id = '${data.simulation_id}'`,
+  ]);
+  return { id: data.simulation_id, name };
+}
+
 export async function createCapability(
   session: TenantSession,
   overrides: { name?: string } = {}

@@ -10,7 +10,14 @@
  * testing. Each test seeds its own tenant/data via the `tenant` fixture, so
  * they don't depend on run order or shared state.
  */
-import { createCapability, createCompetitor, createOpportunity, expect, test } from "./fixtures";
+import {
+  createCapability,
+  createCompetitor,
+  createFailedSimulation,
+  createOpportunity,
+  expect,
+  test,
+} from "./fixtures";
 
 test("Executive Dashboard renders a newly created opportunity instead of an empty state", async ({
   page,
@@ -43,6 +50,20 @@ test("Award Simulator's New Simulation form lists a newly created opportunity", 
   await expect(opportunitySelect.locator("option", { hasText: opp.title })).toHaveCount(1, {
     timeout: 10_000,
   });
+});
+
+test("Award Simulator deletes a failed simulation via its delete button", async ({ page, tenant }) => {
+  const opp = await createOpportunity(tenant, { title: `E2E Smoke — Delete Sim ${Date.now()}` });
+  const sim = await createFailedSimulation(tenant, opp.id);
+
+  page.on("dialog", (dialog) => dialog.accept());
+  await page.goto("/dashboard/award-simulator");
+  await expect(page.getByText(sim.name)).toBeVisible({ timeout: 10_000 });
+
+  await page.getByTitle("Delete simulation").click();
+
+  await expect(page.getByText("Simulation deleted")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(sim.name)).not.toBeVisible();
 });
 
 test("Competitive Intelligence page renders a newly created competitor instead of an empty state", async ({

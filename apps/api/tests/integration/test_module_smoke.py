@@ -429,6 +429,41 @@ async def test_award_simulator_module_smoke(client: AsyncClient):
     )
     assert resp.status_code == 202, resp.text
     assert resp.json()["status"] == "queued"
+    sim_id = resp.json()["simulation_id"]
+
+    # A queued/running simulation can't be deleted out from under its task.
+    blocked = await client.delete(f"/api/v1/award-simulations/{sim_id}", headers=headers)
+    assert blocked.status_code == 409, blocked.text
+
+    from sqlalchemy import text as sa_text
+
+    from cios.core.database import async_session_factory
+    from cios.models.award_simulation import AwardSimulation
+
+    profile = await client.get("/api/v1/tenants/profile", headers=headers)
+    assert profile.status_code == 200, profile.text
+    tenant_id = profile.json()["id"]
+
+    # award_simulations is FORCE ROW LEVEL SECURITY (migration 007) — must
+    # set the same session GUC get_current_user sets on a real request
+    # before this raw session can see or write the row at all.
+    async with async_session_factory() as db:
+        await db.execute(
+            sa_text("SELECT set_config('app.current_tenant', :t, false)"), {"t": tenant_id}
+        )
+        sim = await db.get(AwardSimulation, uuid.UUID(sim_id))
+        sim.status = "failed"
+        await db.commit()
+
+    deleted = await client.delete(f"/api/v1/award-simulations/{sim_id}", headers=headers)
+    assert deleted.status_code == 200, deleted.text
+    assert deleted.json()["deleted"] is True
+
+    gone = await client.get(f"/api/v1/award-simulations/{sim_id}", headers=headers)
+    assert gone.status_code == 404, gone.text
+
+    missing = await client.delete(f"/api/v1/award-simulations/{sim_id}", headers=headers)
+    assert missing.status_code == 404, missing.text
 
 
 @pytest.mark.anyio
