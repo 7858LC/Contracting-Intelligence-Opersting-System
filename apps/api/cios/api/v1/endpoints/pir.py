@@ -164,6 +164,7 @@ class ScanJobResponse(BaseModel):
     companies_discovered: int
     signals_detected: int
     errors: int
+    error_message: str | None
     results_summary: dict
     created_at: datetime
 
@@ -347,7 +348,9 @@ async def trigger_company_scan(
 
     from cios.tasks.pir import scan_company
 
-    scan_company.delay(str(company_id), str(user.tenant_id), {"days_back": days_back})
+    scan_company.delay(
+        str(company_id), str(user.tenant_id), {"days_back": days_back}, str(job.id)
+    )
 
     return {"job_id": str(job.id), "status": "queued"}
 
@@ -637,7 +640,7 @@ async def trigger_bulk_scan(
 
     from cios.tasks.pir import bulk_radar_scan
 
-    bulk_radar_scan.delay(str(user.tenant_id), None, {"days_back": days_back})
+    bulk_radar_scan.delay(str(user.tenant_id), None, {"days_back": days_back}, str(job.id))
 
     return job
 

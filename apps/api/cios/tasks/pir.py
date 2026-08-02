@@ -9,6 +9,7 @@ from typing import Any
 
 import structlog
 from sqlalchemy import select
+from sqlalchemy import text as sql_text
 
 from cios.tasks import celery_app
 
@@ -40,7 +41,13 @@ async def _get_db():
     max_retries=3,
     default_retry_delay=60,
 )
-def scan_company(self, company_id: str, tenant_id: str, scan_config: dict | None = None) -> dict:
+def scan_company(
+    self,
+    company_id: str,
+    tenant_id: str,
+    scan_config: dict | None = None,
+    job_id: str | None = None,
+) -> dict:
     """Scan a single company across all signal sources and upsert signals."""
     try:
         return _run(
@@ -48,6 +55,7 @@ def scan_company(self, company_id: str, tenant_id: str, scan_config: dict | None
                 uuid.UUID(company_id),
                 uuid.UUID(tenant_id),
                 scan_config or {},
+                uuid.UUID(job_id) if job_id else None,
             )
         )
     except Exception as exc:
@@ -59,15 +67,38 @@ async def _async_scan_company(
     company_id: uuid.UUID,
     tenant_id: uuid.UUID,
     scan_config: dict,
+    job_id: uuid.UUID | None = None,
 ) -> dict:
     from cios.config import settings
     from cios.core.database import async_session_factory
-    from cios.models.pir import PIRCompany
+    from cios.models.pir import PIRCompany, PIRScanJob
     from cios.scanners import JobBoardScanner, SAMGovScanner, USASpendingScanner
 
     async with async_session_factory() as db:
+        # pir_companies/pir_signals/pir_scan_jobs are FORCE ROW LEVEL SECURITY
+        # (alembic/versions/007_force_rls.py) — this task runs outside the
+        # request lifecycle on its own session, so nothing sets
+        # app.current_tenant unless this does. Without it, every query below
+        # sees zero rows under RLS and this always short-circuits on "company
+        # not found" before a single scanner ever runs.
+        await db.execute(
+            sql_text("SELECT set_config('app.current_tenant', :tenant_id, false)"),
+            {"tenant_id": str(tenant_id)},
+        )
+
+        job = await db.get(PIRScanJob, job_id) if job_id else None
+        if job:
+            job.status = "running"
+            job.started_at = datetime.now(UTC)
+            await db.commit()
+
         company = await db.get(PIRCompany, company_id)
         if not company:
+            if job:
+                job.status = "failed"
+                job.completed_at = datetime.now(UTC)
+                job.error_message = f"Company {company_id} not found"
+                await db.commit()
             return {"error": f"Company {company_id} not found"}
 
         keywords = _build_keywords(company)
@@ -104,6 +135,18 @@ async def _async_scan_company(
 
         # Update company scan timestamp
         company.last_scanned_at = datetime.now(UTC)
+
+        if job:
+            job.status = "completed"
+            job.completed_at = datetime.now(UTC)
+            job.signals_detected = signals_created
+            job.errors = len(errors)
+            job.error_message = "; ".join(errors)[:2000] if errors else None
+            job.results_summary = {
+                "company_id": str(company_id),
+                "signals_created": signals_created,
+            }
+
         await db.commit()
 
         # Trigger re-scoring
@@ -176,21 +219,41 @@ def bulk_radar_scan(
     tenant_id: str,
     company_ids: list[str] | None = None,
     scan_config: dict | None = None,
+    job_id: str | None = None,
 ) -> dict:
     """Fan out individual scan tasks for all (or specified) companies in a tenant."""
-    return _run(_async_bulk_scan(tenant_id, company_ids, scan_config or {}))
+    return _run(
+        _async_bulk_scan(
+            tenant_id, company_ids, scan_config or {}, uuid.UUID(job_id) if job_id else None
+        )
+    )
 
 
 async def _async_bulk_scan(
     tenant_id: str,
     company_ids: list[str] | None,
     scan_config: dict,
+    job_id: uuid.UUID | None = None,
 ) -> dict:
     from cios.core.database import async_session_factory
-    from cios.models.pir import PIRCompany
+    from cios.models.pir import PIRCompany, PIRScanJob
 
     tid = uuid.UUID(tenant_id)
     async with async_session_factory() as db:
+        # Same FORCE RLS gap as _async_scan_company above — without this,
+        # both queries below see zero rows and every bulk scan silently
+        # fans out to nothing.
+        await db.execute(
+            sql_text("SELECT set_config('app.current_tenant', :tenant_id, false)"),
+            {"tenant_id": tenant_id},
+        )
+
+        job = await db.get(PIRScanJob, job_id) if job_id else None
+        if job:
+            job.status = "running"
+            job.started_at = datetime.now(UTC)
+            await db.commit()
+
         if company_ids:
             cids = [uuid.UUID(c) for c in company_ids]
             rows = await db.execute(
@@ -208,6 +271,17 @@ async def _async_bulk_scan(
                 )
             )
         ids = [str(r[0]) for r in rows.fetchall()]
+
+        if job:
+            # "completed" here means the fan-out itself finished, not that
+            # every per-company scan_company task below has run yet — those
+            # are independent, unrelated jobs. Tracking the fan-out's own
+            # queued/failed count is what this job row is actually for.
+            job.status = "completed"
+            job.completed_at = datetime.now(UTC)
+            job.companies_discovered = len(ids)
+            job.results_summary = {"queued": len(ids)}
+            await db.commit()
 
     for cid in ids:
         scan_company.delay(cid, tenant_id, scan_config)
@@ -238,6 +312,12 @@ async def _async_score_company(company_id: uuid.UUID, tenant_id: uuid.UUID) -> d
     from cios.scoring import SignalScorer
 
     async with async_session_factory() as db:
+        # Same FORCE RLS gap as _async_scan_company — see that comment.
+        await db.execute(
+            sql_text("SELECT set_config('app.current_tenant', :tenant_id, false)"),
+            {"tenant_id": str(tenant_id)},
+        )
+
         company = await db.get(PIRCompany, company_id)
         if not company:
             return {"error": "not found"}
@@ -316,6 +396,13 @@ async def _async_analyze_company(
     from cios.models.pir import PIRAIAnalysis, PIRCompany, PIRSignal
 
     async with async_session_factory() as db:
+        # Same FORCE RLS gap as _async_scan_company — see that comment.
+        # pir_ai_analyses is FORCE RLS too (alembic/versions/007_force_rls.py).
+        await db.execute(
+            sql_text("SELECT set_config('app.current_tenant', :tenant_id, false)"),
+            {"tenant_id": str(tenant_id)},
+        )
+
         analysis = await db.get(PIRAIAnalysis, analysis_id)
         if not analysis:
             return {"error": "Analysis record not found"}
@@ -377,15 +464,18 @@ def daily_radar_scan() -> dict:
 
 
 async def _async_daily_scan() -> dict:
-    from sqlalchemy import distinct
-
     from cios.core.database import async_session_factory
-    from cios.models.pir import PIRCompany
+    from cios.models.tenant import Tenant
 
+    # pir_companies is FORCE ROW LEVEL SECURITY, so querying it directly here
+    # (as this used to) requires a single app.current_tenant to already be
+    # set — but this needs the opposite: every tenant, before any of them
+    # has been picked. There's no RLS bypass for that (see admin.py's own
+    # "there is no bypass" note), so this goes at the tenants table itself,
+    # which isn't tenant-scoped data and was never RLS-protected in the
+    # first place.
     async with async_session_factory() as db:
-        result = await db.execute(
-            select(distinct(PIRCompany.tenant_id)).where(PIRCompany.is_active.is_(True))
-        )
+        result = await db.execute(select(Tenant.id).where(Tenant.is_active.is_(True)))
         tenant_ids = [str(r[0]) for r in result.fetchall()]
 
     for tid in tenant_ids:

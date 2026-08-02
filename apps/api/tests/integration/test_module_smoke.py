@@ -54,6 +54,27 @@ async def _register(client: AsyncClient) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
+async def _register_with_tenant(client: AsyncClient) -> tuple[dict, str]:
+    """Like _register, but also returns tenant_id — needed to call a Celery
+    task's async body directly (bypassing .delay(), which just queues into
+    Redis with no worker running in this test process — see
+    test_capability_gap_analysis.py for the same pattern)."""
+    suffix = uuid.uuid4().hex[:10]
+    resp = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": f"smoke-{suffix}@example.com",
+            "password": "SmokeTest123!",
+            "full_name": "Smoke Test",
+            "company_name": f"Smoke Co {suffix}",
+        },
+        headers={"X-Forwarded-For": _fake_client_ip()},
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    return {"Authorization": f"Bearer {body['access_token']}"}, body["tenant_id"]
+
+
 _SMOKE_PASSWORD = "SmokeTest123!"
 
 
@@ -540,6 +561,56 @@ async def test_radar_pir_module_smoke(client: AsyncClient):
 
     dashboard = await client.get("/api/v1/radar/dashboard", headers=headers)
     assert dashboard.status_code == 200, dashboard.text
+
+
+@pytest.mark.anyio
+async def test_radar_scan_actually_reaches_the_company_row(client: AsyncClient):
+    """Regression test: pir_companies/pir_signals/pir_scan_jobs are FORCE
+    ROW LEVEL SECURITY (007_force_rls), and the Celery task bodies that scan
+    a company run outside the request lifecycle on their own DB session —
+    nothing sets app.current_tenant for them unless the task does it itself.
+    Before that was wired up, _async_scan_company always saw zero rows
+    under RLS and returned "company not found" for every scan, on every
+    company, unconditionally — the scan endpoint looked like it worked
+    (202 Accepted) while nothing ever actually ran. This calls the task's
+    real async body directly (bypassing .delay(), which just queues into
+    Redis — no worker runs in this test process) the same way
+    test_capability_gap_analysis.py does for its own Celery task.
+    """
+    headers, tenant_id = await _register_with_tenant(client)
+    created = await client.post(
+        "/api/v1/radar/companies", headers=headers, json={"name": "RLS Regression Target Inc"}
+    )
+    assert created.status_code == 201, created.text
+    company_id = created.json()["id"]
+
+    scan_resp = await client.post(
+        f"/api/v1/radar/companies/{company_id}/scan", headers=headers
+    )
+    assert scan_resp.status_code == 202, scan_resp.text
+    job_id = scan_resp.json()["job_id"]
+
+    from cios.tasks.pir import _async_scan_company
+
+    result = await _async_scan_company(
+        uuid.UUID(company_id), uuid.UUID(tenant_id), {"days_back": 30}, uuid.UUID(job_id)
+    )
+    # The one assertion that actually pins the regression: under the old,
+    # RLS-context-less code this was always {"error": "Company ... not
+    # found"} even though the company obviously exists (created above, in
+    # the same test). Whether the real SAM.gov/USASpending calls succeed or
+    # fail from this sandbox doesn't matter here — errors from those are
+    # captured in result["errors"], not raised.
+    assert "error" not in result, result
+    assert result["company_id"] == company_id
+
+    fetched = await client.get(f"/api/v1/radar/companies/{company_id}", headers=headers)
+    assert fetched.status_code == 200, fetched.text
+    assert fetched.json()["last_scanned_at"] is not None
+
+    job = await client.get(f"/api/v1/radar/scans/{job_id}", headers=headers)
+    assert job.status_code == 200, job.text
+    assert job.json()["status"] == "completed"
 
 
 @pytest.mark.anyio

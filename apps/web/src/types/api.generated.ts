@@ -3984,6 +3984,8 @@ export interface components {
             signals_detected: number;
             /** Errors */
             errors: number;
+            /** Error Message */
+            error_message: string | null;
             /** Results Summary */
             results_summary: {
                 [key: string]: unknown;
