@@ -104,8 +104,13 @@ class USASpendingScanner(BaseScanner):
                     "Action Date",
                     "Awarding Sub Agency",
                 ],
-                "sort": "Award Amount",
-                "order": "desc",
+                # No sort/order — live-confirmed 400 ("Sort value 'Action Date'
+                # not found in Contract Award mappings"): the sortable-field
+                # mapping for spending_by_award is a fixed internal list keyed
+                # by award-type group, not simply whatever's in `fields`, and
+                # this environment can't reach the live API to enumerate the
+                # correct name safely. Omitting sort/order is documented as
+                # optional and falls back to the API's own default ordering.
                 "limit": 100,
                 "page": 1,
             }
@@ -211,8 +216,10 @@ class USASpendingScanner(BaseScanner):
                     "Action Date",
                     "Description",
                 ],
-                "sort": "Action Date",
-                "order": "desc",
+                # No sort/order — see the matching comment in
+                # aggregate_agency_period above; live-confirmed 400 on this
+                # exact field for both the Contract Award and IDV Award
+                # mappings.
                 "limit": 100,
                 "page": 1,
             }
@@ -304,7 +311,11 @@ class USASpendingScanner(BaseScanner):
                     {"start_date": start_date, "end_date": datetime.now(UTC).strftime("%Y-%m-%d")}
                 ],
                 "award_type_codes": ["A", "B", "C", "D"],
-                "program_activities": [],
+                # No program_activities key — live-confirmed 422 ("The object
+                # provided has no children") when present as an empty list.
+                # This filter was never populated by any code path, so it
+                # only existed to trip that validation; omit it entirely
+                # rather than send an empty list.
             },
             "fields": [
                 "Recipient Name",
@@ -314,8 +325,7 @@ class USASpendingScanner(BaseScanner):
                 "Action Date",
                 "NAICS Code",
             ],
-            "sort": "Action Date",
-            "order": "desc",
+            # No sort/order — see the matching comment in _scan_recent_awards.
             "limit": 50,
             "page": 1,
             "subawards": False,

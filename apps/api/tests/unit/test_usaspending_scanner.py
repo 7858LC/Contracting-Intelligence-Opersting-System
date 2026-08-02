@@ -44,6 +44,39 @@ async def test_recent_awards_scan_requests_title_case_recipient_uei_field():
         assert "Recipient UEI" in fields
 
 
+async def test_scan_omits_sort_and_order_after_live_confirmed_400():
+    """Live-confirmed HTTP 400: "Sort value 'Action Date' not found in
+    Contract Award mappings" (and the same for the IDV Award mappings). The
+    sortable-field mapping for spending_by_award is a fixed internal list per
+    award-type group, not simply whatever's in `fields`, and this environment
+    can't reach the live API to verify the correct name. Omit sort/order
+    entirely rather than guess again — both are documented as optional."""
+    scanner = USASpendingScanner()
+    scanner._post = AsyncMock(return_value=_empty_response())  # type: ignore[method-assign]
+
+    await scanner.scan(keywords=["Leidos"], naics_codes=[], days_back=30)
+
+    for call in scanner._post.call_args_list:
+        payload = call.kwargs["json"]
+        assert "sort" not in payload
+        assert "order" not in payload
+
+
+async def test_recompete_search_omits_empty_program_activities_filter():
+    """Live-confirmed HTTP 422 ("The object provided has no children. If the
+    object is used it needs at least one child.") when program_activities was
+    sent as an empty list. No code path ever populated it, so it only existed
+    to trip that validation — drop the key entirely instead of sending an
+    empty list."""
+    scanner = USASpendingScanner()
+    scanner._post = AsyncMock(return_value=_empty_response())  # type: ignore[method-assign]
+
+    await scanner.scan(keywords=["Leidos"], naics_codes=[], days_back=30)
+
+    recompete_call = scanner._post.call_args_list[-1]
+    assert "program_activities" not in recompete_call.kwargs["json"]["filters"]
+
+
 def _wire_transport(
     scanner: USASpendingScanner, handler: Callable[[httpx.Request], httpx.Response]
 ) -> None:
