@@ -43,9 +43,6 @@ _JSON_API_HEADERS = {
     "Accept-Encoding": "gzip, deflate",
 }
 
-# Back-compat alias — some callers/tests referenced the old name.
-_DEFAULT_HEADERS = _BROWSER_HEADERS
-
 # How much of a failing response body to keep in a user-visible diagnostic.
 # Long enough for SAM.gov/USASpending's actual error text, short enough that
 # five of these still fit inside PIRScanJob.error_message's 2000-char budget.
