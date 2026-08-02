@@ -66,8 +66,9 @@ class SAMGovScanner(BaseScanner):
         # fall through to DEMO_KEY when unconfigured (its default only
         # applies to a genuinely missing attribute). That meant every scan
         # went out with api_key="" whenever SAM_GOV_API_KEY wasn't set in
-        # the deployment env — which render.yaml never wires up — so SAM.gov
-        # rejected the request outright before any entity search happened.
+        # the deployment env — which render.yaml didn't wire up at the time —
+        # so SAM.gov rejected the request outright before any entity search
+        # happened.
         if api_key:
             self._api_key = api_key
             self._api_key_source = "explicit argument"
