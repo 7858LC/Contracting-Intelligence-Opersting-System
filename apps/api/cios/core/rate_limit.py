@@ -15,10 +15,14 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 
+import redis.exceptions
+import structlog
 from fastapi import HTTPException, Request, status
 
 from cios.core.dependencies import Auth
 from cios.core.redis import redis_client
+
+log = structlog.get_logger(__name__)
 
 
 def _client_ip(request: Request) -> str:
@@ -39,9 +43,13 @@ def rate_limiter(
 
     async def _check(request: Request) -> None:
         key = f"ratelimit:{key_prefix}:{_client_ip(request)}"
-        count = await redis_client.incr(key)
-        if count == 1:
-            await redis_client.expire(key, window_seconds)
+        try:
+            count = await redis_client.incr(key)
+            if count == 1:
+                await redis_client.expire(key, window_seconds)
+        except redis.exceptions.RedisError:
+            log.warning("rate_limiter_redis_unavailable", key_prefix=key_prefix)
+            return
         if count > max_requests:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -73,9 +81,13 @@ def tenant_rate_limiter(
 
     async def _check(user: Auth) -> None:
         key = f"ratelimit:{key_prefix}:tenant:{user.tenant_id}"
-        count = await redis_client.incr(key)
-        if count == 1:
-            await redis_client.expire(key, window_seconds)
+        try:
+            count = await redis_client.incr(key)
+            if count == 1:
+                await redis_client.expire(key, window_seconds)
+        except redis.exceptions.RedisError:
+            log.warning("rate_limiter_redis_unavailable", key_prefix=key_prefix)
+            return
         if count > max_requests:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
