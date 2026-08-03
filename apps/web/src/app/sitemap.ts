@@ -14,6 +14,9 @@ const PUBLIC_ROUTES: { url: string; changeFrequency: MetadataRoute.Sitemap[numbe
   { url: "/executive-council", changeFrequency: "monthly", priority: 0.7 },
   { url: "/pricing", changeFrequency: "monthly", priority: 0.8 },
   { url: "/about", changeFrequency: "monthly", priority: 0.6 },
+  { url: "/terms", changeFrequency: "yearly", priority: 0.3 },
+  { url: "/privacy", changeFrequency: "yearly", priority: 0.3 },
+  { url: "/security", changeFrequency: "yearly", priority: 0.3 },
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
