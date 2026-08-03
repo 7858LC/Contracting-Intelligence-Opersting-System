@@ -137,9 +137,9 @@ export default function RegisterPage() {
 
       <p className="mt-4 text-xs text-center text-muted-foreground">
         By registering you agree to the{" "}
-        <a href="#" className="underline">Terms of Service</a>{" "}
+        <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline">Terms of Service</a>{" "}
         and{" "}
-        <a href="#" className="underline">Privacy Policy</a>.
+        <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline">Privacy Policy</a>.
       </p>
 
       <div className="mt-3 text-center text-sm text-muted-foreground">
