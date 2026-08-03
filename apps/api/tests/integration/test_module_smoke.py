@@ -622,6 +622,35 @@ async def test_radar_scan_actually_reaches_the_company_row(client: AsyncClient):
 
 
 @pytest.mark.anyio
+async def test_radar_delete_company_removes_it_from_the_list(client: AsyncClient):
+    """The DELETE endpoint existed but was never wired into any UI, so
+    nothing had exercised it end to end. delete_company soft-deletes
+    (is_active = False) rather than removing the row — this pins that the
+    list endpoint actually filters on is_active, so a "deleted" company
+    really does disappear from Radar rather than lingering visibly."""
+    headers = await _register(client)
+    created = await client.post(
+        "/api/v1/radar/companies", headers=headers, json={"name": "Delete Me Target Inc"}
+    )
+    assert created.status_code == 201, created.text
+    company_id = created.json()["id"]
+
+    listed = await client.get("/api/v1/radar/companies", headers=headers)
+    assert listed.status_code == 200, listed.text
+    assert any(c["id"] == company_id for c in listed.json()["items"])
+
+    deleted = await client.delete(f"/api/v1/radar/companies/{company_id}", headers=headers)
+    assert deleted.status_code == 204, deleted.text
+
+    listed_after = await client.get("/api/v1/radar/companies", headers=headers)
+    assert listed_after.status_code == 200, listed_after.text
+    assert not any(c["id"] == company_id for c in listed_after.json()["items"])
+
+    missing = await client.delete(f"/api/v1/radar/companies/{uuid.uuid4()}", headers=headers)
+    assert missing.status_code == 404, missing.text
+
+
+@pytest.mark.anyio
 async def test_winning_profile_module_smoke(client: AsyncClient):
     headers = await _register(client)
     resp = await client.post(

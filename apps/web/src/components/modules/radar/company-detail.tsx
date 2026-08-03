@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   Activity,
@@ -21,6 +22,7 @@ import {
   Sparkles,
   Star,
   StarOff,
+  Trash2,
   TrendingUp,
   Zap,
 } from "lucide-react";
@@ -180,6 +182,7 @@ function ProbabilityBar({ value }: { value: number }) {
 
 export function CompanyDetail({ companyId }: { companyId: string }) {
   const qc = useQueryClient();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"signals" | "analysis">("signals");
   const [activeScanJobId, setActiveScanJobId] = useState<string | null>(null);
   // Scan diagnostics have to persist and be copyable, not flash past in a
@@ -269,6 +272,17 @@ export function CompanyDetail({ companyId }: { companyId: string }) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["radar-analyses", companyId] });
     },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => api.deleteCompany(companyId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["radar-companies"] });
+      qc.invalidateQueries({ queryKey: ["radar-stats"] });
+      toast.success(`${company?.name ?? "Company"} removed from Radar`);
+      router.push("/dashboard/radar");
+    },
+    onError: () => toast.error("Failed to remove company"),
   });
 
   function copyAnalysis(a: AIAnalysis, companyName: string) {
@@ -376,6 +390,22 @@ export function CompanyDetail({ companyId }: { companyId: string }) {
           >
             <RefreshCw className={cn("w-3.5 h-3.5", scanMutation.isPending && "animate-spin")} />
             Scan
+          </button>
+          <button
+            onClick={() => {
+              if (window.confirm(`Remove "${company.name}" from Radar? This cannot be undone.`)) {
+                deleteMutation.mutate();
+              }
+            }}
+            disabled={deleteMutation.isPending}
+            title="Remove from Radar"
+            className="flex items-center gap-2 px-3 py-2 rounded-md border border-border text-sm text-muted-foreground hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 transition-colors disabled:opacity-50"
+          >
+            {deleteMutation.isPending ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="w-3.5 h-3.5" />
+            )}
           </button>
         </div>
       </div>
