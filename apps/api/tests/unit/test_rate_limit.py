@@ -12,6 +12,7 @@ os.environ.setdefault("ANTHROPIC_API_KEY", "test_key")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
 
 import pytest
+import redis.exceptions
 from fastapi import HTTPException
 from starlette.requests import Request
 
@@ -88,3 +89,18 @@ async def test_honors_x_forwarded_for_ahead_of_socket_ip():
             await check(req)
     finally:
         await redis_client.delete(f"ratelimit:{prefix}:9.9.9.9")
+
+
+async def test_fails_open_when_redis_is_unavailable(monkeypatch):
+    """A Redis outage (e.g. an Upstash quota lockout) must not 500 every
+    login/register request — rate limiting is defense-in-depth, not core
+    functionality, so it should degrade to "allow" rather than "reject"."""
+    prefix = _prefix()
+    check = rate_limiter(prefix, max_requests=1, window_seconds=60)
+    req = _request("10.0.0.5")
+
+    async def _boom(*args, **kwargs):
+        raise redis.exceptions.ResponseError("max requests limit exceeded")
+
+    monkeypatch.setattr(redis_client, "incr", _boom)
+    await check(req)  # should not raise despite Redis failing

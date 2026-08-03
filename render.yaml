@@ -86,7 +86,16 @@ services:
     region: oregon
     dockerfilePath: infra/docker/Dockerfile.api
     dockerContext: apps/api
+    # worker-entrypoint.sh backs off with increasing delay between restarts
+    # instead of Render's default instant-restart-on-crash. Without it, a
+    # Redis outage that this process can't recover from on its own (see the
+    # ssl_cert_reqs/rediss:// comment above for the other kind of unrecoverable
+    # startup failure) turns into a tight crash loop where every restart still
+    # opens a fresh Redis connection and adds to usage/cost while doing zero
+    # real work — which is exactly what happened during an Upstash "max
+    # requests limit exceeded" lockout.
     dockerCommand: >-
+      bash scripts/worker-entrypoint.sh
       celery -A cios.tasks worker -B --loglevel=info --concurrency=2
       -Q celery,simulations,ingestion,analysis,email,pir_scan,research
     envVars:
