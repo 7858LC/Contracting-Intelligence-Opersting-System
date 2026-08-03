@@ -45,7 +45,13 @@ cd apps/web && npm install && npm run dev
 # would hand out a connection bound to a previous, already-closed loop.
 # Never set this on the API process (uvicorn) — it keeps one long-lived
 # loop and should keep real pooling.
-CIOS_WORKER_PROCESS=1 celery -A cios.tasks worker --loglevel=info -Q celery,simulations,ingestion,analysis,email,pir_scan,research
+#
+# --without-gossip/mingle/heartbeat: those bootsteps let multiple workers
+# discover and coordinate with each other; a single worker has no peers to
+# coordinate with, so they're just background broker traffic (heartbeat
+# alone publishes every 2s by default) for no benefit — matches render.yaml's
+# production worker command.
+CIOS_WORKER_PROCESS=1 celery -A cios.tasks worker --loglevel=info --without-gossip --without-mingle --without-heartbeat -Q celery,simulations,ingestion,analysis,email,pir_scan,research
 
 # Scheduler (required for the daily PIR scan and quarterly research brief
 # to actually fire — a worker alone does not run scheduled tasks)
