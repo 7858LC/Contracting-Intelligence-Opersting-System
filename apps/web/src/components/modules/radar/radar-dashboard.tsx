@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { toast } from "sonner";
 import {
   Activity,
   AlertCircle,
@@ -16,6 +17,7 @@ import {
   RefreshCw,
   Search,
   Star,
+  Trash2,
   TrendingUp,
   Zap,
 } from "lucide-react";
@@ -240,6 +242,15 @@ export function RadarDashboard() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.deleteCompany(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["radar-companies"] });
+      qc.invalidateQueries({ queryKey: ["radar-stats"] });
+    },
+    onError: () => toast.error("Failed to remove company"),
+  });
+
   function handleSaved() {
     setShowModal(false);
     qc.invalidateQueries({ queryKey: ["radar-companies"] });
@@ -430,12 +441,30 @@ export function RadarDashboard() {
                     </div>
                   </td>
                   <td className="pr-3 py-3">
-                    <Link
-                      href={`/dashboard/radar/${c.id}`}
-                      className="flex items-center justify-center w-7 h-7 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
-                    >
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </Link>
+                    <div className="flex items-center justify-end gap-0.5">
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Remove "${c.name}" from Radar? This cannot be undone.`)) {
+                            deleteMutation.mutate(c.id);
+                          }
+                        }}
+                        disabled={deleteMutation.isPending && deleteMutation.variables === c.id}
+                        title="Remove from Radar"
+                        className="flex items-center justify-center w-7 h-7 rounded-md hover:bg-red-500/10 transition-colors text-muted-foreground hover:text-red-500 disabled:opacity-40"
+                      >
+                        {deleteMutation.isPending && deleteMutation.variables === c.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                      <Link
+                        href={`/dashboard/radar/${c.id}`}
+                        className="flex items-center justify-center w-7 h-7 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+                      >
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}
