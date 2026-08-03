@@ -50,6 +50,15 @@ celery_app.conf.update(
     task_track_started=True,
     task_acks_late=True,
     worker_prefetch_multiplier=1,
+    # kombu's redis transport issues a blocking BRPOP with this as its timeout,
+    # then immediately reissues it if nothing arrived — Redis still wakes a
+    # waiting BRPOP the instant a task is actually pushed, so this only
+    # governs how often the worker re-polls while genuinely idle, not real
+    # task pickup latency. Left at kombu's 1s default, an idle worker racks up
+    # ~1 Redis command/sec against the broker for zero work; on a
+    # per-command-billed provider (Upstash) that adds up continuously even
+    # with no users on the platform.
+    broker_transport_options={"polling_interval": 5},
     task_routes={
         "cios.tasks.simulation.*": {"queue": "simulations"},
         "cios.tasks.ingestion.*": {"queue": "ingestion"},

@@ -94,9 +94,16 @@ services:
     # opens a fresh Redis connection and adds to usage/cost while doing zero
     # real work — which is exactly what happened during an Upstash "max
     # requests limit exceeded" lockout.
+    # --without-gossip/mingle/heartbeat: those bootsteps exist for
+    # multi-worker clusters to exchange state and detect peers; with exactly
+    # one worker process they have nothing to coordinate with and just add a
+    # steady stream of pub/sub commands against the broker (heartbeat alone
+    # publishes every 2s by default) with no benefit — pure background cost
+    # on a per-command-billed Redis.
     dockerCommand: >-
       bash scripts/worker-entrypoint.sh
       celery -A cios.tasks worker -B --loglevel=info --concurrency=2
+      --without-gossip --without-mingle --without-heartbeat
       -Q celery,simulations,ingestion,analysis,email,pir_scan,research
     envVars:
       - key: APP_ENV
