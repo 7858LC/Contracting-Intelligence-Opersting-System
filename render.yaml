@@ -1,4 +1,24 @@
 services:
+  # Broker/backend for cios-worker's Celery queue, plus the cache and
+  # rate-limit counters in cios/core/redis.py and cios/core/rate_limit.py.
+  # Previously pointed at Upstash, which bills per Redis command — that
+  # meant cios-worker's idle broker polling (BRPOP re-issued every few
+  # seconds, whether or not any task is queued) cost money continuously,
+  # 24/7, regardless of platform activity. Render's own Key Value instance
+  # is a flat monthly rate instead, so the same background polling is free
+  # once it's already paid for. ipAllowList: [] keeps it reachable only
+  # from services in this same Render private network — it never needs to
+  # be reachable from outside. noeviction (not the LRU policies Render
+  # defaults a pure cache to) matters specifically because this Redis is a
+  # message broker, not just a cache: evicting a key under memory pressure
+  # here means silently losing a queued task, not just a cache miss.
+  - type: redis
+    name: cios-redis
+    plan: starter
+    region: oregon
+    ipAllowList: []
+    maxmemoryPolicy: noeviction
+
   - type: web
     name: cios-api
     runtime: docker
@@ -22,7 +42,10 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: REDIS_URL
-        sync: false
+        fromService:
+          type: redis
+          name: cios-redis
+          property: connectionString
       - key: JWT_SECRET
         sync: false
       - key: ENCRYPTION_KEY
@@ -111,7 +134,10 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: REDIS_URL
-        sync: false
+        fromService:
+          type: redis
+          name: cios-redis
+          property: connectionString
       - key: JWT_SECRET
         sync: false
       - key: ENCRYPTION_KEY
