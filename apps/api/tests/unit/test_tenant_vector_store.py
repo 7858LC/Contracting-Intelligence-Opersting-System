@@ -52,9 +52,9 @@ def _autospec_client() -> MagicMock:
 
 
 async def test_search_creates_collection_before_querying():
-    with patch("cios.vector.tenant_store.AsyncQdrantClient") as MockClient:
+    with patch("cios.vector.tenant_store.AsyncQdrantClient") as mock_client_cls:
         client = _autospec_client()
-        MockClient.return_value = client
+        mock_client_cls.return_value = client
 
         collections_resp = MagicMock()
         collections_resp.collections = []  # tenant has never uploaded a document
@@ -75,9 +75,9 @@ async def test_search_creates_collection_before_querying():
 
 
 async def test_search_skips_create_when_collection_already_exists():
-    with patch("cios.vector.tenant_store.AsyncQdrantClient") as MockClient:
+    with patch("cios.vector.tenant_store.AsyncQdrantClient") as mock_client_cls:
         client = _autospec_client()
-        MockClient.return_value = client
+        mock_client_cls.return_value = client
 
         existing = MagicMock()
         existing.name = "cios_tenant_11111111_1111_1111_1111_111111111111"
