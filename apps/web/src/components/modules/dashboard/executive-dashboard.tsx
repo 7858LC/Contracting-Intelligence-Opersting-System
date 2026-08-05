@@ -1,11 +1,23 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Award, BarChart3, Brain, FileText, Target, TrendingUp } from "lucide-react";
+import { Award, BarChart3, Brain, FileText, Lock, Target, TrendingUp } from "lucide-react";
 import { formatCurrency, formatProbability, getScoreColor } from "@/lib/utils";
 import api from "@/lib/api";
+import { getUserPlan } from "@/lib/auth";
+import { Feature, hasFeature, type SubscriptionTier } from "@/lib/feature-flags";
 
 export function ExecutiveDashboard() {
+  // getUserPlan() reads localStorage (client-only) and defaults to "trial" —
+  // same source dashboard-layout.tsx's sidebar uses to hide Award
+  // Simulation nav for ungated plans. Without checking it here too, this
+  // widget fired GET /award-simulations unconditionally for every tenant,
+  // 403ing on every plan below Growth (require_feature() in router.py) and
+  // showing "No simulations yet" — which reads as "you have zero", not the
+  // real reason: your plan doesn't include this module.
+  const activeTier = getUserPlan() as SubscriptionTier;
+  const canSeeSimulations = hasFeature(activeTier, Feature.AwardSimulation);
+
   const { data: opps } = useQuery({
     queryKey: ["opportunities"],
     queryFn: () => api.getOpportunities({ page_size: 5, sort_by: "award_probability_score", sort_dir: "desc" }),
@@ -14,6 +26,7 @@ export function ExecutiveDashboard() {
   const { data: sims } = useQuery({
     queryKey: ["simulations"],
     queryFn: () => api.getSimulations(),
+    enabled: canSeeSimulations,
   });
 
   const { data: subscription } = useQuery({
@@ -56,9 +69,9 @@ export function ExecutiveDashboard() {
         />
         <KPICard
           label="Award Simulations"
-          value={String(sims?.items?.length || 0)}
+          value={canSeeSimulations ? String(sims?.items?.length || 0) : "—"}
           icon={Award}
-          description="This cycle"
+          description={canSeeSimulations ? "This cycle" : "Growth plan required"}
         />
       </div>
 
@@ -88,12 +101,22 @@ export function ExecutiveDashboard() {
             <a href="/dashboard/award-simulator" className="text-xs text-primary hover:underline">View all</a>
           </div>
           <div className="divide-y divide-border">
-            {simulations.slice(0, 5).map((sim: any) => (
-              <SimulationRow key={sim.id} sim={sim} />
-            ))}
-            {simulations.length === 0 && (
+            {canSeeSimulations ? (
+              <>
+                {simulations.slice(0, 5).map((sim: any) => (
+                  <SimulationRow key={sim.id} sim={sim} />
+                ))}
+                {simulations.length === 0 && (
+                  <div className="px-6 py-8 text-center text-sm text-muted-foreground">
+                    No simulations yet. <a href="/dashboard/award-simulator" className="text-primary hover:underline">Run your first simulation</a>
+                  </div>
+                )}
+              </>
+            ) : (
               <div className="px-6 py-8 text-center text-sm text-muted-foreground">
-                No simulations yet. <a href="/dashboard/award-simulator" className="text-primary hover:underline">Run your first simulation</a>
+                <Lock className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                Award Simulation is available on the Growth plan.{" "}
+                <a href="/dashboard/settings" className="text-primary hover:underline">Upgrade</a>
               </div>
             )}
           </div>
