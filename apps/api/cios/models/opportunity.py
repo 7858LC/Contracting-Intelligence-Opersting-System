@@ -5,7 +5,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, String, Text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -31,6 +31,16 @@ class Opportunity(Base, UUIDMixin, TimestampMixin, TenantMixin, EvidenceMixin):
         Index("idx_opp_award_probability", "award_probability_score"),
         Index("idx_opp_search", "search_vector", postgresql_using="gin"),
         Index("idx_opp_jurisdiction_type", "tenant_id", "jurisdiction_type"),
+        # Matches migration 003_jurisdiction_type's op.create_check_constraint —
+        # the model never declared this, so `alembic check` (CI gate) saw a
+        # constraint that exists in the DB but not in the model and proposed
+        # dropping it. The 5 values mirror JurisdictionType exactly; this was
+        # drift between the model and an already-correct migration, not an
+        # intentional removal.
+        CheckConstraint(
+            "jurisdiction_type IN ('federal', 'state', 'local', 'tribal', 'international')",
+            name="ck_opp_jurisdiction_type",
+        ),
     )
 
     # Identity
