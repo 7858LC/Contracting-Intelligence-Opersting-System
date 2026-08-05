@@ -89,9 +89,14 @@ class TenantVectorStore:
         embedding = await self._embed(query)
         qdrant_filter = self._build_filter(filters) if filters else None
 
-        results = await self._client.search(
+        # AsyncQdrantClient.search() was removed in favor of query_points() —
+        # see qdrant-client's changelog around 1.10-1.11. This project pins
+        # only a floor ("qdrant-client>=1.11.0", no ceiling, no lockfile), so
+        # search() using the removed method name failed with AttributeError
+        # on every call, for every tenant, regardless of ensure_collection().
+        response = await self._client.query_points(
             collection_name=self.collection_name,
-            query_vector=embedding,
+            query=embedding,
             limit=top_k,
             score_threshold=min_score,
             query_filter=qdrant_filter,
@@ -110,7 +115,7 @@ class TenantVectorStore:
                     if k not in ("text", "doc_id", "chunk_index", "tenant_id")
                 },
             }
-            for r in results
+            for r in response.points
         ]
 
     async def delete_document(self, doc_id: str) -> None:
