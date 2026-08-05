@@ -3,6 +3,15 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import {
+  Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  ResponsiveContainer,
+  Tooltip,
+} from "recharts";
 import { api } from "@/lib/api";
 import { formatCurrency, getScoreColor, cn } from "@/lib/utils";
 import { BarChart3, Plus, ChevronDown, ChevronUp, CheckCircle2, XCircle, AlertCircle, Copy, Trash2 } from "lucide-react";
@@ -55,15 +64,18 @@ function formatElapsed(createdAt: string, nowMs: number): string {
 }
 
 const SCORE_FACTORS = [
-  { key: "strategic_fit_score", label: "Strategic Fit" },
-  { key: "win_probability_score", label: "Win Probability" },
-  { key: "past_performance_score", label: "Past Performance" },
-  { key: "capability_score", label: "Capability Match" },
-  { key: "competitive_position_score", label: "Competitive Position" },
-  { key: "cost_of_bid_score", label: "Cost of Bid" },
-  { key: "risk_score", label: "Risk" },
-  { key: "relationship_score", label: "Relationship" },
+  { key: "strategic_fit_score", label: "Strategic Fit", radarLabel: "Strategic Fit" },
+  { key: "win_probability_score", label: "Win Probability", radarLabel: "Win Probability" },
+  { key: "past_performance_score", label: "Past Performance", radarLabel: "Past Perf." },
+  { key: "capability_score", label: "Capability Match", radarLabel: "Capability" },
+  { key: "competitive_position_score", label: "Competitive Position", radarLabel: "Comp. Position" },
+  { key: "cost_of_bid_score", label: "Cost of Bid", radarLabel: "Cost of Bid" },
+  { key: "risk_score", label: "Risk", radarLabel: "Risk" },
+  { key: "relationship_score", label: "Relationship", radarLabel: "Relationship" },
 ] as const;
+
+// Radar needs at least a few axes to read as a shape rather than a line/point.
+const MIN_FACTORS_FOR_RADAR = 3;
 
 export function BidDecisionView() {
   const queryClient = useQueryClient();
@@ -259,6 +271,53 @@ export function BidDecisionView() {
                       </span>
                     </div>
                   )}
+
+                  {/* Factor radar */}
+                  {(() => {
+                    const radarData = SCORE_FACTORS
+                      .map(({ key, radarLabel }) => ({
+                        subject: radarLabel,
+                        score: d[key as keyof BidDecision] as number | null,
+                      }))
+                      .filter((row) => row.score != null);
+                    if (radarData.length < MIN_FACTORS_FOR_RADAR) return null;
+                    return (
+                      <div className="h-64 w-full -mx-2">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RadarChart data={radarData} outerRadius="70%">
+                            <PolarGrid stroke="hsl(var(--border))" />
+                            <PolarAngleAxis
+                              dataKey="subject"
+                              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                            />
+                            <PolarRadiusAxis
+                              domain={[0, 100]}
+                              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 9 }}
+                              tickCount={5}
+                              axisLine={false}
+                            />
+                            <Radar
+                              name="Score"
+                              dataKey="score"
+                              stroke="hsl(var(--primary))"
+                              fill="hsl(var(--primary))"
+                              fillOpacity={0.35}
+                            />
+                            <Tooltip
+                              contentStyle={{
+                                background: "hsl(var(--card))",
+                                border: "1px solid hsl(var(--border))",
+                                borderRadius: "0.5rem",
+                                fontSize: "0.75rem",
+                              }}
+                              labelStyle={{ color: "hsl(var(--foreground))" }}
+                              formatter={(value: number) => [`${value}/100`, "Score"]}
+                            />
+                          </RadarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    );
+                  })()}
 
                   {/* Factor scores */}
                   <div className="grid grid-cols-2 gap-2">
