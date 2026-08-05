@@ -85,6 +85,7 @@ class TenantVectorStore:
         filters: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """Semantic search with optional metadata filters."""
+        await self.ensure_collection()
         embedding = await self._embed(query)
         qdrant_filter = self._build_filter(filters) if filters else None
 
