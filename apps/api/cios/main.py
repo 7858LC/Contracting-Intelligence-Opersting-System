@@ -43,18 +43,40 @@ def create_app() -> FastAPI:
     )
 
     app.add_middleware(GZipMiddleware, minimum_size=1000)
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.cors_origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
 
     @app.middleware("http")
     async def request_timing(request: Request, call_next: any) -> Response:
         start = time.perf_counter()
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception as exc:
+            # An unhandled (non-HTTPException) error raised in a route — e.g.
+            # a raw Qdrant/S3 client exception — can't be caught with a plain
+            # @app.exception_handler(Exception): Starlette's BaseHTTPMiddleware
+            # (what `@app.middleware("http")` is, i.e. this function) always
+            # re-raises the exception it captured from call_next()'s inner
+            # task, even when an app-level handler already built and sent a
+            # real response for it (see starlette/middleware/base.py's
+            # call_next, `raise app_exc from ...`). Left uncaught here, that
+            # re-raised exception would propagate to the outer, framework-
+            # level ServerErrorMiddleware, whose generic 500 never passes
+            # back through CORSMiddleware's header-adding logic — a browser
+            # then reports "blocked by CORS policy" instead of the real 500.
+            # This is exactly what made cios/vector/tenant_store.py's
+            # search() bug (and at least one S3-misconfiguration report) look
+            # like a CORS issue rather than the backend error either actually
+            # was. Catching here, with CORSMiddleware registered *after* (so
+            # it wraps) this middleware below, keeps every response —
+            # including this fallback one — flowing through CORS. Detail is
+            # intentionally generic; the real exception is logged, not
+            # exposed to the client.
+            log.error(
+                "unhandled_exception",
+                path=request.url.path,
+                method=request.method,
+                exc_info=exc,
+            )
+            response = JSONResponse(status_code=500, content={"detail": "Internal server error"})
         duration_ms = (time.perf_counter() - start) * 1000
         response.headers["X-Response-Time"] = f"{duration_ms:.1f}ms"
         log.info(
@@ -65,6 +87,18 @@ def create_app() -> FastAPI:
             duration_ms=round(duration_ms, 1),
         )
         return response
+
+    # Registered after request_timing above so CORS ends up as the outermost
+    # user middleware (Starlette wraps in reverse registration order) —
+    # required for the fallback 500 built inside request_timing's except
+    # block to actually carry CORS headers; see that function's comment.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @app.get("/health", tags=["System"])
     async def health() -> dict:
